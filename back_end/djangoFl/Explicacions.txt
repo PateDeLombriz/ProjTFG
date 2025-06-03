@@ -1,0 +1,5 @@
+Aquesta carperta djangoFl ha de contenir totes les dependencies necessaries que conecten l'aplicacio bas de djangoFl
+amb les diferents aplicacions creades dins django:
+Recorda terminologia django:
+    Un projecte pot tenir varies aplicacions
+    Una aplicacio pot ser:

@@ -1,42 +1,70 @@
 # Base mínima
 FROM ubuntu:22.04
 
-# Prerequisites
-RUN apt update && apt install -y curl git unzip xz-utils zip libglu1-mesa openjdk-17-jdk wget
+# Prerequisitos del sistema (incluye JDK para Android)
+RUN apt update && apt install -y curl git unzip xz-utils zip libglu1-mesa openjdk-17-jdk wget sudo
 
-# Set up new user
-RUN useradd -u 1000 -ms /bin/bash developer
+# Crear usuario para desarrollo
+RUN useradd -u 1000 -ms /bin/bash developer && adduser developer sudo
 USER developer
 WORKDIR /home/developer
 
-# Prepare Android directories and system variables
-RUN mkdir -p Android/sdk
-ENV ANDROID_SDK_ROOT /home/developer/Android/sdk
-RUN mkdir -p .android && touch .android/repositories.cfg
+# Descargar Flutter SDK
+RUN git clone https://github.com/flutter/flutter.git --branch stable
+ENV PATH="$PATH:/home/developer/flutter/bin"
 
-# Set up Android SDK
-RUN wget -O commandlinetools.zip "https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip" && \
-    unzip commandlinetools.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && \
-    mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
-    rm commandlinetools.zip
+# Precache Android SDK (necesario para flutter doctor --android-licenses)
+RUN flutter precache --android
 
-RUN yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses
-RUN ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
-  "build-tools;33.0.0" "platform-tools" "platforms;android-33" "sources;android-33"
-ENV PATH "$PATH:/home/developer/Android/sdk/platform-tools"
-
-# Download Flutter SDK
-RUN git clone --depth 1 --branch 3.32.0 https://github.com/flutter/flutter.git 
-ENV PATH "$PATH:/home/developer/flutter/bin"
-
-# Run basic check to download Dark SDK
-RUN flutter doctor
-#RUN chown -R developer:developer /home/developer
-
-#Canvia la propietat de tots els directoris afectats per evitar errors d'accés
+# ----------------------------------------------------------------
+# ⚠️ MODIFICACIÓN: INSTALAR Android SDK Command Line Tools + NDK
+# ----------------------------------------------------------------
+  #Necessari p per poder cridar la app desde el mivil ja que les dependencies de WEB i Android no son les mateixes
+# Usamos root para instalar en /opt/android_sdk
 USER root
+# Es tornen a definir les variables d'entorn per Android SDK
+#perque en compose no estan disponibles durant el buid 
+ENV ANDROID_SDK_ROOT=/opt/android_sdk
+ENV ANDROID_HOME=/opt/android_sdk
+ENV PATH="${PATH}:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools"
+
+# Crear directorios y descargar cmdline-tools
+RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    cd ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && \
+    unzip cmdline-tools.zip && \
+    mv cmdline-tools latest
+
+# Instalar herramientas necesarias para Flutter Android
+RUN yes | sdkmanager --licenses && \
+    sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0" "ndk;26.3.11579264"
+
+# Cambiar permisos de SDK para evitar errores al compilar
+RUN chown -R developer:developer ${ANDROID_SDK_ROOT}
+
+# ------------------------------------------------------------
+# MODIFICAT 2: INSTALAR GOOGLE CHROME para Flutter Web
+# ------------------------------------------------------------
+RUN apt update && apt install -y wget gnupg ca-certificates \
+  && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux.gpg \
+  && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+  && apt update && apt install -y google-chrome-stable android-tools-adb
+
+ENV CHROME_EXECUTABLE=/usr/bin/google-chrome
+
+# ------------------------------------------------------------
+# MODIFICAT 3: Soporte Flutter Desktop (Linux)
+# ------------------------------------------------------------
+RUN apt update && apt install -y \
+  clang \
+  cmake \
+  ninja-build \
+  pkg-config \
+  libgtk-3-dev
+
+# Cambiar propiedad de directorios a developer para desarrollo sin permisos
 RUN chown -R developer:developer /home/developer/flutter /home/developer/.pub-cache /home/developer/app || true
 
-# Passa a l’usuari no-root per executar en entorn segur
+# Volver a usuario seguro
 USER developer
 WORKDIR /home/developer/app

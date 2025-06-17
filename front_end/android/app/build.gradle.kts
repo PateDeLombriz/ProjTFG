@@ -1,12 +1,15 @@
+// Aplicació de plugins necessaris per compilar apps Android amb Flutter i Kotlin
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // El plugin de Flutter s'ha d'aplicar després dels d'Android i Kotlin
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.example.front_end"
+
+    // Valors definits al bloc flutter {} (heretats del fitxer .metadata de Flutter)
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,25 +23,22 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.front_end"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.example.front_end"  // Canvia-ho si ho vols pujar a Google Play
+        minSdk = flutter.minSdkVersion           // Per Android 5.0 o superior
+        targetSdk = flutter.targetSdkVersion     // Generalment 33 o superior
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // De moment fem servir les claus de debug per poder compilar en release amb `flutter run --release`
             signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
 
 flutter {
+    // Indica on és la root del projecte Flutter (dos nivells per sobre)
     source = "../.."
 }

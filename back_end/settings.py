@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure--usm$qr9x%xdr23zn$20mvce#7p&^1=)@ke*anmzbq5^c9d%8k
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS').split(',')
 
 
 
@@ -38,13 +38,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders'A
+    'corsheaders',  # CORS headers for cross-origin requests
+    'apiApp',  # Custom app for API
+    'rest_framework',  # Django REST framework for building APIs
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # Afegeix CORS middleware per a les peticions de frontend que
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -56,7 +58,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:9000",
 ]
 
-ROOT_URLCONF = 'back_end.urls'
+ROOT_URLCONF = 'urls'
 
 TEMPLATES = [
     {

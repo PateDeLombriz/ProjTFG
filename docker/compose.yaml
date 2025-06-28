@@ -38,7 +38,7 @@ services:
     env_file:
       - .env
 
-  flutter-web:
+  flutter-web: #AQUEST ES EL SERVICI DE FLUTTER PER A LA *********APLICACIO************
     build:
       context: ../front_end            # Carpeta donde está el Dockerfile y el código Flutter
       dockerfile: Dockerfile           # Nombre del Dockerfile a usar para construir la imagen
@@ -46,9 +46,9 @@ services:
     ports:
       - "9000:9000"                    # Expone el puerto 9000 del contenedor al 9000 del host (para Flutter web)
     volumes:
-      - ../front_end:/home/developer/app                    # Monta el código local dentro del contenedor para desarrollo en caliente
-    working_dir: /home/developer/app    # Directorio de trabajo dentro del contenedor
-    command: flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0  # Comando que se ejecuta al iniciar el contenedor (lanza Flutter web)
+      - ../front_end:/home/developer/app
+    working_dir: /home/developer/app
+    command: flutter run -d emulator-5554
     depends_on:
       - django-web                     # Espera que el servicio django-web esté listo antes de iniciar este contenedor
     user: "1000:1000"                  # Ejecuta el contenedor con este UID:GID para evitar problemas de permisos
@@ -59,6 +59,21 @@ services:
       - ANDROID_SDK_ROOT=/opt/android_sdk
       - ANDROID_HOME=/opt/android_sdk             # Alias para la variable ANDROID_SDK_ROOT, usado por algunas herramientas Android
 
+
+  #flutter-web:#AQUEST ES EL SERVICI DE FLUTTER PER A LA *********web************
+   #build:
+      #context: ../front_end
+      #dockerfile: Dockerfile
+    #container_name: flutter-docker
+    #ports:
+    #  - "9000:9000"
+    #volumes:
+    #  - ../front_end:/home/developer/app
+    #working_dir: /home/developer/app
+    #command: flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0
+    #depends_on:
+    #  - django-web
+    #user: "1000:1000"
 
 volumes:
   postgres_data:

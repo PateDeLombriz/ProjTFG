@@ -48,7 +48,8 @@ services:
     volumes:
       - ../front_end:/home/developer/app
     working_dir: /home/developer/app
-    command: flutter run -d emulator-5554
+    #command: flutter run -d emulator-5554
+    command: flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0
     depends_on:
       - django-web                     # Espera que el servicio django-web esté listo antes de iniciar este contenedor
     user: "1000:1000"                  # Ejecuta el contenedor con este UID:GID para evitar problemas de permisos
@@ -58,22 +59,6 @@ services:
       - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal   # Indica que adb debe conectarse al host y no al contenedor
       - ANDROID_SDK_ROOT=/opt/android_sdk
       - ANDROID_HOME=/opt/android_sdk             # Alias para la variable ANDROID_SDK_ROOT, usado por algunas herramientas Android
-
-
-  #flutter-web:#AQUEST ES EL SERVICI DE FLUTTER PER A LA *********web************
-   #build:
-      #context: ../front_end
-      #dockerfile: Dockerfile
-    #container_name: flutter-docker
-    #ports:
-    #  - "9000:9000"
-    #volumes:
-    #  - ../front_end:/home/developer/app
-    #working_dir: /home/developer/app
-    #command: flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0
-    #depends_on:
-    #  - django-web
-    #user: "1000:1000"
 
 volumes:
   postgres_data:

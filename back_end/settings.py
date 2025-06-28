@@ -82,12 +82,23 @@ WSGI_APPLICATION = 'back_end.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
+DATABASES = { #Perque funcioni amb postgresd
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.getenv("DATABASE_ENGINE", 'postgresql'),
+        'NAME': os.getenv('DATABASE_NAME', 'obraAgil'),
+        'USER': os.getenv('DATABASE_USERNAME', 'postgres'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'postgres'),
+        'HOST': os.getenv('DATABASE_HOST', 'localhost'),
+        'PORT': os.getenv('DATABASE_PORT', '5432'),
     }
 }
+print("DEBUG DB ENVIRONMENT:")
+print("ENGINE:", os.getenv("DATABASE_ENGINE"))
+print("NAME:", os.getenv("DATABASE_NAME"))
+print("USER:", os.getenv("DATABASE_USERNAME"))
+print("PASSWORD:", os.getenv("DATABASE_PASSWORD"))
+print("HOST:", os.getenv("DATABASE_HOST"))
+print("PORT:", os.getenv("DATABASE_PORT"))
 
 
 # Password validation

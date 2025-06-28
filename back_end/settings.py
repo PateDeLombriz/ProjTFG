@@ -20,12 +20,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--usm$qr9x%xdr23zn$20mvce#7p&^1=)@ke*anmzbq5^c9d%8k'
-
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "0").lower() in ("1", "true", "yes")
 
+<<<<<<< Updated upstream
 ALLOWED_HOSTS = []
+=======
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1').split(',')
+
+>>>>>>> Stashed changes
 
 
 # Application definition
@@ -37,11 +41,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+<<<<<<< Updated upstream
+=======
+    'corsheaders',  # CORS headers for cross-origin requests
+    'apiApp',  # Custom app for API
+    'rest_framework',  # Django REST framework for building APIs
+>>>>>>> Stashed changes
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+<<<<<<< Updated upstream
+=======
+    'corsheaders.middleware.CorsMiddleware', # Afegeix CORS middleware per a les peticions de frontend que
+>>>>>>> Stashed changes
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -49,7 +63,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+<<<<<<< Updated upstream
 ROOT_URLCONF = 'back_end.urls'
+=======
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:9000",
+]
+CORS_ALLOW_ALL_ORIGINS = True
+
+ROOT_URLCONF = 'urls'
+>>>>>>> Stashed changes
 
 TEMPLATES = [
     {
@@ -67,18 +90,36 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'back_end.wsgi.application'
+WSGI_APPLICATION = 'wsgi.application'
 
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# S'ha canviat aixo perque la base de dades sigui postgresql i no sqlite3 (Django)
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': BASE_DIR / 'db.sqlite3',
+#    }
+#}
 
-DATABASES = {
+DATABASES = { #Perque funcioni amb postgresd
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.getenv("DATABASE_ENGINE", 'postgresql'),
+        'NAME': os.getenv('DATABASE_NAME', 'obraAgil'),
+        'USER': os.getenv('DATABASE_USERNAME', 'postgres'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'postgres'),
+        'HOST': os.getenv('DATABASE_HOST', 'localhost'),
+        'PORT': os.getenv('DATABASE_PORT', '5432'),
     }
 }
+print("DEBUG DB ENVIRONMENT:")
+print("ENGINE:", os.getenv("DATABASE_ENGINE"))
+print("NAME:", os.getenv("DATABASE_NAME"))
+print("USER:", os.getenv("DATABASE_USERNAME"))
+print("PASSWORD:", os.getenv("DATABASE_PASSWORD"))
+print("HOST:", os.getenv("DATABASE_HOST"))
+print("PORT:", os.getenv("DATABASE_PORT"))
 
 
 # Password validation

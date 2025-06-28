@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package: ../models/obra.dart'; // Importa la classe Obra
-import 'package: ../services/api_service.dart'; // Importa la funció getObres
+//import 'package: lib/models/obra.dart'; // Importa la classe Obra
+//import 'package: lib/services/api_service.dart'; // Importa la funció getObres
 
 class DeleteConfirmationPage extends StatelessWidget {
   final int obraId;

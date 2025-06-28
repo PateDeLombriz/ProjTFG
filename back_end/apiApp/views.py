@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from .models import Obra
 from .serializer import ObraSerializer
 
+#Aquí defines qué datos se devuelven cuando se accede a una URL:
 class ObraList(APIView):
     def get(self, request, format=None):
         obres = Obra.objects.all()  # obtenim totes les obres

@@ -9,7 +9,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data #Amb django tmb es pot fer servir sqlite, pero per utilitzar la bd externa es necessari postgres.
+      - ../postgres/db-init:/docker-entrypoint-initdb.d
     env_file:
       - .env
 

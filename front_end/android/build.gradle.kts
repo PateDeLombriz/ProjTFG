@@ -1,3 +1,19 @@
+<<<<<<< Updated upstream
+=======
+buildscript {// Bloc necessari per indicar els plugins de construcció per a Android i Kotlin
+    val kotlin_version by extra("1.8.10") // Versió compatible amb Gradle 8 i Flutter
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.0.0")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+    }
+}
+
+// Bloc original del projecte: defineix repositoris comuns
+>>>>>>> Stashed changes
 allprojects {
     repositories {
         google()

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="c729f42f-5967-45fc-ab32-6d0b10165fee" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/back_end/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/apiApp/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/back_end/apiApp/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/djangoFl/Explicacions.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/djangoFl/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/djangoFl/asgi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/djangoFl/settings.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/djangoFl/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/djangoFl/wsgi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/manage.py" beforeDir="false" afterPath="$PROJECT_DIR$/back_end/manage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back_end/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/back_end/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker/.env" beforeDir="false" afterPath="$PROJECT_DIR$/docker/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker/compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docker/compose.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front_end/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/front_end/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front_end/android/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/front_end/android/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front_end/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/front_end/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front_end/lib/screens/obra_delete.dart" beforeDir="false" afterPath="$PROJECT_DIR$/front_end/lib/screens/obra_delete.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front_end/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/front_end/pubspec.lock" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2yDmkOriztM698mLuy0OwKZJ61q" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;com.android.tools.idea.streaming.zoom.toolbar.visible&quot;: &quot;false&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;application.passwordSafe&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
+  }
+}</component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="c729f42f-5967-45fc-ab32-6d0b10165fee" name="Changes" comment="" />
+      <created>1749377663605</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1749377663605</updated>
+    </task>
+    <servers />
+  </component>
+</project>

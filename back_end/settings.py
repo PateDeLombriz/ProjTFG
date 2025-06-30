@@ -20,13 +20,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--usm$qr9x%xdr23zn$20mvce#7p&^1=)@ke*anmzbq5^c9d%8k'
-
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "0").lower() in ("1", "true", "yes")
 
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS').split(',')
-
 
 
 # Application definition
@@ -54,11 +52,20 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:9000",
 ]
 
 ROOT_URLCONF = 'urls'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:9000",
+]
+CORS_ALLOW_ALL_ORIGINS = True
+
+ROOT_URLCONF = 'urls'
+
 
 TEMPLATES = [
     {
@@ -81,6 +88,13 @@ WSGI_APPLICATION = 'wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# S'ha canviat aixo perque la base de dades sigui postgresql i no sqlite3 (Django)
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': BASE_DIR / 'db.sqlite3',
+#    }
+#}
 
 DATABASES = { #Perque funcioni amb postgresd
     'default': {

@@ -1,5 +1,5 @@
-// Bloc necessari per indicar els plugins de construcció per a Android i Kotlin
-buildscript {
+
+buildscript {// Bloc necessari per indicar els plugins de construcció per a Android i Kotlin
     val kotlin_version by extra("1.8.10") // Versió compatible amb Gradle 8 i Flutter
     repositories {
         google()

@@ -10,7 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data #Amb django tmb es pot fer servir sqlite, pero per utilitzar la bd externa es necessari postgres.
-      - ../postgres/db-init:/docker-entrypoint-initdb.d
+      - ../postgres/db-init:/docker-entrypoint-initdb.d #Arxiu per la inicialització de la base de dades
     env_file:
       - .env
 
@@ -61,5 +61,23 @@ services:
       - ANDROID_SDK_ROOT=/opt/android_sdk
       - ANDROID_HOME=/opt/android_sdk             # Alias para la variable ANDROID_SDK_ROOT, usado por algunas herramientas Android
 
-volumes:
+volumes: # Per referenciar els volums que es creen per a la base de dades i altres serveis
+ # es fa un *docker volume inspect docker_postgres_data*  
+ #on "docker" es el nom de directori + "postrges_data" el nom del volum
   postgres_data:
+
+
+  #flutter-web:#AQUEST ES EL SERVICI DE FLUTTER PER A LA *********web************
+   #build:
+      #context: ../front_end
+      #dockerfile: Dockerfile
+    #container_name: flutter-docker
+    #ports:
+    #  - "9000:9000"
+    #volumes:
+    #  - ../front_end:/home/developer/app
+    #working_dir: /home/developer/app
+    #command: flutter run -d emulator-5554
+    #depends_on:
+    #  - django-web
+    #user: "1000:1000"

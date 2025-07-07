@@ -24,9 +24,15 @@ class _ObraEditState extends State<ObraEdit> {
   void initState() {
     super.initState();
     _nomController = TextEditingController(text: widget.obra.Nom);
-    _ubicacioController = TextEditingController(text: widget.obra.Ubicacio ?? '');
-    _pressupostController = TextEditingController(text: widget.obra.Pressupost?.toString() ?? '');
-    _descripcioController = TextEditingController(text: widget.obra.Descripcio ?? '');
+    _ubicacioController = TextEditingController(
+      text: widget.obra.Ubicacio ?? '',
+    );
+    _pressupostController = TextEditingController(
+      text: widget.obra.Pressupost?.toString() ?? '',
+    );
+    _descripcioController = TextEditingController(
+      text: widget.obra.Descripcio ?? '',
+    );
     _estat = widget.obra.Estat;
   }
 
@@ -46,56 +52,106 @@ class _ObraEditState extends State<ObraEdit> {
     );
 
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Obra actualitzada')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Obra actualitzada')));
       Navigator.pop(context, true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al actualitzar')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al actualitzar')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Editar obra')),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text(
+          'Editar Obra',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.blue[800],
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(
-                controller: _nomController,
-                decoration: InputDecoration(labelText: 'Nom'),
+              _buildInputField(_nomController, 'Nom'),
+              const SizedBox(height: 12),
+              _buildInputField(_ubicacioController, 'Ubicació'),
+              const SizedBox(height: 12),
+              _buildInputField(
+                _pressupostController,
+                'Pressupost (€)',
+                inputType: TextInputType.number,
               ),
-              TextFormField(
-                controller: _ubicacioController,
-                decoration: InputDecoration(labelText: 'Ubicació'),
-              ),
-              TextFormField(
-                controller: _pressupostController,
-                decoration: InputDecoration(labelText: 'Pressupost (€)'),
-                keyboardType: TextInputType.number,
-              ),
-              TextFormField(
-                controller: _descripcioController,
-                decoration: InputDecoration(labelText: 'Descripció'),
-              ),
+              const SizedBox(height: 12),
+              _buildInputField(_descripcioController, 'Descripció'),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _estat,
-                decoration: InputDecoration(labelText: 'Estat'),
-                items: ['Res Firmat', 'En execució', 'Finalitzada']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
+                decoration: InputDecoration(
+                  labelText: 'Estat',
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                items:
+                    ['Res Firmat', 'En execució', 'Finalitzada']
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
                 onChanged: (value) => setState(() => _estat = value!),
               ),
-              SizedBox(height: 20),
-              ElevatedButton(
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
                 onPressed: _updateObra,
-                child: Text('Actualitzar'),
+                icon: const Icon(Icons.save),
+                label: const Text('Actualitzar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[800],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInputField(
+    TextEditingController controller,
+    String label, {
+    TextInputType inputType = TextInputType.text,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: inputType,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

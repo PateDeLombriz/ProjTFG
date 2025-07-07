@@ -48,7 +48,12 @@ RUN chown -R developer:developer ${ANDROID_SDK_ROOT}
 RUN apt update && apt install -y wget gnupg ca-certificates \
   && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux.gpg \
   && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
-  && apt update && apt install -y google-chrome-stable android-tools-adb
+  && apt update && apt install -y google-chrome-stable 
+
+RUN wget -q https://dl.google.com/android/repository/platform-tools-latest-linux.zip \
+  && unzip platform-tools-latest-linux.zip -d /opt/ \
+  && rm platform-tools-latest-linux.zip \
+  && ln -sf /opt/platform-tools/adb /usr/local/bin/adb
 
 ENV CHROME_EXECUTABLE=/usr/bin/google-chrome
 

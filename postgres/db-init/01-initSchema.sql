@@ -90,56 +90,49 @@ CREATE DATABASE obraAgil
 /*=============================================================
 =  1.  TABLAS DE USUARIOS Y SEGURIDAD                        =
 =============================================================*/
--- 1A. Enum para el tipo de usuario (trabajador o empresa)
+-- Enum para el tipo de usuario
 CREATE TYPE usuari_tipus AS ENUM ('TREBALLADOR', 'EMPRESA');
 
--- 1B. Tabla de usuarios base
+-- Tabla principal de usuario (por defecto trabajador)
 CREATE TABLE usuari (
-    id      SERIAL PRIMARY KEY,          -- Identificador único
-    tipus   usuari_tipus NOT NULL        -- Tipo de cuenta
+    id                   SERIAL PRIMARY KEY,          
+    tipus                usuari_tipus NOT NULL,       -- Tipo de cuenta
+    nom                  VARCHAR(120)  NOT NULL,      -- Nombre (trabajador)
+    cognoms              VARCHAR(160) NOT NULL,       -- Apellidos (trabajador)
+    rol                  VARCHAR(60)   NOT NULL,      -- Puesto o rol (trabajador)
+    telefon              BIGINT        NULL,          -- Teléfono
+    estat                VARCHAR(40)   NOT NULL,      -- Estado (activo, etc.)
+    data_creacio         TIMESTAMP     NOT NULL       -- Alta de la cuenta
+    -- ❌ Se elimina "data_darrera_sessio" si no se quiere actualizar constantemente
 );
 
--- 1C. Tabla de trabajadores (especialización 1-a-1)
-CREATE TABLE u_treballador (
-    id                   INTEGER PRIMARY KEY,             -- PK + FK → usuari.id
-    nom                  VARCHAR(120)  NOT NULL,          -- Nombre
-    cognoms              VARCHAR(160)  NOT NULL,          -- Apellidos
-    rol                  VARCHAR(60)   NOT NULL,          -- Puesto/rol
-    telefon              BIGINT        NULL,             -- Teléfono
-    estat                VARCHAR(40)   NOT NULL,          -- Estado (activo, etc.)
-    data_darrera_sessio  TIMESTAMP     NULL,             -- Último login *************NO ADECUAT PERQUE NECESITAR D'ACTUALITZACIO
-    data_creacio         TIMESTAMP     NOT NULL,         -- Alta de la cuenta
-    CONSTRAINT fk_ut_user
-        FOREIGN KEY (id) REFERENCES usuari(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- 1D. Tabla de empresas (especialización 1-a-1)
+-- Tabla solo para usuarios de tipo EMPRESA
 CREATE TABLE u_empresa (
-    id            INTEGER PRIMARY KEY,           -- PK + FK → usuari.id
+    id            INTEGER PRIMARY KEY,           -- FK → usuari.id
     correu        VARCHAR(160) NOT NULL,         -- Email corporativo
-    estat         VARCHAR(40)  NOT NULL,         -- Estado (activo, etc.)
-    data_creacio  TIMESTAMP     NOT NULL,        -- Fecha de alta
     identificador VARCHAR(60)  NOT NULL,         -- NIF/CIF
-    CONSTRAINT fk_ue_user
+    CONSTRAINT fk_empresa_usuari
         FOREIGN KEY (id) REFERENCES usuari(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
+
 
 -- 1E. Tabla de contraseñas históricas
 CREATE TABLE contrasenya (
     id            SERIAL PRIMARY KEY,                       -- PK autoincremental
     id_usuari     INTEGER     NOT NULL,                     -- FK → usuari.id
     clau          VARCHAR(255) NOT NULL,                    -- Hash de la contraseña
-    vigent        BOOLEAN      NOT NULL DEFAULT TRUE,       -- ¿Es la actual?
     data_creacio  TIMESTAMP    NOT NULL,                    -- Fecha de alta
     data_reemplas TIMESTAMP    NULL,                        -- Fecha de sustitución
     CONSTRAINT fk_pwd_user
         FOREIGN KEY (id_usuari) REFERENCES usuari(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
--- Índice para localizar rápidamente la contraseña vigente
-CREATE INDEX idx_pwd_vigent ON contrasenya (vigent);
+
+-- Índex per localitzar ràpidament la contrasenya vigent (no reemplaçada) a partir de la data de reemplaçament
+CREATE INDEX idx_pwd_vigent ON contrasenya (id_usuari)
+WHERE data_reemplas IS NULL;
+
 
 -- 1F. Tabla de permisos globales
 CREATE TABLE permis (
@@ -181,7 +174,7 @@ CREATE TABLE log_de_sessio (
     data_inici DATE     NOT NULL,       -- Día de inicio
     hora_inici TIME     NOT NULL,       -- Hora exacta
     CONSTRAINT fk_log_user
-        FOREIGN KEY (id_usuari) REFERENCES u_empresa(id)
+        FOREIGN KEY (id_usuari) REFERENCES usuari(id)
         ON DELETE SET NULL ON UPDATE CASCADE
 );
 -- Índice para búsquedas por usuario
@@ -198,7 +191,7 @@ CREATE TABLE configuracio (
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- 1J. Tabla de verificaciones de cuenta
+-- 1J. Tabla de verificaciones de cuenta d'empreses
 CREATE TABLE verificacio (
     id                SERIAL PRIMARY KEY,        -- PK autoincremental
     id_usuari         INTEGER NOT NULL,          -- FK → usuari.id
@@ -207,7 +200,7 @@ CREATE TABLE verificacio (
     token_verificacio VARCHAR(120) NOT NULL,     -- Token único
     data_token        TIMESTAMP    NOT NULL,     -- Fecha de emisión
     CONSTRAINT fk_ver_user
-        FOREIGN KEY (id_usuari) REFERENCES usuari(id)
+        FOREIGN KEY (id_usuari) REFERENCES u_empresa(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 -- Índice para verificar por usuario
@@ -240,11 +233,21 @@ CREATE TABLE responsable_obra (
         FOREIGN KEY (id_obra) REFERENCES obra(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_ro_treballador
-        FOREIGN KEY (id_treballador) REFERENCES u_treballador(id)
+        FOREIGN KEY (id_treballador) REFERENCES usuari(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- 2C. Documentos asociados a la obra
+
+-- **********COM AFEGIR ARXIUS A AQUESTA TAULA**********
+
+-- La taula guarda només les dades (nom, tipus, descripció, ruta, etc.), però no 
+-- el fitxer real dins la base de dades. Si vols que un document real (PDF, Word,
+-- imatge…) estigui vinculat i accessible des d’una app, el que normalment es fa 
+--és guardar el document en un sistema d’arxius (filesystem) o en un sistema 
+-- d’emmagatzematge (com Amazon S3, Google Cloud Storage, o una carpeta del servidor)
+--, i la taula SQL guarda només la “ruta” o “URL” al fitxer.
+--
 CREATE TABLE document_obra (
     id           SERIAL PRIMARY KEY,        -- PK autoincremental
     id_obra      INTEGER NOT NULL,          -- FK → obra.id
@@ -296,11 +299,12 @@ CREATE TABLE tasca_treballador (
         FOREIGN KEY (id_tasca) REFERENCES tasca(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_tt_treballador
-        FOREIGN KEY (id_treballador) REFERENCES u_treballador(id)
+        FOREIGN KEY (id_treballador) REFERENCES usuari(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- 3C. Incidencias
+-- nO S'HA AFEGIT L'INICIDENCIA EN CASCADA, PERÒ ES PODRIA FER
 CREATE TABLE incidencia (
     id           SERIAL PRIMARY KEY,        -- PK autoincremental
     id_obra      INTEGER NOT NULL,          -- FK → obra.id
@@ -327,12 +331,12 @@ CREATE INDEX idx_inc_tasca ON incidencia (id_tasca);
 CREATE TABLE solucio (
     id            SERIAL PRIMARY KEY,       -- PK autoincremental
     id_incidencia INTEGER NOT NULL,         -- FK → incidencia.id
-    id_tasca      INTEGER NULL,             -- FK opcional → tasca.id
+    id_tasca      INTEGER NULL,             -- FK opcional → tasca.id: rEPRESENTA LES TASQUES QUE HAN DE FER-SE EFECTUAR LA SOLUCIÓ
     descripcio    TEXT     NOT NULL,        -- Descripción
     cost_monetari BIGINT   NOT NULL,        -- € de la solución
     eficacia      INTEGER  NOT NULL,        -- 1-5
     cost_temporal INTEGER  NOT NULL,        -- Horas empleadas
-    impacte       VARCHAR(120) NOT NULL,    -- Texto libre
+    impacte       INTEGER  NOT NULL,    -- 1-10 (bajo-alto)
     CONSTRAINT fk_sol_inc
         FOREIGN KEY (id_incidencia) REFERENCES incidencia(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
@@ -384,3 +388,4 @@ SELECT i.*, o.nom AS obra
 FROM incidencia i
 JOIN obra o ON o.id = i.id_obra
 WHERE i.estat <> 'TANCADA';
+ 

@@ -92,25 +92,32 @@ CREATE DATABASE obraAgil
 =============================================================*/
 -- Enum para el tipo de usuario
 CREATE TYPE usuari_tipus AS ENUM ('TREBALLADOR', 'EMPRESA');
-
--- Tabla principal de usuario (por defecto trabajador)
+    
 CREATE TABLE usuari (
-    id                   SERIAL PRIMARY KEY,          
-    tipus                usuari_tipus NOT NULL,       -- Tipo de cuenta
-    nom                  VARCHAR(120)  NOT NULL,      -- Nombre (trabajador)
-    cognoms              VARCHAR(160) NOT NULL,       -- Apellidos (trabajador)
-    rol                  VARCHAR(60)   NOT NULL,      -- Puesto o rol (trabajador)
-    telefon              BIGINT        NULL,          -- Teléfono
-    estat                VARCHAR(40)   NOT NULL,      -- Estado (activo, etc.)
-    data_creacio         TIMESTAMP     NOT NULL       -- Alta de la cuenta
-    -- ❌ Se elimina "data_darrera_sessio" si no se quiere actualizar constantemente
+    id         SERIAL PRIMARY KEY,
+    tipus      usuari_tipus NOT NULL,        -- 'PERSONA' o 'EMPRESA'
+    telefon    BIGINT        NULL,
+    data_creacio TIMESTAMP   NOT NULL
 );
 
--- Tabla solo para usuarios de tipo EMPRESA
+-- Només per persones
+CREATE TABLE u_persona (
+    id       INTEGER PRIMARY KEY,                  -- FK → usuari.id
+    nickname VARCHAR(120) NOT NULL,
+    nom      VARCHAR(120) NOT NULL,
+    cognoms  VARCHAR(160) NOT NULL,
+    rol      VARCHAR(60)  NOT NULL,
+    estat    VARCHAR(40)   NOT NULL,
+    CONSTRAINT fk_persona_usuari
+        FOREIGN KEY (id) REFERENCES usuari(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Només per empreses
 CREATE TABLE u_empresa (
-    id            INTEGER PRIMARY KEY,           -- FK → usuari.id
-    correu        VARCHAR(160) NOT NULL,         -- Email corporativo
-    identificador VARCHAR(60)  NOT NULL,         -- NIF/CIF
+    id            INTEGER PRIMARY KEY,             -- FK → usuari.id
+    nom           VARCHAR(120) NOT NULL,           -- Nom comercial
+    correu        VARCHAR(160) NOT NULL,
     CONSTRAINT fk_empresa_usuari
         FOREIGN KEY (id) REFERENCES usuari(id)
         ON DELETE CASCADE ON UPDATE CASCADE
@@ -152,7 +159,7 @@ CREATE TABLE permis_usuari (
     data_creacio TIMESTAMP NOT NULL,      -- Fecha de alta
     data_modif   TIMESTAMP NULL,          -- Última modificación
     CONSTRAINT fk_pu_user
-        FOREIGN KEY (id_usuari) REFERENCES usuari(id)
+        FOREIGN KEY (id_usuari) REFERENCES u_persona(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_pu_permis
         FOREIGN KEY (id_permis) REFERENCES permis(id)
@@ -225,7 +232,7 @@ CREATE TABLE obra (
 -- 2B. Responsables de obra (N-a-N débil)
 CREATE TABLE responsable_obra (
     id_obra        INTEGER NOT NULL,          -- FK → obra.id
-    id_treballador INTEGER NOT NULL,          -- FK → u_treballador.id
+    id_treballador INTEGER NOT NULL,          -- FK → u_persona.id
     data_inici     DATE NOT NULL,             -- Desde
     data_fi        DATE NULL,                 -- Hasta
     PRIMARY KEY (id_obra, id_treballador, data_inici),
@@ -233,7 +240,7 @@ CREATE TABLE responsable_obra (
         FOREIGN KEY (id_obra) REFERENCES obra(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_ro_treballador
-        FOREIGN KEY (id_treballador) REFERENCES usuari(id)
+        FOREIGN KEY (id_treballador) REFERENCES u_persona(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -254,7 +261,7 @@ CREATE TABLE document_obra (
     id_creador   INTEGER NOT NULL,          -- Usuario que sube el doc
     nom          VARCHAR(160) NOT NULL,     -- Nombre de archivo
     format       VARCHAR(40)  NOT NULL,     -- PDF, DWG, etc.
-    mida         NUMERIC      NOT NULL,     -- Tamaño (MB)
+    mida         NUMERIC(6,2)      NOT NULL,     -- Tamaño (MB)
     comentari    TEXT         NULL,         -- Comentario opcional
     data_pujada  TIMESTAMP    NOT NULL,     -- Fecha de subida
     tipus        VARCHAR(40)  NOT NULL,     -- Plano, informe…
@@ -292,14 +299,14 @@ CREATE TABLE tasca (
 -- 3B. Relación tarea-trabajador (N-a-N)
 CREATE TABLE tasca_treballador (
     id_tasca       INTEGER NOT NULL,      -- FK → tasca.id
-    id_treballador INTEGER NOT NULL,      -- FK → u_treballador.id
+    id_treballador INTEGER NOT NULL,      -- FK → u_persona.id
     comentari      TEXT NULL,            -- Comentario extra
     PRIMARY KEY (id_tasca, id_treballador),
     CONSTRAINT fk_tt_tasca
         FOREIGN KEY (id_tasca) REFERENCES tasca(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_tt_treballador
-        FOREIGN KEY (id_treballador) REFERENCES usuari(id)
+        FOREIGN KEY (id_treballador) REFERENCES u_persona(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 

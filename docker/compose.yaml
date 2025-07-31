@@ -50,7 +50,8 @@ services:
       - ../front_end:/home/developer/app
     working_dir: /home/developer/app
     #command: flutter run -d emulator-5554
-    command: flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0
+    #command: flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0
+    command: sh -c "cd /home/developer/app && flutter pub get && flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0"
     depends_on:
       - django-web                     # Espera que el servicio django-web esté listo antes de iniciar este contenedor
     user: "1000:1000"                  # Ejecuta el contenedor con este UID:GID para evitar problemas de permisos

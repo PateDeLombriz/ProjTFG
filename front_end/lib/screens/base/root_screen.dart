@@ -1,11 +1,12 @@
-//Redirigeix a la pantalla inicial depenent de l'usuari que ha entrat
-// Si no hi ha cap usuari, redirigeix a la pantalla de benvinguda
+// Aquesta pantalla (`RootScreen`) comprova si hi ha una sessió d’usuari activa utilitzant `SharedPreferences`.
+// Si hi ha un token i un rol guardats, redirigeix automàticament a la pantalla corresponent segons el rol ('empresa' o 'usuari').
+// Si no hi ha sessió iniciada, es mostra la `SplashScreen` com a pantalla de benvinguda.
+// Es fa servir un `FutureBuilder` per esperar l’accés a les preferències compartides i mostrar un indicador de càrrega mentrestant.
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'splash_screen.dart';
 import 'package:front_end/screens/empresa/home_empresa.dart';
-import 'package:front_end/screens/usuari/home_usuari.dart';
 
 class RootScreen extends StatelessWidget {
   const RootScreen({super.key});
@@ -44,8 +45,6 @@ class RootScreen extends StatelessWidget {
         switch (session['role']) {
           case 'empresa':
             return const HomeEmpresa();
-          case 'usuari':
-            return const HomeScreen();
           default:
             return const SplashScreen();
         }

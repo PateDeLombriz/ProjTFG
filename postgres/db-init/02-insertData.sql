@@ -42,11 +42,11 @@ INSERT INTO configuracio (id_usuari, idioma, acceptacio_terms, imatge_perfil) VA
   (4, 'ca', TRUE, 'https://avatar.com/alzina.jpg');
 
 INSERT INTO contrasenya (id_usuari, clau, data_creacio, data_reemplas) VALUES
-  (4, 'Alzina', '2024-06-01 09:31:00', NULL),
-  (5, 'servintMallorca', '2024-06-03 10:02:00', NULL),
-  (2, 'viscaElBarça', '2024-22-05 10:02:00', NULL)
-  (1, '12345678', '2024-19-08 10:02:00', NULL)
-  (3, '12345678', '2024-02-09 10:02:00', NULL);
+  (4, 'Alzina',           '2024-06-01 09:31:00', NULL),
+  (5, 'servintMallorca',  '2024-06-03 10:02:00', NULL),
+  (2, 'viscaElBarça',     '2024-05-22 10:02:00', NULL),  -- 22 de maig
+  (1, '12345678',         '2024-08-19 10:02:00', NULL),  -- 19 d’agost
+  (3, '12345678',         '2024-09-02 10:02:00', NULL);  -- 2 de setembre
 
 INSERT INTO document_obra (id_obra, id_creador, nom, format, mida, comentari, data_pujada, tipus) VALUES
   (1, 1, 'plano_fonament.pdf', 'PDF', 2.3, 'Plànol fonaments', '2024-06-15 10:00:00', 'Pla'),

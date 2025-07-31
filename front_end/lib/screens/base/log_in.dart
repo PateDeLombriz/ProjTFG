@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../treballadors/perfil_treb.dart';   // ← rutes reals
-import '../home_empresa.dart';               // ← rutes reals
+import '../treballador/perfil_treb.dart';   // ← rutes reals
+import '../empresa/home_empresa.dart';                 // ← rutes reals
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,14 +47,14 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => TreballadorProfileScreen(userId: data['user_id']),
+              builder: (_) => TreballadorProfileScreen(usuariId: data['user_id']),
             ),
           );
         } else {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => HomeEmpresa(userId: data['user_id']),
+              builder: (_) => HomeEmpresa(),
             ),
           );
         }

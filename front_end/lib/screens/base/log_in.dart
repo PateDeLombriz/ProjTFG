@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../treballador/perfil_treb.dart';   // ← rutes reals
-import '../empresa/home_empresa.dart';                 // ← rutes reals
+import '../treballador/perfil_treb.dart'; // ← rutes reals
+import '../empresa/home_empresa.dart'; // ← rutes reals
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +15,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  bool _obscurePassword = true;
+
   final _formKey = GlobalKey<FormState>();
   final _identController = TextEditingController();
   final _passController = TextEditingController();
@@ -26,11 +28,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
       final res = await http.post(
-        Uri.parse('http://<HOST>:8000/api/login/'),
+        Uri.parse('http://localhost:8000/api/login/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'identificador': _identController.text.trim(),
@@ -47,15 +52,14 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => TreballadorProfileScreen(usuariId: data['user_id']),
+              builder:
+                  (_) => TreballadorProfileScreen(usuariId: data['user_id']),
             ),
           );
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (_) => HomeEmpresa(),
-            ),
+            MaterialPageRoute(builder: (_) => HomeEmpresa()),
           );
         }
       } else {
@@ -82,8 +86,10 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Icon(Icons.lock_outline, size: 72, color: Colors.blue),
               const SizedBox(height: 20),
-              const Text('Inici de Sessió',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+              const Text(
+                'Inici de Sessió',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 32),
               Form(
                 key: _formKey,
@@ -96,48 +102,78 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.person),
                       ),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Introdueix el camp' : null,
+                      validator:
+                          (v) =>
+                              v == null || v.isEmpty
+                                  ? 'Introdueix el camp'
+                                  : null,
                     ),
                     const SizedBox(height: 20),
                     TextFormField(
                       controller: _passController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
                         labelText: 'Contrasenya',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
-                      validator: (v) => v == null || v.isEmpty
-                          ? 'Introdueix la contrasenya'
-                          : null,
+                      validator:
+                          (v) =>
+                              v == null || v.isEmpty
+                                  ? 'Introdueix la contrasenya'
+                                  : null,
                     ),
+
                     const SizedBox(height: 24),
                     if (_error != null)
-                      Text(_error!,
-                          style: const TextStyle(
-                              color: Colors.red, fontWeight: FontWeight.w600)),
+                      Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _loading ? null : _login,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromARGB(255, 68, 98, 133),
+                          backgroundColor: const Color.fromARGB(
+                            255,
+                            68,
+                            98,
+                            133,
+                          ),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: _loading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Entrar'),
+                        child:
+                            _loading
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Text('Entrar'),
                       ),
                     ),
                   ],

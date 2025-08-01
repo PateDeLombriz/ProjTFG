@@ -34,7 +34,13 @@ def generar_token_jwt(usuari, expires_hours: int = 24) -> str:
         "iat":   now,
         "exp":   now + timedelta(hours=expires_hours),
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+    token= jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+    return Response({
+            'token': token,
+            'user_id': usuari.id,
+            'tipus': usuari.tipus,
+        }, status=status.HTTP_200_OK)
 
 
 
@@ -526,25 +532,14 @@ class PermisUsuariList(APIView):
 # Login d’usuari/empresa
 # ─────────────────────────────────────────────────────────────
 class LoginView(APIView):
-    """
-    POST /api/login/
-    Body:
-        {
-          "identificador": "<nickname | correu>",
-          "password": "••••••••"
-        }
-
-    Retorna 200:
-        {
-          "token":   "<jwt>",
-          "user_id": 2,
-          "tipus":   "TREBALLADOR" | "EMPRESA"
-        }
-    Retorna 400 si credencials incorrectes.
-    """
 
     authentication_classes = []      # <-- perquè aquest endpoint és públic
-    permission_classes = []          # <-- cap permís requerit
+    permission_classes = []       
+       # <-- cap permís requerit
+    def get(self, request):
+        print("⚠️ Algu ha fet un GET a /api/login/")
+        print("User-Agent:", request.META.get('HTTP_USER_AGENT'))
+        return Response({"detail": "No es permet GET"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
     def post(self, request, format=None):
@@ -565,10 +560,11 @@ class LoginView(APIView):
                 empresa = UEmpresa.objects.select_related('usuari').get(correu=ident)
                 usuari = empresa.usuari
             else:
+                print("Buscant usuari o persona amb nickname:", ident)
                 persona = UPersona.objects.select_related('usuari').get(nickname=ident)
                 usuari = persona.usuari
         except (UEmpresa.DoesNotExist, UPersona.DoesNotExist):
-            return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Usuari incorrecte'}, status=status.HTTP_400_BAD_REQUEST)
 
         # ───────────────────────────────────────
         # 2. Validar contrasenya més recent
@@ -579,22 +575,22 @@ class LoginView(APIView):
             .order_by('-data_creacio')
             .first()
         )
-        if not pwd_obj or not check_password(password, pwd_obj.clau):
-            return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
-
+        print("⚠️la cntrsenya de l'usuari:",pwd_obj.clau)
+        print("⚠️ NEL que s'ha llegit:",password)
+        if not pwd_obj:
+            print("⚠️ No s'ha trobat cap contrasenya per l'usuari:",pwd_obj.clau)
+            print("⚠️ No s'ha trobat cap contrasenya per l'usuari:",password)
+        elif not check_password(password, pwd_obj.clau):
+            print("⚠️ Contrasenya incorrecta")
         # ───────────────────────────────────────
         # 3. Generar token (exemple mínim)
         # ───────────────────────────────────────
-        token = generar_token_jwt(usuari)   # implementa-ho al teu projecte
+        return generar_token_jwt(usuari)   # implementa-ho al teu projecte
 
         # ───────────────────────────────────────
         # 4. Retornar resposta
         # ───────────────────────────────────────
-        return Response({
-            'token':   token,
-            'user_id': usuari.id,
-            'tipus':   usuari.tipus,
-        }, status=status.HTTP_200_OK)
+       
 
     # Opcionalment, podries afegir un GET per validar el token…
     # def get(self, request, format=None):

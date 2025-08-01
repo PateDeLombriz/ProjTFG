@@ -32,7 +32,7 @@ from .views import (
     UsuariTasquesAssignadesView,
 )# Crea un enrutador y registra la vista ObraList
 urlpatterns = [
-    path('api/login/', LoginView.as_view(), name='login'),
+    path('login/', LoginView.as_view(), name='login'),
     # --- EXISTENTS (amb correccions) ---
     path('obres/', ObraList.as_view(), name='obra-list'),
     path('obres/<int:pk>/', ObraDetail.as_view(), name='obra-detail'),

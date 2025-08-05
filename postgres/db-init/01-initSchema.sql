@@ -99,20 +99,6 @@ CREATE TABLE usuari (
     telefon    BIGINT        NULL,
     data_creacio TIMESTAMP   NOT NULL
 );
-
--- Només per persones
-CREATE TABLE u_persona (
-    id       INTEGER PRIMARY KEY,                  -- FK → usuari.id
-    nickname VARCHAR(120) NOT NULL,
-    nom      VARCHAR(120) NOT NULL,
-    cognoms  VARCHAR(160) NOT NULL,
-    rol      VARCHAR(60)  NOT NULL,
-    estat    VARCHAR(40)   NOT NULL,
-    CONSTRAINT fk_persona_usuari
-        FOREIGN KEY (id) REFERENCES usuari(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
-);
-
 -- Només per empreses
 CREATE TABLE u_empresa (
     id            INTEGER PRIMARY KEY,             -- FK → usuari.id
@@ -122,6 +108,23 @@ CREATE TABLE u_empresa (
         FOREIGN KEY (id) REFERENCES usuari(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+-- Només per persones
+CREATE TABLE u_persona (
+    id       INTEGER PRIMARY KEY,                  -- FK → usuari.id
+    nickname VARCHAR(120) NOT NULL,
+    empresa  INTEGER,
+    nom      VARCHAR(120) NOT NULL,
+    cognoms  VARCHAR(160) NOT NULL,
+    rol      VARCHAR(60)  NOT NULL,
+    estat    VARCHAR(40)   NOT NULL,
+    CONSTRAINT fk_persona_usuari
+        FOREIGN KEY (empresa) REFERENCES u_empresa(id),
+        FOREIGN KEY (id) REFERENCES usuari(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+
 
 
 -- 1E. Tabla de contraseñas históricas
@@ -298,10 +301,14 @@ CREATE TABLE tasca (
 
 -- 3B. Relación tarea-trabajador (N-a-N)
 CREATE TABLE tasca_treballador (
+    id              SERIAL PRIMARY KEY,  
     id_tasca       INTEGER NOT NULL,      -- FK → tasca.id
     id_treballador INTEGER NOT NULL,      -- FK → u_persona.id
     comentari      TEXT NULL,            -- Comentario extra
-    PRIMARY KEY (id_tasca, id_treballador),
+
+    CONSTRAINT uq_tasca_treballador
+        UNIQUE (id_tasca, id_treballador),
+        
     CONSTRAINT fk_tt_tasca
         FOREIGN KEY (id_tasca) REFERENCES tasca(id)
         ON DELETE CASCADE ON UPDATE CASCADE,

@@ -12,25 +12,25 @@ INSERT INTO usuari (id, tipus, telefon, data_creacio) VALUES
   (5, 'EMPRESA',     971987654, '2024-05-25 12:00:00');
 
 SELECT setval('usuari_id_seq', (SELECT MAX(id) FROM usuari));
-
-
--- Insercions a u_persona
-INSERT INTO u_persona (id, nickname,nom, cognoms, rol, estat) VALUES
-  (1,'JOhanPaletas', 'Joan',  'Garcia Mora', 'Mestre Obra', 'ACTIU'),
-  (2, 'MartaSport','Marta', 'Riera Pont',  'Oficial 1a',  'ACTIU'),
-  (3,'PerePipes', 'Pere',  'Fiol Serra',  'Peó','INACTIU');
-
 -- Insercions a u_empresa
 INSERT INTO u_empresa (id, nom, correu) VALUES
   (4, 'Construccions Alzina',  'info@alzina.com'),
   (5, 'Serveis Integrals',     'contacte@servintmallorca.com');
+
+-- Insercions a u_persona
+INSERT INTO u_persona (id, nickname,empresa, nom, cognoms, rol, estat) VALUES
+  (1,'JohanPaletas', 4, 'Joan',  'Garcia Mora', 'Mestre Obra', 'ACTIU'),
+  (2, 'MartaSport', 5,'Marta', 'Riera Pont',  'Oficial 1a',  'ACTIU'),
+  (3,'PerePipes', 4, 'Pere',  'Fiol Serra',  'Peó','INACTIU');
+
+
   
   INSERT INTO tasca (id_obra, id_tasca_pare, descripcio, data_inici, data_fi, prioritat, visibilitat_tasca) VALUES
   (1, NULL, 'Preparació fonament', '2024-07-02', NULL, 1, TRUE),
   (1, 1, 'Col·locació armadures', '2024-07-03', NULL, 2, TRUE),
   (2, NULL, 'Encofrat sostre', '2024-06-12', NULL, 2, TRUE);
 
-INSERT INTO tasca_treballador (id_tasca, id_treballador, comentari) VALUES
+INSERT INTO tasca_treballador ( id_tasca, id_treballador, comentari) VALUES
   (1, 1, 'Supervisó general'),
   (2, 2, NULL),
   (3, 3, 'Tasca assignada pel responsable');

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:front_end/screens/base/mainScaffold.dart';
 import 'package:front_end/screens/base/splash_screen.dart';
 
-import 'package:front_end/screens/treballador/perfil_treb.dart';
+//import 'package:front_end/screens/treballador/perfil_treb.dart';
 import 'package:front_end/screens/base/log_in.dart';
 import 'screens/base/log_in.dart'; // Ruta correcta si tens obra_list.dart a lib/screens
 import 'screens/base/registerE.dart'; // Ruta correcta si tens register.dart a lib/screens

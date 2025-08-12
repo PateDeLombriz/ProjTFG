@@ -1,0 +1,168 @@
+------------------------MODEL.PY---------------------------
+
+class Ubicacio(models.Model):
+    adreça = models.CharField(max_length=150, blank=True, null=True)
+    ciutat = models.CharField(max_length=50, blank=True, null=True)
+    codi_postal = models.CharField(max_length=10, blank=True, null=True)
+    provincia = models.CharField(max_length=50, blank=True, null=True)
+    país = models.CharField(max_length=50, default='Espanya')
+
+    def __str__(self):
+        parts = filter(None, [self.adreça, self.ciutat, self.provincia])
+        return ', '.join(parts)
+
+
+
+class Empresa(models.Model):
+    TIPUS_EMPRESA_CHOICES = [
+        ('principal', 'Principal'),
+        ('subcontractada', 'Subcontractada'),
+        ('proveïdor', 'Proveïdor'),
+    ]
+
+    ESTAT_EMPRESA_CHOICES = [
+        ('activa', 'Activa'),
+        ('inactiva', 'Inactiva'),
+        ('suspesa', 'Suspesa'),
+    ]
+
+    nom_empresa = models.CharField(max_length=100)
+    cif = models.CharField(max_length=20, unique=True)
+    ubicacio = models.ForeignKey(Ubicacio, on_delete=models.SET_NULL, null=True, blank=True)
+    telefon = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(max_length=100, blank=True, null=True)
+    web = models.URLField(max_length=100, blank=True, null=True)
+    sector = models.CharField(max_length=50, blank=True, null=True)
+    tipus_empresa = models.CharField(max_length=20, choices=TIPUS_EMPRESA_CHOICES, default='subcontractada')
+    data_alta = models.DateField(auto_now_add=True)
+    estat = models.CharField(max_length=20, choices=ESTAT_EMPRESA_CHOICES, default='activa')
+    persona_contacte = models.CharField(max_length=100, blank=True, null=True)
+    num_empleats = models.PositiveIntegerField(blank=True, null=True)
+    comentaris = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.nom_empresa
+
+
+class Treballador(models.Model):
+    TIPUS_CONTRACTE_CHOICES = [
+        ('indefinit', 'Indefinit'),
+        ('temporal', 'Temporal'),
+        ('subcontracta', 'Subcontracta'),
+    ]
+
+    ESTAT_TREBALLADOR_CHOICES = [
+        ('actiu', 'Actiu'),
+        ('baixa', 'Baixa'),
+        ('acomiadat', 'Acomiadat'),
+    ]
+
+    nom = models.CharField(max_length=50)
+    cognoms = models.CharField(max_length=100)
+    dni_nie_passaport = models.CharField(max_length=20, unique=True)
+    data_naixement = models.DateField(blank=True, null=True)
+    ubicacio = models.ForeignKey(Ubicacio, on_delete=models.SET_NULL, null=True, blank=True)
+    telefon = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(max_length=100, blank=True, null=True)
+    data_contracte = models.DateField(blank=True, null=True)
+    tipus_contracte = models.CharField(max_length=20, choices=TIPUS_CONTRACTE_CHOICES, default='temporal')
+    carrec = models.CharField(max_length=50, blank=True, null=True)
+    categoria_professional = models.CharField(max_length=50, blank=True, null=True)
+    nss = models.CharField(max_length=20, blank=True, null=True)
+    formacions = models.TextField(blank=True, null=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.SET_NULL, null=True, related_name='treballadors')
+    estat = models.CharField(max_length=20, choices=ESTAT_TREBALLADOR_CHOICES, default='actiu')
+    foto = models.ImageField(upload_to='fotos_treballadors/', blank=True, null=True)
+    comentaris = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.nom} {self.cognoms}"
+
+
+------------------------INSERTS DE DADES-----------------------------------
+
+INSERT INTO treballador (nom, cognoms, dni_nie_passaport, data_naixement, ubicacio_id, telefon, email, data_contracte, tipus_contracte, carrec, categoria_professional, nss, formacions, empresa_id, estat, foto, comentaris)
+VALUES
+('Marc', 'Llabrés Ferrer', '12345678A', '1985-03-12', 1, '600123456', 'marc.llabres@example.com', '2020-05-01', 'indefinit', 'Cap d\'obra', 'Enginyer tècnic', '070123456789', 'PRL, Direcció d’obra', 1, 'actiu', NULL, ''),
+('Joana', 'Pons Oliver', '23456789B', '1990-07-25', 2, '600234567', 'joana.pons@example.com', '2021-09-15', 'temporal', 'Electricista', 'Oficial 1a', '070987654321', 'Electricitat bàsica, PRL', 2, 'actiu', NULL, ''),
+('Tomeu', 'Garau Martí', '34567890C', '1978-01-10', 3, '600345678', 'tomeu.garau@example.com', '2019-01-01', 'subcontracta', 'Fuster', 'Oficial 2a', '070111222333', 'Fusteria general', 3, 'actiu', NULL, 'Molt experimentat'),
+('Clara', 'Riera Torres', '45678901D', '1995-11-05', 4, '600456789', 'clara.riera@example.com', '2022-03-10', 'temporal', 'Aux. Magatzem', 'Peó', '070444555666', 'Carretilla elevadora', 4, 'actiu', NULL, ''),
+('Jaume', 'Mas Capó', '56789012E', '1982-09-20', 5, '600567890', 'jaume.mas@example.com', '2023-01-20', 'indefinit', 'Arquitecte', 'Arquitecte superior', '070777888999', 'Direcció tècnica', 5, 'actiu', NULL, 'Responsable de projecte.');
+
+
+INSERT INTO ubicacio (adreça, ciutat, codi_postal, provincia, país)
+VALUES
+('Carrer Major, 15', 'Palma', '07001', 'Illes Balears', 'Espanya'),
+('Av. Alexandre Rosselló, 20', 'Inca', '07300', 'Illes Balears', 'Espanya'),
+('Carrer del Fuster, 8', 'Manacor', '07500', 'Illes Balears', 'Espanya'),
+('Polígon Son Castelló, Nau 3', 'Palma', '07009', 'Illes Balears', 'Espanya'),
+('Passeig Marítim, 100', 'Palma', '07014', 'Illes Balears', 'Espanya');
+
+
+INSERT INTO empresa (nom_empresa, cif, ubicacio_id, telefon, email, web, sector, tipus_empresa, persona_contacte, num_empleats, comentaris)
+VALUES
+('Construccions Serra SL', 'B12345678', 1, '971123456', 'info@serrasl.com', 'www.serrasl.com', 'Construcció', 'principal', 'Joan Serra', 50, 'Empresa familiar amb més de 20 anys.'),
+('Electricitat Balear SA', 'A23456789', 2, '971654321', 'contacte@elbalear.com', 'www.elbalear.com', 'Electricitat', 'subcontractada', 'Maria Gelabert', 30, ''),
+('Fusters del Sud SL', 'B34567890', 3, '971111222', 'fusteria@sudsl.com', NULL, 'Fusteria', 'subcontractada', 'Pere Nadal', 12, ''),
+('Proveïments Construcció', 'B45678901', 4, '971222333', 'vendres@proveiments.com', 'www.proveiments.com', 'Proveïdor', 'proveïdor', 'Toni Ramis', 5, 'Distribueix material per obra.'),
+('Arquitectura i Gestió', 'B56789012', 5, '971333444', 'info@arqgestio.com', 'www.arqgestio.com', 'Arquitectura', 'subcontractada', 'Laura Cortès', 10, 'Especialistes en direcció d’obra.');
+
+---------------------CREACIO DE TAULES SQL----------------------
+CREATE TABLE treballador (
+    id_treballador INT PRIMARY KEY AUTO_INCREMENT,
+    nom VARCHAR(50) NOT NULL,
+    cognoms VARCHAR(100) NOT NULL,
+    dni_nie_passaport VARCHAR(20) UNIQUE NOT NULL,
+    data_naixement DATE,
+    ubicacio_id INT,
+    telefon VARCHAR(20),
+    email VARCHAR(100),
+    data_contracte DATE,
+    tipus_contracte ENUM('indefinit', 'temporal', 'subcontracta') DEFAULT 'temporal',
+    carrec VARCHAR(50),
+    categoria_professional VARCHAR(50),
+    nss VARCHAR(20),
+    formacions TEXT,
+    empresa_id INT,
+    estat ENUM('actiu', 'baixa', 'acomiadat') DEFAULT 'actiu',
+    foto VARCHAR(255),
+    comentaris TEXT,
+    FOREIGN KEY (empresa_id) REFERENCES empresa(id_empresa)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+);
+
+
+
+CREATE TABLE empresa (
+    id_empresa INT PRIMARY KEY AUTO_INCREMENT,
+    nom_empresa VARCHAR(100) NOT NULL,
+    cif VARCHAR(20) UNIQUE NOT NULL,
+    ubicacio_id INT,
+    telefon VARCHAR(20),
+    email VARCHAR(100),
+    web VARCHAR(100),
+    sector VARCHAR(50),
+    tipus_empresa ENUM('principal', 'subcontractada', 'proveïdor') DEFAULT 'subcontractada',
+    data_alta DATE DEFAULT CURRENT_DATE,
+    estat ENUM('activa', 'inactiva', 'suspesa') DEFAULT 'activa',
+    persona_contacte VARCHAR(100),
+    num_empleats INT,
+    comentaris TEXT,
+    FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+);
+
+
+CREATE TABLE ubicacio (
+    id_ubicacio INT PRIMARY KEY AUTO_INCREMENT,
+    adreça VARCHAR(150),
+    ciutat VARCHAR(50),
+    codi_postal VARCHAR(10),
+    provincia VARCHAR(50),
+    país VARCHAR(50) DEFAULT 'Espanya'
+);

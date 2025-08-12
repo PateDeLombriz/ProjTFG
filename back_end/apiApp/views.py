@@ -2,48 +2,23 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.db.models import Q
 import jwt
+from rest_framework.permissions import AllowAny
 from django.contrib.auth.hashers import check_password
 
 from datetime import datetime, timedelta, timezone
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from .models import (Obra,Usuari,UPersona, UEmpresa, Contrasenya, Permis, PermisUsuari,
+from .models import (Obra,Treballador, Empresa, Contrasenya, Permis, PermisTreballador,
     LogDeSessio, Configuracio, Verificacio, DocumentObra, Tasca, TascaTreballador,
     Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra)
-from .serializer import (ObraSerializer,UsuariSerializer,UPersonaSerializer, UEmpresaSerializer, ContrasenyaSerializer,
-    PermisSerializer, PermisUsuariSerializer, LogDeSessioSerializer,
+from .serializer import (ObraSerializer,TreballadorSerializer, EmpresaSerializer, ContrasenyaSerializer,
+    PermisSerializer, PermisTreballadorSerializer, LogDeSessioSerializer,
     ConfiguracioSerializer, VerificacioSerializer, DocumentObraSerializer,
     TascaSerializer, TascaTreballadorSerializer, IncidenciaSerializer, SolucioSerializer,
     RecursSerializer, SolRecursSerializer, ResponsableObraSerializer)
 from django.http import Http404
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-
-
-def generar_token_jwt(usuari, expires_hours: int = 24) -> str:
-    """
-    Torna un JWT HS256 que encoda:
-      sub   -> usuari.id
-      tipus -> usuari.tipus
-      exp   -> ara + 24 h
-    """
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub":   usuari.id,
-        "tipus": usuari.tipus,
-        "iat":   now,
-        "exp":   now + timedelta(hours=expires_hours),
-    }
-    token= jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
-
-    return Response({
-            'token': token,
-            'user_id': usuari.id,
-            'tipus': usuari.tipus,
-        }, status=status.HTTP_200_OK)
-
-
-
 
 
 
@@ -259,10 +234,7 @@ class IncidenciaDetail(APIView):
 
         return Response(incidencia_data, status=status.HTTP_200_OK)
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.shortcuts import get_object_or_404
+
 
 
 class TasquesDetail(APIView):
@@ -293,9 +265,9 @@ class TasquesDetail(APIView):
         # Afegir treballador assignat (si n'hi ha)
         try:
             tasca_treballador = TascaTreballador.objects.get(id_tasca=tasca)
-            treballador_data = UsuariSerializer(tasca_treballador.id_treballador).data
+            treballador_data = TreballadorSerializer(tasca_treballador.id_treballador).data
             tasca_data['treballador_assignat'] = {
-                'usuari': treballador_data,
+                'treballador': treballador_data,
                 'comentari': tasca_treballador.comentari
             }
         except TascaTreballador.DoesNotExist:
@@ -304,186 +276,28 @@ class TasquesDetail(APIView):
         return Response(tasca_data, status=status.HTTP_200_OK)
 
 
-class UsuariList(APIView):
+class TreballadorList(APIView):
     def get(self, request, format=None):
-        qs = Usuari.objects.all()
-        tipus = request.query_params.get('tipus')
-        if tipus:
-            qs = qs.filter(tipus=tipus)
-        serializer = UsuariSerializer(qs, many=True)
+        persones = Treballador.objects.all()
+        serializer = TreballadorSerializer(persones, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        serializer = UsuariSerializer(data=request.data)
+        serializer = TreballadorSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UsuariDetail(APIView):
-    """
-    API endpoint que retorna tota la informació d'un usuari concret.
-    Inclou:
-      - Dades bàsiques de l'usuari
-      - Informació de persona o empresa (segons tipus)
-      - Configuració
-      - Permisos
-      - Logs de sessió
-      - Tasques on participa
-      - Obres on és responsable
-    """
-
-    # ───────────────────────────────────────────────
-    # GET
-    # ───────────────────────────────────────────────
-    def get(self, request, pk, format=None):
-        # 1) Usuari principal (404 si no existeix)
-        usuari = get_object_or_404(Usuari, pk=pk)
-
-        usuari_data = {
-            'id': usuari.id,
-            'tipus': usuari.tipus,
-            'telefon': usuari.telefon,
-            'data_creacio': usuari.data_creacio,
-        }
-
-        # 2) Persona o Empresa (OneToOne)
-        try:
-            persona = UPersona.objects.get(usuari=usuari)
-            usuari_data['persona'] = {
-                'id': persona.pk,
-                'nom': persona.nom,
-                'cognoms': persona.cognoms,
-                'rol': persona.rol,
-                'estat': persona.estat,
-                'nickname': persona.nickname,   # només si existeix la columna!
-
-            }
-        except UPersona.DoesNotExist:
-            usuari_data['persona'] = None
-
-        try:
-            empresa = UEmpresa.objects.get(usuari=usuari)
-            usuari_data['empresa'] = {
-                'id': empresa.pk,
-                'nom': empresa.nom,
-                'correu': empresa.correu,
-            }
-        except UEmpresa.DoesNotExist:
-            usuari_data['empresa'] = None
-
-        # 3) Configuració
-        try:
-            cfg = Configuracio.objects.get(id_usuari=usuari)
-            usuari_data['configuracio'] = {
-                'idioma': cfg.idioma,
-                'acceptacio_terms': cfg.acceptacio_terms,
-                'imatge_perfil': cfg.imatge_perfil,
-            }
-        except Configuracio.DoesNotExist:
-            usuari_data['configuracio'] = None
-
-        # 4) Permisos
-        permisos = PermisUsuari.objects.filter(id_usuari=usuari)
-        usuari_data['permisos'] = [
-            {
-                'id': p.id,
-                'id_permis': p.id_permis_id,
-                'lectura': p.lectura,
-                'escriptura': p.escriptura,
-                'edicio': p.edicio,
-                'data_creacio': p.data_creacio,
-                'data_modif': p.data_modif,
-            }
-            for p in permisos
-        ]
-
-        # 5) Logs de sessió
-        logs = LogDeSessio.objects.filter(id_usuari=usuari)
-        usuari_data['logs_sessio'] = [
-            {
-                'id': l.id,
-                'data_inici': l.data_inici,
-                'hora_inici': l.hora_inici,
-            }
-            for l in logs
-        ]
-
-        # 6) Tasques on és treballador
-        tasques_treb = TascaTreballador.objects.filter(id_treballador=usuari)
-        usuari_data['tasques'] = [
-            {
-                'id_tasca': t.id_tasca_id,
-                'comentari': t.comentari,
-                'descripcio': t.id_tasca.descripcio,
-                'data_inici': t.id_tasca.data_inici,
-                'data_fi': t.id_tasca.data_fi,
-                'prioritat': t.id_tasca.prioritat,
-            }
-            for t in tasques_treb
-        ]
-
-        # 7) Obres on és responsable
-        responsabilitats = ResponsableObra.objects.filter(id_treballador=usuari)
-        usuari_data['obres_responsable'] = [
-            {
-                'id_obra': r.id_obra_id,
-                'nom_obra': r.id_obra.nom,
-                'data_inici_resp': r.data_inici,
-                'data_fi_resp': r.data_fi,
-                'estat_obra': r.id_obra.estat,
-            }
-            for r in responsabilitats
-        ]
-
-        return Response(usuari_data, status=status.HTTP_200_OK)
-
-    # ───────────────────────────────────────────────
-    # DELETE
-    # ───────────────────────────────────────────────
-    def delete(self, request, pk, format=None):
-        usuari = get_object_or_404(Usuari, pk=pk)
-        usuari.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # ───────────────────────────────────────────────
-    # PUT  — només actualitza el model Usuari
-    # ───────────────────────────────────────────────
-    def put(self, request, pk, format=None):
-        usuari = get_object_or_404(Usuari, pk=pk)
-        allowed_fields = {'telefon', 'nickname'}  # afegeix-ne més si cal
-        for field in allowed_fields:
-            if field in request.data:
-                setattr(usuari, field, request.data[field])
-        usuari.save()
-        # retornem la representació actualitzada
-        return self.get(request, pk)
-
-
-
-class UPersonaList(APIView):
+class EmpresaList(APIView):
     def get(self, request, format=None):
-        persones = UPersona.objects.all()
-        serializer = UPersonaSerializer(persones, many=True)
+        empreses = Empresa.objects.all()
+        serializer = EmpresaSerializer(empreses, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        serializer = UPersonaSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class UEmpresaList(APIView):
-    def get(self, request, format=None):
-        empreses = UEmpresa.objects.all()
-        serializer = UEmpresaSerializer(empreses, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = UEmpresaSerializer(data=request.data)
+        serializer = EmpresaSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -515,14 +329,14 @@ class PermisList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class PermisUsuariList(APIView):
+class PermisTreballadorList(APIView):
     def get(self, request, format=None):
-        permisos = PermisUsuari.objects.all()
-        serializer = PermisUsuariSerializer(permisos, many=True)
+        permisos = PermisTreballador.objects.all()
+        serializer = PermisTreballadorSerializer(permisos, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        serializer = PermisUsuariSerializer(data=request.data)
+        serializer = PermisTreballadorSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -532,65 +346,99 @@ class PermisUsuariList(APIView):
 # Login d’usuari/empresa
 # ─────────────────────────────────────────────────────────────
 class LoginView(APIView):
+    """
+    Endpoint públic de ‘login’.
+    Accepta un **identificador** (email d’empresa o DNI/NIE de treballador)
+    i una **contrasenya**.  Retorna un JWT si tot és correcte.
+    """
 
-    authentication_classes = []      # <-- perquè aquest endpoint és públic
-    permission_classes = []       
-       # <-- cap permís requerit
-    def get(self, request):
-        print("⚠️ Algu ha fet un GET a /api/login/")
-        print("User-Agent:", request.META.get('HTTP_USER_AGENT'))
-        return Response({"detail": "No es permet GET"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    authentication_classes = []          # endpoint sense autenticació prèvia
+    permission_classes     = [AllowAny]  # és públic
 
+    # ───────────────────────────────────────────────
+    # GET: només informatiu
+    # ───────────────────────────────────────────────
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {"detail": "No es permet GET en aquest endpoint"},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
 
-    def post(self, request, format=None):
-        ident = request.data.get('identificador')
-        password = request.data.get('password')
+    # ───────────────────────────────────────────────
+    # POST: autenticació
+    # ───────────────────────────────────────────────
+    def post(self, request, *args, **kwargs):
+        ident    = request.data.get("identificador")
+        password = request.data.get("password")
 
         if not ident or not password:
             return Response(
-                {'detail': 'Cal identificador i contrasenya'},
+                {"detail": "Cal ‘identificador’ i ‘password’"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ──────────────────────────
+        # 1. Localitzar subjecte
+        # ──────────────────────────
+        subject_type = None          # "treballador" | "empresa"
+        subject_obj  = None
+
+        try:
+            if "@" in ident:         # --> empresa per email
+                subject_obj  = Empresa.objects.get(email=ident)
+                subject_type = "empresa"
+            else:                    # --> treballador per DNI/NIE
+                subject_obj  = Treballador.objects.get(
+                    dni_nie_passaport=ident
+                )
+                subject_type = "treballador"
+
+        except (Empresa.DoesNotExist, Treballador.DoesNotExist):
+            return Response(
+                {"detail": "No existeix l'usuari o empresa"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # ───────────────────────────────────────
-        # 1. Localitzar l'usuari
-        # ───────────────────────────────────────
-        try:
-            if '@' in ident:
-                empresa = UEmpresa.objects.select_related('usuari').get(correu=ident)
-                usuari = empresa.usuari
-            else:
-                print("Buscant usuari o persona amb nickname:", ident)
-                persona = UPersona.objects.select_related('usuari').get(nickname=ident)
-                usuari = persona.usuari
-        except (UEmpresa.DoesNotExist, UPersona.DoesNotExist):
-            return Response({'detail': 'Usuari incorrecte'}, status=status.HTTP_400_BAD_REQUEST)
+        # ──────────────────────────
+        # 2. Contrasenya vigent
+        # ──────────────────────────
+        if subject_type == "empresa":
+            pwd_obj = (
+                Contrasenya.objects
+                .filter(id_empresa=subject_obj)
+                .order_by("-data_creacio")
+                .first()
+            )
+        else:  # treballador
+            pwd_obj = (
+                Contrasenya.objects
+                .filter(id_treballador=subject_obj)
+                .order_by("-data_creacio")
+                .first()
+            )
 
-        # ───────────────────────────────────────
-        # 2. Validar contrasenya més recent
-        # ───────────────────────────────────────
-        pwd_obj = (
-            Contrasenya.objects
-            .filter(id_usuari=usuari)
-            .order_by('-data_creacio')
-            .first()
-        )
-        print("⚠️la cntrsenya de l'usuari:",pwd_obj.clau)
-        print("⚠️ NEL que s'ha llegit:",password)
         if not pwd_obj:
-            print("⚠️ No s'ha trobat cap contrasenya per l'usuari:",pwd_obj.clau)
-            print("⚠️ No s'ha trobat cap contrasenya per l'usuari:",password)
-        elif not check_password(password, pwd_obj.clau):
-            print("⚠️ Contrasenya incorrecta")
-        # ───────────────────────────────────────
-        # 3. Generar token (exemple mínim)
-        # ───────────────────────────────────────
-        return generar_token_jwt(usuari)   # implementa-ho al teu projecte
+            return Response(
+                {"detail": "Contrasenya no trobada"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-        # ───────────────────────────────────────
-        # 4. Retornar resposta
-        # ───────────────────────────────────────
-       
+        if not check_password(password, pwd_obj.clau):
+            return Response(
+                {"detail": "Contrasenya incorrecta"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # ──────────────────────────
+        # 3. Generar i tornar JWT
+        # ──────────────────────────
+        token = generar_token_jwt(
+            subject_type=subject_type,
+            subject_id   =subject_obj.id
+        )
+
+        return Response({"token": token}, status=status.HTTP_200_OK)
+    
 
     # Opcionalment, podries afegir un GET per validar el token…
     # def get(self, request, format=None):
@@ -937,13 +785,13 @@ class SolRecursDetail(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# ---------- 1) Llista de UPersona (ja tens) + Detail opcional per usuari ----------
+# ---------- 1) Llista de Treballador (ja tens) + Detail opcional per usuari ----------
 
-class UPersonaDetail(APIView):
+class TreballadorDetail(APIView):
     """
     API endpoint que retorna tots els detalls d'una persona concreta.
     Inclou:
-      - Dades bàsiques de la persona (UPersona)
+      - Dades bàsiques de la persona (Treballador)
       - Dades bàsiques de l'Usuari associat
       - Configuració
       - Permisos
@@ -956,7 +804,7 @@ class UPersonaDetail(APIView):
         # ──────────────────────────────────────────────
         # 1) Persona principal (404 si no existeix)
         # ──────────────────────────────────────────────
-        persona = get_object_or_404(UPersona, pk=pk)
+        persona = get_object_or_404(Treballador, pk=pk)
 
         persona_data = {
             'id': persona.pk,
@@ -995,7 +843,7 @@ class UPersonaDetail(APIView):
         # ──────────────────────────────────────────────
         # 4) Permisos assignats
         # ──────────────────────────────────────────────
-        permisos = PermisUsuari.objects.filter(id_usuari=usuari)
+        permisos = PermisTreballador.objects.filter(id_usuari=usuari)
         persona_data['permisos'] = [
             {
                 'id': p.id,
@@ -1060,17 +908,17 @@ class UPersonaDetail(APIView):
     # PUT i DELETE per coherència amb la resta dels teus …Detail
     # -----------------------------------------------------------------
     def delete(self, request, pk, format=None):
-        persona = get_object_or_404(UPersona, pk=pk)
+        persona = get_object_or_404(Treballador, pk=pk)
         persona.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def put(self, request, pk, format=None):
         """
-        Només actualitza els camps d'UPersona (nom, cognoms, rol, estat…).
+        Només actualitza els camps d'Treballador (nom, cognoms, rol, estat…).
         Si vols modificar l'Usuari o altres taules, fes-ho en endpoints
         específics.
         """
-        persona = get_object_or_404(UPersona, pk=pk)
+        persona = get_object_or_404(Treballador, pk=pk)
         allowed_fields = {'nom', 'cognoms', 'rol', 'estat'}
         for field in allowed_fields:
             if field in request.data:
@@ -1081,48 +929,48 @@ class UPersonaDetail(APIView):
 
 
 # ---------- 2) Permisos d'usuari: llista amb filtres + DETAIL amb PUT ----------
-class PermisUsuariList(APIView):
+class PermisTreballadorList(APIView):
     def get(self, request, format=None):
-        qs = PermisUsuari.objects.all()
+        qs = PermisTreballador.objects.all()
         id_usuari = request.query_params.get('id_usuari')
         id_permis = request.query_params.get('id_permis')
         if id_usuari:
             qs = qs.filter(id_usuari_id=id_usuari)
         if id_permis:
             qs = qs.filter(id_permis_id=id_permis)
-        serializer = PermisUsuariSerializer(qs, many=True)
+        serializer = PermisTreballadorSerializer(qs, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        serializer = PermisUsuariSerializer(data=request.data)
+        serializer = PermisTreballadorSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(data_creacio=timezone.now())
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class PermisUsuariDetail(APIView):
+class TreballadorDetail(APIView):
     def get(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
-        return Response(PermisUsuariSerializer(obj).data)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
+        return Response(PermisTreballadorSerializer(obj).data)
 
     def put(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
-        serializer = PermisUsuariSerializer(obj, data=request.data, partial=False)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
+        serializer = PermisTreballadorSerializer(obj, data=request.data, partial=False)
         if serializer.is_valid():
             instance = serializer.save(data_modif=timezone.now())
-            return Response(PermisUsuariSerializer(instance).data, status=status.HTTP_200_OK)
+            return Response(PermisTreballadorSerializer(instance).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
-        serializer = PermisUsuariSerializer(obj, data=request.data, partial=True)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
+        serializer = PermisTreballadorSerializer(obj, data=request.data, partial=True)
         if serializer.is_valid():
             instance = serializer.save(data_modif=timezone.now())
-            return Response(PermisUsuariSerializer(instance).data, status=status.HTTP_200_OK)
+            return Response(PermisTreballadorSerializer(instance).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -1,9 +1,9 @@
 from rest_framework import serializers
-from .models import (Obra, Usuari,UPersona, UEmpresa, Contrasenya,
- Permis, PermisUsuari, LogDeSessio, Configuracio, Verificacio,
+from .models import (Obra, Treballador, Empresa, Contrasenya,
+ Permis, PermisTreballador, LogDeSessio, Configuracio, Verificacio,
     DocumentObra, Tasca, TascaTreballador, Incidencia, Solucio,
     Recurs, SolRecurs, ResponsableObra,   
-    ResponsableObra,
+    ResponsableObra, ContracteTreballador
 )
 #Aquesta classee ara com ara tan sols prepara l'informacio per ser
 # resnderitzada a json, pot ser canvii.
@@ -13,19 +13,14 @@ class ObraSerializer(serializers.ModelSerializer):
         model = Obra
         fields = '__all__'  # Serializes all fields of the Obra model
 
-class UsuariSerializer(serializers.ModelSerializer):
+class TreballadorSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Usuari
+        model = Treballador
         fields = '__all__'
 
-class UPersonaSerializer(serializers.ModelSerializer):
+class EmpresaSerializer(serializers.ModelSerializer):
     class Meta:
-        model = UPersona
-        fields = '__all__'
-
-class UEmpresaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UEmpresa
+        model = Empresa
         fields = '__all__'
 
 class ContrasenyaSerializer(serializers.ModelSerializer):
@@ -33,14 +28,19 @@ class ContrasenyaSerializer(serializers.ModelSerializer):
         model = Contrasenya
         fields = '__all__'
 
+class ContracteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContracteTreballador
+        fields = '__all__'  # Assuming you want to serialize all fields of the Contracte model
+
 class PermisSerializer(serializers.ModelSerializer):
     class Meta:
         model = Permis
         fields = '__all__'
 
-class PermisUsuariSerializer(serializers.ModelSerializer):
+class PermisTreballadorSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PermisUsuari
+        model = PermisTreballador
         fields = '__all__'
 
 class LogDeSessioSerializer(serializers.ModelSerializer):

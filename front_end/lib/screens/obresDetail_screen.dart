@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:front_end/screens/obra_edit.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
+import 'package:front_end/screens/floating_forms.dart';
 import 'package:front_end/screens/empresa/tasca_form.dart';
 import 'package:front_end/screens/empresa/solicRec_form.dart';
 import 'package:front_end/screens/empresa/doc_form.dart';
@@ -121,7 +122,6 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
           IconButton(icon: const Icon(Icons.delete), onPressed: _deleteObra),
         ],
       ),
-      floatingActionButton: _fabMenu(),
       body:
           _loading
               ? const Center(child: CircularProgressIndicator())
@@ -139,17 +139,21 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
                     const SizedBox(height: 20),
                     _infoTiles(scheme),
                     const SizedBox(height: 20),
-                    _sectionTitle('Incidències'),
+                    _sectionTitle('Incidències', _showIncidenciaForm),
                     _expansion(
                       _incidencies,
                       (inc) => _IncidenciaCard(incidencia: inc),
                     ),
-                    _sectionTitle('Tasques'),
+
+                    _sectionTitle('Tasques', _showTascaForm),
                     _expansion(_tasques, (t) => _TascaCardMini(tasca: t)),
-                    _sectionTitle('Documents'),
+
+                    _sectionTitle('Documents', _showDocumentForm),
                     _expansion(_documents, (d) => _DocCardMini(doc: d)),
-                    _sectionTitle('Sol·licituds de Recurs'),
+
+                    _sectionTitle('Sol·licituds de Recurs', _showSolRecForm),
                     _expansion(_solRec, (s) => _SolRecCardMini(item: s)),
+
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -158,46 +162,76 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
   }
 
   //──────────────────────── Helpers UI ─────────────────────────
-  Widget _fabMenu() {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.add),
-      onSelected: (v) async {
-        if (v == 'inc') {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const IncidenciaFormScreen()),
-          );
-        } else if (v == 'tasca') {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const TascaFormScreen()),
-          );
-        } else if (v == 'doc') {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => DocumentObraScreen(obraId: _obra['id']),
-            ),
-          );
-        } else if (v == 'rec') {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => SolRecursFormScreen(obraId: _obra['id']),
-            ),
-          );
-        }
-        _fetchDetails();
-      },
-      itemBuilder:
-          (_) => const [
-            PopupMenuItem(value: 'inc', child: Text('Nova Incidència')),
-            PopupMenuItem(value: 'tasca', child: Text('Nova Tasca')),
-            PopupMenuItem(value: 'doc', child: Text('Afegir Document')),
-            PopupMenuItem(value: 'rec', child: Text('Sol·licitar Recurs')),
-          ],
+
+  Widget _sectionTitle(String title, VoidCallback onAdd) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        IconButton(
+          icon: const Icon(Icons.add),
+          onPressed: onAdd,
+          tooltip: 'Afegir $title',
+        ),
+      ],
     );
   }
+  void _showDocumentForm() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (context) {
+      return DocumentForm(idObra: _obra['id']);
+    },
+  );
+}
+
+void _showSolRecForm() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (context) {
+      return SolRecForm(idObra: _obra['id']);
+    },
+  );
+}
+
+
+  void _showIncidenciaForm() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (context) {
+      return IncidenciaForm(idObra: _obra['id']);
+    },
+  );
+}
+
+void _showTascaForm() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (context) {
+      return TascaForm(idObra: _obra['id']);
+    },
+  );
+}
+
 
   Widget _infoTiles(ColorScheme scheme) {
     Widget _tile(String label, dynamic value) => ListTile(
@@ -231,17 +265,11 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
     );
   }
 
-  Widget _sectionTitle(String t) => Padding(
-    padding: const EdgeInsets.only(top: 16, bottom: 8),
-    child: Text(
-      t,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-    ),
-  );
 
   Widget _expansion(
     List<dynamic> list,
-    Widget Function(Map<String, dynamic>) builder,) {
+    Widget Function(Map<String, dynamic>) builder,
+  ) {
     if (list.isEmpty) {
       return const Text('No hi ha dades', style: TextStyle(color: Colors.grey));
     }

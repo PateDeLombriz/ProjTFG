@@ -13,11 +13,11 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     # Existents (corregits)
     ObraList, ObraDetail,
-    TreballadorList,TreballadorDetail,
-    TreballadorDetail,TreballadorList, EmpresaList,
+    UsuariList,UsuariDetail,
+    UPersonaDetail,UPersonaList, UEmpresaList,
     ContrasenyaList,
     PermisList,
-    PermisTreballadorList, TreballadorDetail,
+    PermisUsuariList, PermisUsuariDetail,
     IncidenciaList, IncidenciaDetail,
     TasquesList, TasquesDetail,
     RecursosList, RecursDetail,
@@ -37,18 +37,18 @@ urlpatterns = [
     path('obres/', ObraList.as_view(), name='obra-list'),
     path('obres/<int:pk>/', ObraDetail.as_view(), name='obra-detail'),
 
-    #path('usuaris/', TreballadoriList.as_view(), name='usuari-list'),
-    #path('usuaris/<int:pk>/', UsuariDetail.as_view(), name='usuari-detail'), 
-    path('treballadors/', TreballadorList.as_view(), name='persona-list'), 
-    path('treballador/<int:pk>/', TreballadorDetail.as_view(), name='persona-detail'),
-    path('empreses/', EmpresaList.as_view(), name='empresa-list'),
+    path('usuaris/', UsuariList.as_view(), name='usuari-list'),
+    path('usuaris/<int:pk>/', UsuariDetail.as_view(), name='usuari-detail'), 
+    path('u_persona/', UPersonaList.as_view(), name='persona-list'), 
+    path('u_persona/<int:pk>/', UPersonaDetail.as_view(), name='persona-detail'),
+    path('empreses/', UEmpresaList.as_view(), name='empresa-list'),
     path('contrasenyes/', ContrasenyaList.as_view(), name='contrasenya-list'),
 
     path('permis/', PermisList.as_view(), name='permis-list'),  # ← treu coma
     #path('permis/<int:pk>/', PermisDetail.as_view(), name='permis-detail'),
 
-    path('permis_usuari/', PermisTreballadorList.as_view(), name='permisusuari-list'),
-    path('permis_usuari/<int:pk>/', TreballadorDetail.as_view(), name='permisusuari-detail'),
+    path('permis_usuari/', PermisUsuariList.as_view(), name='permisusuari-list'),
+    path('permis_usuari/<int:pk>/', PermisUsuariDetail.as_view(), name='permisusuari-detail'),
 
     path('incidencies/', IncidenciaList.as_view(), name='incidencia-list'),
     path('incidencia/<int:pk>/', IncidenciaDetail.as_view(), name='incidencia-detail'),

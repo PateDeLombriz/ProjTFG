@@ -143,7 +143,7 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
   }
 
   Future<List<UsuariOption>> _fetchTreballadors() async {
-    final res = await http.get(Uri.parse('$baseUrl/treballadors/?tipus=TREBALLADOR'));
+    final res = await http.get(Uri.parse('$baseUrl/usuaris/?tipus=TREBALLADOR'));
     if (res.statusCode == 200) {
       final l = jsonDecode(res.body) as List<dynamic>;
       return l

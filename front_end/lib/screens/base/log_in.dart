@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../treballador/perfil_treballador.dart'; // ← rutes reals
+import '../treballador/perfil_treb.dart'; // ← rutes reals
 import '../empresa/home_empresa.dart'; // ← rutes reals
 
 class LoginScreen extends StatefulWidget {
@@ -53,9 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
             context,
             MaterialPageRoute(
               builder:
-                  (_) => TreballadorProfileScreen(
-                    treballadorId: data['id'],
-                  ),
+                  (_) => TreballadorProfileScreen(usuariId: data['user_id']),
             ),
           );
         } else {

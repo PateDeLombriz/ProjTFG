@@ -93,7 +93,7 @@ class _ObraFormState extends State<ObraForm> {
 
   Future<List<UsuariOption>> _fetchTreballadors() async {
     final res = await http.get(
-      Uri.parse('$baseUrl/treballadors'),
+      Uri.parse('$baseUrl/usuaris/?tipus=TREBALLADOR'),
     );
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as List<dynamic>;

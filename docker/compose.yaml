@@ -66,7 +66,9 @@ volumes: # Per referenciar els volums que es creen per a la base de dades i altr
  # es fa un *docker volume inspect docker_postgres_data*  
  #on "docker" es el nom de directori + "postrges_data" el nom del volum
   postgres_data:
-
+  android_sdk:        # ← persistirá /opt/android_sdk (SDK, NDK, build-tools…)
+  flutter_pub_cache:  # ← persistirá ~/.pub-cache (paquetes de Dart/Flutter)
+  gradle_cache:       # ← persistirá ~/.gradle (si algún plugin usa Gradle)
 
   #flutter-web:#AQUEST ES EL SERVICI DE FLUTTER PER A LA *********web************
    #build:

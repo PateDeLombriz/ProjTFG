@@ -97,7 +97,7 @@ DATABASES = { #Perque funcioni amb postgresd
         'NAME': os.getenv('DATABASE_NAME', 'obraAgil'),
         'USER': os.getenv('DATABASE_USERNAME', 'dbuser'),
         'PASSWORD': os.getenv('DATABASE_PASSWORD', 'dbpassword'),
-        'HOST': os.getenv('DATABASE_HOST', 'db '),
+        'HOST': os.getenv('DATABASE_HOST', 'db'),
         'PORT': os.getenv('DATABASE_PORT', '5432'),
     }
 }

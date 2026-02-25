@@ -7,6 +7,7 @@ import 'package:front_end/screens/empresa/tasca_form.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/solicRec_form.dart';
 import 'package:front_end/screens/empresa/doc_form.dart';
+import 'package:front_end/screens/empresa/treballador_form.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -28,6 +29,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     BottomNavigationBarItem(icon: Icon(Icons.business), label: 'Obres'),
     BottomNavigationBarItem(icon: Icon(Icons.task_alt_outlined), label: 'Tasques'),
     BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Recursos'),
+
   ];
 
   @override
@@ -100,6 +102,9 @@ class _MainScaffoldState extends State<MainScaffold> {
         // TODO: passa l'obraId real
         Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentObraScreen(obraId: 1)));
         break;
+      case _FabItem.treballador:
+        // TODO: passa l'obraId real
+        Navigator.push(context, MaterialPageRoute(builder: (_) => TreballadorForm()));
     }
   }
 }
@@ -132,11 +137,13 @@ class _FabMenu extends StatelessWidget {
           position: position,
           surfaceTintColor: scheme.surfaceTint,
           items: [
-            _menuItem(context, _FabItem.obra,       Icons.business,           'Crea Obra'),
+            _menuItem(context, _FabItem.obra,       Icons.add_home_work_outlined,           'Crea Obra'),
             _menuItem(context, _FabItem.tasca,      Icons.task_alt_outlined,  'Crea Tasca'),
             _menuItem(context, _FabItem.incidencia, Icons.report_gmailerrorred_outlined, 'Crea Incidència'),
             _menuItem(context, _FabItem.solRec,     Icons.inventory_outlined, 'Sol·licita Recurs'),
             _menuItem(context, _FabItem.document,   Icons.drive_folder_upload_outlined, 'Afegeix Document'),
+            _menuItem(context, _FabItem.treballador,Icons.add_reaction_outlined, 'Crea Treballador'),
+
           ],
         );
 
@@ -176,4 +183,4 @@ class _FabMenu extends StatelessWidget {
 }
 
 /* ───────────────────────── Enum accions ───────────────────────── */
-enum _FabItem { obra, tasca, incidencia, solRec, document }
+enum _FabItem { obra, tasca, incidencia, solRec, document, treballador }

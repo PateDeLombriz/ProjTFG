@@ -1,83 +1,3 @@
-/*=============================================================
-=  0.  PREPARACIÓN                                           =
-=============================================================*/
-/*Diferencias principales entre el código SQL y el diagrama:
-1. Estructura de herencia de usuarios
-Diagrama: Muestra una herencia simple con USUARI como clase base y U_TREBALLADOR y U_EMPRESA como subclases.
-Código SQL: Implementa correctamente la herencia usando:
-
-Tabla base usuari con campo tipus (ENUM)
-Tablas especializadas u_treballador y u_empresa con FK hacia usuari.id
-
-✅ Coincide con el diagrama.
-2. Tabla CONTRASENYA
-Diagrama: Muestra CONTRASENYA relacionada con USUARI.
-Código SQL: Implementa correctamente con:
-
-Relación 1:N entre usuari y contrasenya
-Campo vigent para contraseña activa
-Historial de contraseñas
-
-✅ Coincide con el diagrama.
-3. Gestión de permisos
-Diagrama: Muestra PERMIS y Permis x Usuari (tabla de unión).
-Código SQL: Implementa con:
-
-Tabla permis con permisos globales
-Tabla permis_usuari con campos adicionales (lectura, escriptura, edicio)
-
-⚠️ Diferencia: El código añade granularidad de permisos no especificada en el diagrama.
-4. Tabla LOG DE SESSIO
-Diagrama: Relacionada con USUARI.
-Código SQL:
-sqlFOREIGN KEY (id_usuari) REFERENCES u_empresa(id)
-❌ ERROR: El código relaciona log_de_sessio solo con u_empresa, pero el diagrama la relaciona con USUARI (debería permitir tanto trabajadores como empresas).
-5. Campos de fecha/tiempo
-Diagrama: Muestra campos como Data_creacio, Data_entrega, etc.
-Código SQL: Implementa con:
-
-Algunos campos como TIMESTAMP (ej: data_creacio)
-Otros como DATE (ej: data_entrega)
-
-⚠️ Inconsistencia: El diagrama no especifica el tipo exacto de fecha, pero el código mezcla DATE y TIMESTAMP.
-6. Campo Data_darrera_sessio
-Código SQL: Incluye el comentario:
-sqldata_darrera_sessio  TIMESTAMP NULL, -- Último login *************NO ADECUAT PERQUE NECESITAR D'ACTUALITZACIO
-❌ Problema de diseño: El desarrollador reconoce que este campo requiere actualizaciones constantes, lo cual no es eficiente.
-7. Tabla CONFIGURACIO
-Diagrama: Muestra relación 1:1 con USUARI.
-Código SQL: Implementa correctamente con:
-
-id_usuari como PK y FK
-Campos adicionales como idioma, acceptacio_terms
-
-✅ Coincide parcialmente, pero el código añade campos no mostrados en el diagrama.
-8. Relaciones N:M
-Diagrama: Muestra varias relaciones muchos a muchos.
-Código SQL: Implementa correctamente con tablas de unión:
-
-responsable_obra (obra-trabajador)
-tasca_treballador (tarea-trabajador)
-permis_usuari (usuario-permiso)
-
-✅ Coincide con el diagrama.
-9. Campos no representados en el diagrama
-El código SQL incluye varios campos que no aparecen en el diagrama:
-
-mida en document_obra
-format en document_obra
-cost_temporal en solucio
-impacte en solucio
-
-Conclusiones:
-
-El principal error está en la tabla log_de_sessio que debería referenciar usuari.id en lugar de u_empresa.id.
-El código es más detallado que el diagrama, añadiendo campos y funcionalidades no especificadas.
-La estructura general sigue correctamente el diseño del diagrama, especialmente en las relaciones principales.
-Faltan optimizaciones como la gestión adecuada del campo data_darrera_sessio que el propio código marca como problemático.
-*/
--- Elimina la BD si ya existe (debes estar conectado a otra BD, p. ej. postgres)
---DROP DATABASE IF EXISTS obraAgil;
 
 -- Crea la BD con UTF-8 y ordenación catalana/valenciana
 CREATE DATABASE obraAgil
@@ -91,6 +11,7 @@ CREATE DATABASE obraAgil
 =  1.  TABLAS DE USUARIOS Y SEGURIDAD                        =
 =============================================================*/
 -- Enum para el tipo de usuario
+/*
 CREATE TYPE usuari_tipus AS ENUM ('TREBALLADOR', 'EMPRESA');
     
 CREATE TABLE usuari (
@@ -124,25 +45,117 @@ CREATE TABLE u_persona (
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+*/
+
+CREATE TABLE ubicacio (
+    id_ubicacio  SERIAL PRIMARY KEY,
+    adreça VARCHAR(150),
+    ciutat VARCHAR(50),
+    codi_postal VARCHAR(10),
+    provincia VARCHAR(50),
+    país VARCHAR(50) DEFAULT 'Espanya', 
+    latitud DECIMAL(2,6),
+    longitud DECIMAL(3,6)
+);
+
+CREATE TABLE treballador (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(50) NOT NULL,
+    cognoms VARCHAR(100) NOT NULL,
+    nickname  VARCHAR(100),
+    dni_nie_passaport VARCHAR(20) UNIQUE NOT NULL,
+    data_naixement DATE,
+    telefon VARCHAR(20),
+    email VARCHAR(100),
+    foto VARCHAR(255), -- Aqui se guarda es path fins a sa foto
+    comentaris TEXT
+);
 
 
+CREATE TYPE estat_empresa AS ENUM ('activa', 'inactiva', 'suspesa');  
 
+CREATE TABLE empresa (
+    id_empresa SERIAL PRIMARY KEY ,
+    nom_empresa VARCHAR(100) NOT NULL,
+    cif VARCHAR(20) UNIQUE NOT NULL,
+    ubicacio_id INT,
+    telefon VARCHAR(20),
+    email VARCHAR(100),
+    web VARCHAR(100),
+    sector VARCHAR(50),
+    data_alta DATE DEFAULT CURRENT_DATE,
+    estat estat_empresa DEFAULT 'activa',
+    persona_contacte VARCHAR(100),
+    num_empleats INT,
+    comentaris TEXT,
+    FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+);
+-- 1. Enum per tipus de contracte
+CREATE TYPE estat_treballador_enum AS ENUM ('actiu', 'baixa', 'acomiadat');
+
+-- 3. Taula contracte_treballador
+CREATE TABLE contracte_treballador (
+    id SERIAL PRIMARY KEY, -- clau surrogate
+
+    id_treballador INTEGER NOT NULL,
+    id_empresa INTEGER NOT NULL,
+
+    data_contracte DATE NULL,
+    data_fi DATE NULL,
+
+    salari NUMERIC(10,2) NULL,
+
+    carrec VARCHAR(50) NULL,
+    categoria_professional VARCHAR(50) NULL,
+    nss VARCHAR(20) NULL,
+    formacions TEXT NULL,
+
+    estat estat_treballador_enum NOT NULL DEFAULT 'actiu',
+
+    CONSTRAINT fk_ct_treballador FOREIGN KEY (id_treballador)
+        REFERENCES treballador(id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    CONSTRAINT fk_ct_empresa FOREIGN KEY (id_empresa)
+        REFERENCES empresa(id_empresa)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    CONSTRAINT uq_treballador_data UNIQUE (id_treballador, data_contracte)
+);
 -- 1E. Tabla de contraseñas históricas
 CREATE TABLE contrasenya (
     id            SERIAL PRIMARY KEY,                       -- PK autoincremental
-    id_usuari     INTEGER     NOT NULL,                     -- FK → usuari.id
+    id_treballador INTEGER  NULL,                     -- FK → TREBALLADOR
+    id_empresa    INTEGER  NULL,                                          -- FK → usuari.id
     clau          VARCHAR(255) NOT NULL,                    -- Hash de la contraseña
     data_creacio  TIMESTAMP    NOT NULL,                    -- Fecha de alta
-    data_reemplas TIMESTAMP    NULL,                        -- Fecha de sustitución
-    CONSTRAINT fk_pwd_user
-        FOREIGN KEY (id_usuari) REFERENCES usuari(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+    data_reemplas TIMESTAMP    NULL,  
+                          -- Fecha de sustitución
+    CONSTRAINT fk_pwd_empresa
+        FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT fk_pwd_treb
+        FOREIGN KEY (id_treballador) REFERENCES treballador(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+        -- Assegura wu un dels camps de usuaris es buit i l'altre no
+    -- d'aquesta manera en assegurem que la contrasenyaes de un i tan sols un usuari
+    CONSTRAINT chk_un_fk
+        CHECK (
+            (id_treballador IS NOT NULL AND id_empresa IS NULL)
+            OR
+            (id_treballador IS NULL AND id_empresa IS NOT NULL)
+        )
 );
 
 -- Índex per localitzar ràpidament la contrasenya vigent (no reemplaçada) a partir de la data de reemplaçament
-CREATE INDEX idx_pwd_vigent ON contrasenya (id_usuari)
+CREATE INDEX idx_pwd_e_vigent ON contrasenya (id_empresa)
 WHERE data_reemplas IS NULL;
 
+CREATE INDEX idx_pwd_t_vigent ON contrasenya (id_treballador)
+WHERE data_reemplas IS NULL;
 
 -- 1F. Tabla de permisos globales
 CREATE TABLE permis (
@@ -152,9 +165,9 @@ CREATE TABLE permis (
 );
 
 -- 1G. Permisos asignados a cada usuario
-CREATE TABLE permis_usuari (
+CREATE TABLE permis_treballador (
     id           SERIAL PRIMARY KEY,      -- Clave surrogate
-    id_usuari    INTEGER NOT NULL,        -- FK → usuari.id
+    id_treballador    INTEGER NOT NULL,        -- FK → usuari.id
     id_permis    INTEGER NOT NULL,        -- FK → permis.id
     lectura      BOOLEAN NOT NULL DEFAULT FALSE, -- Derecho de lectura
     escriptura   BOOLEAN NOT NULL DEFAULT FALSE, -- Derecho de escritura
@@ -162,11 +175,11 @@ CREATE TABLE permis_usuari (
     data_creacio TIMESTAMP NOT NULL,      -- Fecha de alta
     data_modif   TIMESTAMP NULL,          -- Última modificación
     CONSTRAINT fk_pu_user
-        FOREIGN KEY (id_usuari) REFERENCES u_persona(id)
+        FOREIGN KEY (id_treballador) REFERENCES treballador(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_pu_permis
         FOREIGN KEY (id_permis) REFERENCES permis(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE RESTRICT ON UPDATE CASCADE,  --Els permisos no han de ser bons de borrar si ghi ha logica de l'app que depen d'aixo.
     -- Valida que los booleanos solo sean 0/1
     CONSTRAINT chk_pu_boolean
         CHECK (lectura IN (FALSE, TRUE)
@@ -174,47 +187,78 @@ CREATE TABLE permis_usuari (
            AND edicio IN (FALSE, TRUE))
 );
 -- Índices para acelerar filtros por usuario y permiso
-CREATE INDEX idx_pu_user   ON permis_usuari (id_usuari);
-CREATE INDEX idx_pu_permis ON permis_usuari (id_permis);
+CREATE INDEX idx_pu_user   ON permis_treballador (id_treballador);
+CREATE INDEX idx_pu_permis ON permis_treballador (id_permis);
 
 -- 1H. Historial de sesiones de empresas
+
 CREATE TABLE log_de_sessio (
-    id         SERIAL PRIMARY KEY,      -- PK autoincremental
-    id_usuari  INTEGER NOT NULL,        -- FK → u_empresa.id
-    data_inici DATE     NOT NULL,       -- Día de inicio
-    hora_inici TIME     NOT NULL,       -- Hora exacta
-    CONSTRAINT fk_log_user
-        FOREIGN KEY (id_usuari) REFERENCES usuari(id)
-        ON DELETE SET NULL ON UPDATE CASCADE
+    id             SERIAL PRIMARY KEY,
+    id_treballador INTEGER NULL,
+    id_empresa     INTEGER NULL,
+    data_inici     DATE NOT NULL,
+    hora_inici     TIME NOT NULL,
+
+    CONSTRAINT fk_log_treballador
+        FOREIGN KEY (id_treballador) REFERENCES treballador(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+
+    CONSTRAINT fk_log_empresa
+        FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+
+    -- EXACTAMENT un dels dos: o és sessió de treballador o és sessió d’empresa
+    CONSTRAINT chk_log_subjecte
+        CHECK ( (id_treballador IS NOT NULL) <> (id_empresa IS NOT NULL) )
 );
--- Índice para búsquedas por usuario
-CREATE INDEX idx_log_user ON log_de_sessio (id_usuari);
+
+-- Índexos útils per consultes habituals
+CREATE INDEX idx_log_treballador ON log_de_sessio (id_treballador);
+CREATE INDEX idx_log_empresa     ON log_de_sessio (id_empresa);
 
 -- 1I. Preferencias/configuración (1-a-1)
 CREATE TABLE configuracio (
-    id_usuari        INTEGER PRIMARY KEY,         -- PK + FK → usuari.id
+    id       SERIAL PRIMARY KEY,         
+    id_empresa  INTEGER NULL,
+    id_treballador INTEGER NULL,
     idioma           VARCHAR(10)  DEFAULT 'ca',   -- Idioma por defecto
     acceptacio_terms BOOLEAN      NOT NULL DEFAULT FALSE, -- Acepta T&C
     imatge_perfil    VARCHAR(255) NULL,           -- URL de avatar
     CONSTRAINT fk_cfg_user
-        FOREIGN KEY (id_usuari) REFERENCES usuari(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+        FOREIGN KEY (id_treballador) REFERENCES treballador(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,  
+    
+    CONSTRAINT fk_cfg_empresa
+        FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    CONSTRAINT chk_cfg_subjecte
+        CHECK ( (id_treballador IS NOT NULL) <> (id_empresa IS NOT NULL) )
 );
+
+CREATE UNIQUE INDEX ux_cfg_treballador_one
+  ON configuracio (id_treballador)
+  WHERE id_treballador IS NOT NULL;
+
+CREATE UNIQUE INDEX ux_cfg_empresa_one
+  ON configuracio (id_empresa)
+  WHERE id_empresa IS NOT NULL;
+
 
 -- 1J. Tabla de verificaciones de cuenta d'empreses
 CREATE TABLE verificacio (
     id                SERIAL PRIMARY KEY,        -- PK autoincremental
-    id_usuari         INTEGER NOT NULL,          -- FK → usuari.id
+    id_empresa        INTEGER NOT NULL,          -- FK → usuari.id
     estat_ver         VARCHAR(40) NOT NULL,      -- Estado (pendiente, ok…)
     data_ver          DATE        NULL,          -- Fecha de verificación
     token_verificacio VARCHAR(120) NOT NULL,     -- Token único
     data_token        TIMESTAMP    NOT NULL,     -- Fecha de emisión
     CONSTRAINT fk_ver_user
-        FOREIGN KEY (id_usuari) REFERENCES u_empresa(id)
+        FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 -- Índice para verificar por usuario
-CREATE INDEX idx_ver_user ON verificacio (id_usuari);
+CREATE INDEX idx_ver_user ON verificacio(id_empresa);
 
 /*=============================================================
 =  2.  ENTIDADES DE OBRA                                      =
@@ -223,27 +267,32 @@ CREATE INDEX idx_ver_user ON verificacio (id_usuari);
 CREATE TABLE obra (
     id            SERIAL PRIMARY KEY,           -- PK autoincremental
     nom           VARCHAR(160) NOT NULL,        -- Nombre comercial
-    ubicacio      VARCHAR(255) NOT NULL,        -- Dirección o coordenadas
+    ubicacio_id      INTEGER NOT NULL,        -- Dirección o coordenadas
     data_inici    DATE         NOT NULL,        -- Inicio real
     data_prev_fi  DATE         NOT NULL,        -- Fin previsto
     data_fi       DATE         NULL,            -- Fin real (si existe)
     descripcio    TEXT         NULL,            -- Descripción larga
     pressupost    BIGINT       NOT NULL,        -- Presupuesto (€)
-    estat         VARCHAR(40)  NOT NULL         -- Estado (en curso, etc.)
+    estat         VARCHAR(40)  NOT NULL,         -- Estado (en curso, etc.)
+    CONSTRAINT fk_uni_obra
+        FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- 2B. Responsables de obra (N-a-N débil)
 CREATE TABLE responsable_obra (
+    id             SERIAL PRIMARY  KEY,
     id_obra        INTEGER NOT NULL,          -- FK → obra.id
     id_treballador INTEGER NOT NULL,          -- FK → u_persona.id
     data_inici     DATE NOT NULL,             -- Desde
     data_fi        DATE NULL,                 -- Hasta
-    PRIMARY KEY (id_obra, id_treballador, data_inici),
+    --la clau anterior era una clau en combinacio de data, idobre i idtreballador. 
+    --Es mes net tenir un id com a primary jey i tenir foreign keys referenciant les taules
     CONSTRAINT fk_ro_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_ro_treballador
-        FOREIGN KEY (id_treballador) REFERENCES u_persona(id)
+        FOREIGN KEY (id_treballador) REFERENCES treballador(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -261,7 +310,7 @@ CREATE TABLE responsable_obra (
 CREATE TABLE document_obra (
     id           SERIAL PRIMARY KEY,        -- PK autoincremental
     id_obra      INTEGER NOT NULL,          -- FK → obra.id
-    id_creador   INTEGER NOT NULL,          -- Usuario que sube el doc
+    id_creador   INTEGER NULL,          -- Usuario o no usuario que sube el doc
     nom          VARCHAR(160) NOT NULL,     -- Nombre de archivo
     format       VARCHAR(40)  NOT NULL,     -- PDF, DWG, etc.
     mida         NUMERIC(6,2)      NOT NULL,     -- Tamaño (MB)
@@ -270,10 +319,7 @@ CREATE TABLE document_obra (
     tipus        VARCHAR(40)  NOT NULL,     -- Plano, informe…
     CONSTRAINT fk_doc_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_doc_autor
-        FOREIGN KEY (id_creador) REFERENCES usuari(id)
-        ON DELETE SET NULL ON UPDATE CASCADE
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 -- Índice para listar docs por obra
 CREATE INDEX idx_doc_obra ON document_obra (id_obra);
@@ -313,7 +359,7 @@ CREATE TABLE tasca_treballador (
         FOREIGN KEY (id_tasca) REFERENCES tasca(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_tt_treballador
-        FOREIGN KEY (id_treballador) REFERENCES u_persona(id)
+        FOREIGN KEY (id_treballador) REFERENCES treballador(id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -387,7 +433,7 @@ CREATE TABLE sol_recurs (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_sr_recurs
         FOREIGN KEY (id_recurs) REFERENCES recurs(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE
+        ON DELETE RESTRICT ON UPDATE CASCADE  --Restric perque vul que quedi constancia de les solicituds de cada material.
 );
 -- Índices para filtros habituales
 CREATE INDEX idx_sr_obra   ON sol_recurs (id_obra);

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import '../base/mainScaffold.dart'; // ← rutes reals
 import '../treballador/perfil_treb.dart'; // ← rutes reals
 import '../empresa/home_empresa.dart'; // ← rutes reals
 
@@ -22,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passController = TextEditingController();
   final _storage = const FlutterSecureStorage();
 
+  static const _kApiLogin = 'http://localhost:8000/api/login/';
+
   bool _loading = false;
   String? _error;
 
@@ -35,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse('http://localhost:8000/api/login/'),
+        Uri.parse(_kApiLogin),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'identificador': _identController.text.trim(),
@@ -43,24 +45,50 @@ class _LoginScreenState extends State<LoginScreen> {
         }),
       );
 
+      debugPrint('LOGIN status=${res.statusCode}');
+      debugPrint('LOGIN body=${res.body}');
+      debugPrint('LOGIN headers=${res.headers}');
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         await _storage.write(key: 'token', value: data['token']);
+        await _storage.write(
+          key: 'subject_id',
+          value: data['subject_id'].toString(),
+        );
+        await _storage.write(key: 'tipus', value: data['tipus']);
 
         if (!mounted) return;
-        if (data['tipus'] == 'TREBALLADOR') {
+
+        final tipus =
+            (data['tipus'] as String?)?.toLowerCase(); // Es pasaa minuscula
+
+        if (tipus == 'treballador') {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder:
-                  (_) => TreballadorProfileScreen(usuariId: data['user_id']),
+                  // si el teu widget demana 'usuariId', li passem el subject_id nou
+                  (_) => TreballadorProfileScreen(usuariId: data['subject_id']),
             ),
           );
-        } else {
+        } else if (tipus == 'empresa') {
+          // si HomeEmpresa necessita l'ID, el pots llegir del secure storage
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => HomeEmpresa()),
+            MaterialPageRoute(builder: (_) => const MainScaffold()),
           );
+        } else {
+          try {
+            final err = jsonDecode(res.body);
+            setState(
+              () =>
+                  _error =
+                      err['detail']?.toString() ?? 'Credencials incorrectes',
+            );
+          } catch (_) {
+            setState(() => _error = 'Error ${res.statusCode}: ${res.body}');
+          }
         }
       } else {
         setState(() {

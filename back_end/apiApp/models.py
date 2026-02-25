@@ -17,13 +17,34 @@ PORT: 5432
 from django.db import models
 from django.utils import timezone
 
+
+
+class Ubicacio(models.Model):
+    id_ubicacio = models.AutoField(db_column='id_ubicacio', primary_key=True)
+    adreca = models.CharField(max_length=150, blank=True, null=True, db_column='adreça')
+    ciutat = models.CharField(max_length=50, blank=True, null=True)
+    codi_postal = models.CharField(max_length=10, blank=True, null=True)
+    provincia = models.CharField(max_length=50, blank=True, null=True)
+    pais = models.CharField(max_length=50, default='Espanya', db_column='país')
+    latitud = models.DecimalField(max_digits=8, decimal_places=6, blank=True, null=True)
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    
+    def __str__(self):
+        parts = filter(None, [self.adreca, self.ciutat, self.provincia])
+        return ', '.join(parts)
+
+    class Meta:
+        managed = False
+        db_table = 'ubicacio'
+
 class Obra(models.Model):
     id = models.AutoField(db_column='id', primary_key=True)  # Field name made lowercase.
     nom = models.CharField(db_column='nom', max_length=100)  # Field name made lowercase.
-    ubicacio = models.CharField(db_column='ubicacio', max_length=200, blank=True, null=True)  # Field name made lowercase.
+    ubicacio = models.ForeignKey(Ubicacio, on_delete=models.SET_NULL, null=True, blank=True, db_column='ubicacio_id', db_index=True, related_name='obres')
     data_inici = models.DateField(db_column='data_inici')  # Field name made lowercase.
-    data_prev_fi = models.DateField(db_column='data_prev_fi', blank=True, null=True)  # Field name made lowercase.
-    pressupost = models.DecimalField(db_column='pressupost', max_digits=12, decimal_places=2, blank=True, null=True)  # Field name made lowercase.
+    data_prev_fi = models.DateField(db_column='data_prev_fi')  # Field name made lowercase.
+    data_fi = models.DateField(db_column='data_fi', blank=True, null=True)
+    pressupost = models.BigIntegerField(db_column='pressupost')  # Field name made lowercase.
     descripcio = models.TextField(db_column='descripcio', blank=True, null=True)  # Field name made lowercase.
     estat = models.CharField(db_column='estat', max_length=50)  # Field name made lowercase.
 
@@ -33,49 +54,85 @@ class Obra(models.Model):
         managed = False  
         db_table = 'obra'
 
-class UsuariTipus(models.TextChoices):
-    TREBALLADOR = 'TREBALLADOR', 'Treballador'
-    EMPRESA = 'EMPRESA', 'Empresa'
-#Daptar aquests 
-class Usuari(models.Model):
-    id = models.AutoField(primary_key=True)  # explícit, però no necessari
-    tipus = models.CharField(max_length=20, choices=UsuariTipus.choices)
-    telefon = models.BigIntegerField(null=True, blank=True)
-    data_creacio = models.DateTimeField(default=timezone.now)
 
-    class Meta:
-        managed = False
-        db_table = 'usuari'
+class Empresa(models.Model):
 
+    ESTAT_EMPRESA = [
+        ('activa', 'Activa'),
+        ('inactiva', 'Inactiva'),
+        ('suspesa', 'Suspesa'),
+    ]
+    # CANVIA/AFEGEIX el camp PK:
+    id = models.AutoField(db_column='id_empresa', primary_key=True)
+    nom_empresa = models.CharField(max_length=100)
+    cif = models.CharField(max_length=20, unique=True)  
+    ubicacio = models.ForeignKey(Ubicacio, on_delete=models.SET_NULL, null=True, blank=True, db_column='ubicacio_id', db_index=True, related_name='empreses')
+    telefon = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(max_length=100, blank=True, null=True)
+    web = models.URLField(max_length=100, blank=True, null=True)
+    sector = models.CharField(max_length=50, blank=True, null=True)
+    data_alta = models.DateField(auto_now_add=True)
+    num_empleats = models.IntegerField(db_column='num_empleats', blank=True, null=True)
+    estat = models.CharField(max_length=20, choices=ESTAT_EMPRESA, default='activa')
+    persona_contacte = models.CharField(max_length=100, blank=True, null=True)
+    comentaris = models.TextField(blank=True, null=True)
 
-
-class UPersona(models.Model):
-    usuari = models.OneToOneField(Usuari, on_delete=models.CASCADE, primary_key=True,db_column='id')
-    nickname = models.CharField(max_length=60, unique=True)
-    nom = models.CharField(max_length=120)
-    cognoms = models.CharField(max_length=160)
-    rol = models.CharField(max_length=60)
-    estat = models.CharField(max_length=40)
+    def __str__(self):
+        return self.nom_empresa
     
     class Meta:
-        managed = True
-        db_table = 'u_persona'
+        managed = False
+        db_table = 'empresa'
 
+class Treballador(models.Model):
+    nom = models.CharField(max_length=50)
+    cognoms = models.CharField(max_length=100)
+    nickname = models.CharField(max_length=100, blank=True, null=True)
+    dni_nie_passaport = models.CharField(max_length=20, unique=True)
+    data_naixement = models.DateField(blank=True, null=True)
+    telefon = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(max_length=100, blank=True, null=True)
+    foto = models.ImageField(upload_to='fotos_treballadors/', blank=True, null=True)#La imatge queda gardada dins un fitxer delno dins la BD
+    comentaris = models.TextField(blank=True, null=True)
 
-class UEmpresa(models.Model):
-    usuari = models.OneToOneField(Usuari, on_delete=models.CASCADE, primary_key=True,db_column='id')
-    nom = models.CharField(max_length=120)
-    correu = models.CharField(max_length=160)
+    def __str__(self):
+        return f"{self.nom} {self.cognoms}"
+    
+    class Meta:
+        managed  = False          #  Django no l’ha de crear
+        db_table = 'treballador'  #  nom real a PostgreSQL
+    
+class ContracteTreballador(models.Model):
+    ESTAT_TREBALLADOR_CHOICES = [
+        ('actiu', 'Actiu'),
+        ('baixa', 'Baixa'),
+        ('acomiadat', 'Acomiadat'),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    id_treballador = models.ForeignKey(Treballador, on_delete=models.CASCADE, db_column='id_treballador')
+    id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, db_column='id_empresa')  # ⚠ si mantens NOT NULL a SQL, canvia a CASCADE o treu NOT NULL a SQL
+    data_contracte = models.DateField(blank=True, null=True)
+    data_fi = models.DateField(blank=True, null=True)
+    salari = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    carrec = models.CharField(max_length=50, blank=True, null=True)
+    categoria_professional = models.CharField(max_length=50, blank=True, null=True)
+    nss = models.CharField(max_length=20, blank=True, null=True)
+    formacions = models.TextField(blank=True, null=True)
+    estat = models.CharField(max_length=20, choices=ESTAT_TREBALLADOR_CHOICES, default='actiu')
 
     class Meta:
         managed = False
-        db_table = 'u_empresa'
+        db_table = 'contracte_treballador'
+        unique_together = (('id_treballador', 'data_contracte'),)
 
 
 class Configuracio(models.Model):
-    id_usuari = models.OneToOneField('Usuari', models.DO_NOTHING, db_column='id_usuari', primary_key=True)
-    idioma = models.CharField(max_length=10, blank=True, null=True)
-    acceptacio_terms = models.BooleanField()
+    id = models.AutoField(primary_key=True)
+    id_empresa = models.ForeignKey(Empresa, models.CASCADE, db_column='id_empresa', blank=True, null=True)
+    id_treballador = models.ForeignKey(Treballador, models.CASCADE, db_column='id_treballador', blank=True, null=True)
+    idioma = models.CharField(max_length=10, blank=True, null=True, default='ca')
+    acceptacio_terms = models.BooleanField(default=False)
     imatge_perfil = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
@@ -84,9 +141,9 @@ class Configuracio(models.Model):
 
 
 class Contrasenya(models.Model):
-    
-    id = models.AutoField(primary_key=True)  # ← Cal afegir aquest!
-    id_usuari = models.ForeignKey('Usuari', models.DO_NOTHING, db_column='id_usuari')
+    id = models.AutoField(primary_key=True)
+    id_treballador = models.ForeignKey(Treballador, models.CASCADE, db_column='id_treballador', blank=True, null=True)
+    id_empresa = models.ForeignKey(Empresa, models.CASCADE, db_column='id_empresa', blank=True, null=True)
     clau = models.CharField(max_length=255)
     data_creacio = models.DateTimeField()
     data_reemplas = models.DateTimeField(blank=True, null=True)
@@ -143,15 +200,15 @@ class DjangoSession(models.Model):
 
 class DocumentObra(models.Model):
     id = models.AutoField(primary_key=True) 
-    id_obra = models.ForeignKey('Obra', models.DO_NOTHING, related_name= 'documents', db_column='id_obra')
-    id_creador = models.ForeignKey('Usuari', models.DO_NOTHING, db_column='id_creador')
+    id_obra = models.ForeignKey(Obra, models.DO_NOTHING, related_name= 'documents', db_column='id_obra')
+    id_creador = models.CharField(max_length=100)  # Assuming this is a username or similar identifier
     nom = models.CharField(max_length=160)
     format = models.CharField(max_length=40)
     mida = models.DecimalField(max_digits=6, decimal_places=2)  # Assuming size in MB
     comentari = models.TextField(blank=True, null=True)
     data_pujada = models.DateTimeField()
     tipus = models.CharField(max_length=40)
-
+    #Ubicacio del fitxer potser sigui necesssari
     class Meta:
         managed = False
         db_table = 'document_obra'
@@ -175,8 +232,9 @@ class Incidencia(models.Model):
 
 
 class LogDeSessio(models.Model):
-    id = models.AutoField(primary_key=True) 
-    id_usuari = models.ForeignKey('Usuari', models.DO_NOTHING, db_column='id_usuari')
+    id = models.AutoField(primary_key=True)
+    id_treballador = models.ForeignKey('Treballador', models.SET_NULL, db_column='id_treballador', blank=True, null=True)
+    id_empresa = models.ForeignKey('Empresa', models.SET_NULL, db_column='id_empresa', blank=True, null=True)
     data_inici = models.DateField()
     hora_inici = models.TimeField()
 
@@ -195,10 +253,10 @@ class Permis(models.Model):
         db_table = 'permis'
 
 
-class PermisUsuari(models.Model):
+class PermisTreballador(models.Model):
     id = models.AutoField(primary_key=True) 
-    id_usuari = models.ForeignKey('Usuari', models.DO_NOTHING, db_column='id_usuari')
-    id_permis = models.ForeignKey(Permis, models.DO_NOTHING, db_column='id_permis')
+    id_treballador = models.ForeignKey(Treballador, models.CASCADE, db_column='id_treballador')
+    id_permis = models.ForeignKey(Permis, models.RESTRICT, db_column='id_permis')
     lectura = models.BooleanField()
     escriptura = models.BooleanField()
     edicio = models.BooleanField()
@@ -207,7 +265,7 @@ class PermisUsuari(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'permis_usuari'
+        db_table = 'permis_treballador'
 
 
 class Recurs(models.Model):
@@ -223,8 +281,9 @@ class Recurs(models.Model):
 
 
 class ResponsableObra(models.Model):
-    id_obra = models.OneToOneField(Obra, models.DO_NOTHING, db_column='id_obra', primary_key=True)  # The composite primary key (id_obra, id_treballador, data_inici) found, that is not supported. The first column is selected.
-    id_treballador = models.ForeignKey('Usuari', models.DO_NOTHING, db_column='id_treballador')
+    id = models.AutoField(primary_key=True)
+    id_obra = models.ForeignKey(Obra, models.DO_NOTHING, db_column='id_obra')
+    id_treballador = models.ForeignKey(Treballador, models.DO_NOTHING, db_column='id_treballador')
     data_inici = models.DateField()
     data_fi = models.DateField(blank=True, null=True)
 
@@ -281,8 +340,9 @@ class Tasca(models.Model):
 
 
 class TascaTreballador(models.Model):
-    id_tasca = models.OneToOneField(Tasca, models.DO_NOTHING, db_column='id_tasca', primary_key=True)  # The composite primary key (id_tasca, id_treballador) found, that is not supported. The first column is selected.
-    id_treballador = models.ForeignKey('Usuari', models.DO_NOTHING, db_column='id_treballador')
+    id = models.AutoField(primary_key=True)
+    id_tasca = models.ForeignKey(Tasca, models.DO_NOTHING, db_column='id_tasca')
+    id_treballador = models.ForeignKey(Treballador, models.DO_NOTHING, db_column='id_treballador')
     comentari = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -292,9 +352,10 @@ class TascaTreballador(models.Model):
 
 
 
+
 class Verificacio(models.Model):
     id = models.AutoField(primary_key=True) 
-    id_usuari = models.ForeignKey(UEmpresa, models.DO_NOTHING, db_column='id_usuari')
+    id_empresa = models.ForeignKey(Empresa, models.CASCADE, db_column='id_empresa')
     estat_ver = models.CharField(max_length=40)
     data_ver = models.DateField(blank=True, null=True)
     token_verificacio = models.CharField(max_length=120)
@@ -303,75 +364,3 @@ class Verificacio(models.Model):
     class Meta:
         managed = False
         db_table = 'verificacio'
-
-
-'''
-
-class AuthGroup(models.Model):
-    name = models.CharField(unique=True, max_length=150)
-
-    class Meta:
-        managed = False
-        db_table = 'auth_group'
-
-
-class AuthGroupPermissions(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    group = models.ForeignKey(AuthGroup, models.DO_NOTHING)
-    permission = models.ForeignKey('AuthPermission', models.DO_NOTHING)
-
-    class Meta:
-        managed = False
-        db_table = 'auth_group_permissions'
-        unique_together = (('group', 'permission'),)
-
-
-class AuthPermission(models.Model):
-    name = models.CharField(max_length=255)
-    content_type = models.ForeignKey('DjangoContentType', models.DO_NOTHING)
-    codename = models.CharField(max_length=100)
-
-    class Meta:
-        managed = False
-        db_table = 'auth_permission'
-        unique_together = (('content_type', 'codename'),)
-
-
-class AuthUser(models.Model):
-    password = models.CharField(max_length=128)
-    last_login = models.DateTimeField(blank=True, null=True)
-    is_superuser = models.BooleanField()
-    username = models.CharField(unique=True, max_length=150)
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
-    email = models.CharField(max_length=254)
-    is_staff = models.BooleanField()
-    is_active = models.BooleanField()
-    date_joined = models.DateTimeField()
-
-    class Meta:
-        managed = False
-        db_table = 'auth_user'
-
-
-class AuthUserGroups(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
-    group = models.ForeignKey(AuthGroup, models.DO_NOTHING)
-
-    class Meta:
-        managed = False
-        db_table = 'auth_user_groups'
-        unique_together = (('user', 'group'),)
-
-
-class AuthUserUserPermissions(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
-    permission = models.ForeignKey(AuthPermission, models.DO_NOTHING)
-
-    class Meta:
-        managed = False
-        db_table = 'auth_user_user_permissions'
-        unique_together = (('user', 'permission'),)
-'''

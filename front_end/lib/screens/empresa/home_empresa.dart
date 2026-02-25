@@ -190,7 +190,7 @@ class _ObraCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final estat = (obra['estat'] ?? obra['Estat']) as String? ?? 'Sense estat';
+    final estat = '${obra['estat'] ?? obra['Estat'] ?? 'Sense estat'}';
 
     Color _color(String s) {
       switch (s) {
@@ -231,9 +231,8 @@ class _ObraCard extends StatelessWidget {
                   children: [
                     Text(obra['nom'] ?? '—', style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text(obra['ubicacio'] ?? 'Sense ubicació', style: TextStyle(color: scheme.onSurfaceVariant)),
-                    const SizedBox(height: 6),
-                    Row(
+                    Text(_ubicacioSimple(obra['ubicacio']),
+                      style: TextStyle(color: scheme.onSurfaceVariant)),                    Row(
                       children: [
                         _statusChip(estat, _color(estat)),
                         const SizedBox(width: 6),
@@ -264,5 +263,20 @@ class _ObraCard extends StatelessWidget {
         style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
+  }
+
+  String _ubicacioSimple(dynamic v) {
+    if (v == null) return 'Sense ubicació';
+    if (v is String) return v.trim().isEmpty ? 'Sense ubicació' : v;
+    if (v is int) return 'Ubicació #$v';
+    if (v is Map) {
+      final adreca = v['adreca'] ?? v['adreça'];
+      final ciutat = v['ciutat'];
+      return [adreca, ciutat]
+          .whereType<String>()
+          .where((s) => s.trim().isNotEmpty)
+          .join(', ');
+    }
+    return v.toString();
   }
 }

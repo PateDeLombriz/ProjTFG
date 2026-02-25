@@ -12,7 +12,7 @@ import 'screens/base/root_screen.dart';
 import 'screens/empresa/obra_form.dart'; // Ruta correcta si tens obra_edit.dart a lib/screens
 import 'screens/empresa/home_empresa.dart'; // Ruta correcta si tens home_screen.dart a lib/screens
 import 'models/obra.dart'; // Ruta correcta si tens obra.dart a lib/models
-
+import 'screens/empresa/treballador_form.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -45,6 +45,8 @@ class MyApp extends StatelessWidget {
         //HOME SCREEN--------------------------------------------------------
         '/home': (context) => const MainScaffold(),
         //'/perfilU': (context) => const TreballadorProfileScreen(),
+        '/treballador/new': (context) => const TreballadorForm(),
+
       },
       
       

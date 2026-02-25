@@ -2,46 +2,443 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.db.models import Q
 import jwt
-from django.contrib.auth.hashers import check_password
-
-from datetime import datetime, timedelta, timezone
+from django.contrib.auth.hashers import check_password, make_password
+from django.utils import timezone
+from datetime import datetime, timedelta,date
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from .models import (Obra,Usuari,UPersona, UEmpresa, Contrasenya, Permis, PermisUsuari,
+from .models import (Obra,Empresa,Treballador, ContracteTreballador,Ubicacio, Contrasenya, Permis, PermisTreballador,
     LogDeSessio, Configuracio, Verificacio, DocumentObra, Tasca, TascaTreballador,
     Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra)
-from .serializer import (ObraSerializer,UsuariSerializer,UPersonaSerializer, UEmpresaSerializer, ContrasenyaSerializer,
-    PermisSerializer, PermisUsuariSerializer, LogDeSessioSerializer,
+from .serializer import (
+    ObraSerializer, TreballadorSerializer, EmpresaSerializer,
+    ContracteTreballadorSerializer, ContrasenyaSerializer,
+    PermisSerializer, PermisTreballadorSerializer, LogDeSessioSerializer, UbicacioSerializer,
     ConfiguracioSerializer, VerificacioSerializer, DocumentObraSerializer,
     TascaSerializer, TascaTreballadorSerializer, IncidenciaSerializer, SolucioSerializer,
-    RecursSerializer, SolRecursSerializer, ResponsableObraSerializer)
+    RecursSerializer, SolRecursSerializer, ResponsableObraSerializer
+)
 from django.http import Http404
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 
-
-def generar_token_jwt(usuari, expires_hours: int = 24) -> str:
+def generar_token_jwt(subject_id: int, subject_type: str, expires_hours: int = 24) -> str:
     """
-    Torna un JWT HS256 que encoda:
-      sub   -> usuari.id
-      tipus -> usuari.tipus
-      exp   -> ara + 24 h
+    Retorna un JWT HS256 que encoda:
+      sub   -> subject_id
+      tipus -> 'empresa' o 'treballador'
+      exp   -> ara + expires_hours
     """
-    now = datetime.now(timezone.utc)
+    now = timezone.now()
     payload = {
-        "sub":   usuari.id,
-        "tipus": usuari.tipus,
-        "iat":   now,
-        "exp":   now + timedelta(hours=expires_hours),
+        "sub":   subject_id,
+        "tipus": subject_type,  # 'empresa' | 'treballador'
+        "iat":   int(now.timestamp()),
+        "exp":   int((now + timedelta(hours=expires_hours)).timestamp()),
     }
-    token= jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
-    return Response({
-            'token': token,
-            'user_id': usuari.id,
-            'tipus': usuari.tipus,
-        }, status=status.HTTP_200_OK)
 
+#*********************************NOMES PER DESENVOLUPAMENT**********************
+#Aquests 2 m`todes son per verificar que les contrasenyes inserides de sde el isnertData.sql
+#Siguinn compatibles amb Django i no donin error a l'hora de fer login
+#********************************************************************************
+def _is_django_hash(value: str) -> bool:
+    # Format típic: 'algorithm$iterations$salt$hash' (3 o més signes $)
+    return isinstance(value, str) and value.count('$') >= 3
+
+def _check_legacy_or_hash(entered_plain: str, stored_value: str):
+    """
+    Retorna (ok, new_hash_or_None).
+    - Si stored_value és hash Django → valida amb check_password.
+    - Si és plaintext → compara literal i, si coincideix, retorna un hash per substituir.
+    """
+    if _is_django_hash(stored_value):
+        return check_password(entered_plain, stored_value), None
+    # mode compat: plaintext a BD
+    if entered_plain == stored_value:
+        return True, make_password(entered_plain)  # PBKDF2-SHA256 per defecte
+    return False, None
+
+# ───────────────────────────────────────────────
+# Helpers
+# ───────────────────────────────────────────────
+def _is_contracte_vigent(c):
+    """
+    Consideram 'vigent' si:
+      - estat == 'actiu'
+      - i (data_fi és None o >= avui)
+    """
+    if c is None:
+        return False
+    avui = date.today()
+    return (c.estat == 'actiu') and (c.data_fi is None or c.data_fi >= avui)
+
+
+
+#Empresa amb filtres:
+
+class EmpresaList(APIView):
+    """
+    GET: llista d'empreses amb filtres opcionals (?estat=activa&sector=...&q=...)
+    POST: crea empresa (via serializer)
+    """
+    def get(self, request, format=None):
+        qs = Empresa.objects.select_related('ubicacio').all()
+
+        estat = request.query_params.get('estat')
+        sector = request.query_params.get('sector')
+        q = request.query_params.get('q')  # cerca per nom, CIF, email
+
+        if estat:
+            qs = qs.filter(estat=estat)
+        if sector:
+            qs = qs.filter(sector=sector)
+        if q:
+            qs = qs.filter(
+                Q(nom_empresa__icontains=q) |
+                Q(cif__icontains=q) |
+                Q(email__icontains=q)
+            )
+
+        serializer = EmpresaSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, format=None):
+        serializer = EmpresaSerializer(data=request.data)
+        if serializer.is_valid():
+            empresa = serializer.save()
+            out = EmpresaSerializer(empresa).data
+            return Response(out, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class EmpresaDetail(APIView):
+    """
+    Retorna informació completa d'una empresa:
+      - dades bàsiques
+      - ubicació
+      - treballadors contractats
+      - obres relacionades
+    """
+    def get(self, request, pk, format=None):
+        empresa = get_object_or_404(Empresa, pk=pk)
+
+        empresa_data = {
+            'id': empresa.id,
+            'nom_empresa': empresa.nom_empresa,
+            'cif': empresa.cif,
+            'telefon': empresa.telefon,
+            'email': empresa.email,
+            'web': empresa.web,
+            'sector': empresa.sector,
+            'estat': empresa.estat,
+            'persona_contacte': empresa.persona_contacte,
+            'comentaris': empresa.comentaris,
+            'data_alta': empresa.data_alta,
+        }
+
+        # Ubicació
+        if empresa.ubicacio:
+            empresa_data['ubicacio'] = {
+                'adreça': empresa.ubicacio.adreça,
+                'ciutat': empresa.ubicacio.ciutat,
+                'codi_postal': empresa.ubicacio.codi_postal,
+                'provincia': empresa.ubicacio.provincia,
+                'país': empresa.ubicacio.país,
+            }
+        else:
+            empresa_data['ubicacio'] = None
+
+        # Contractes de treballadors
+        contractes = ContracteTreballador.objects.filter(id_empresa=empresa)
+        empresa_data['treballadors'] = [
+            {
+                'id_treballador': c.id_treballador.id,
+                'nom': c.id_treballador.nom,
+                'cognoms': c.id_treballador.cognoms,
+                'estat': c.estat,
+                'carrec': c.carrec,
+                'data_contracte': c.data_contracte,
+                'data_fi': c.data_fi,
+                'salari': c.salari,
+            }
+            for c in contractes
+        ]
+
+        return Response(empresa_data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk, format=None):
+        empresa = get_object_or_404(Empresa, pk=pk)
+        serializer = EmpresaSerializer(empresa, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        empresa = get_object_or_404(Empresa, pk=pk)
+        empresa.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ───────────────────────────────────────────────
+# TREBALLADOR
+# ───────────────────────────────────────────────
+class TreballadorList(APIView):
+    def get(self, request, format=None):
+        treballadors = Treballador.objects.all()
+        serializer = TreballadorSerializer(treballadors, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, format=None):
+        serializer = TreballadorSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TreballadorDetail(APIView):
+    """
+    Retorna informació completa d'un treballador:
+      - dades bàsiques
+      - ubicació
+      - contractes i empreses
+    """
+    def get(self, request, pk, format=None):
+        treballador = get_object_or_404(Treballador, pk=pk)
+
+        treballador_data = {
+            'id': treballador.id,
+            'nom': treballador.nom,
+            'nickname': treballador.nickname,
+            'cognoms': treballador.cognoms,
+            'dni_nie_passaport': treballador.dni_nie_passaport,
+            'telefon': treballador.telefon,
+            'email': treballador.email,
+            'data_naixement': treballador.data_naixement,
+            'comentaris': treballador.comentaris,
+        }
+
+
+
+        # Contractes
+        contractes = ContracteTreballador.objects.filter(id_treballador=treballador)
+        treballador_data['contractes'] = [
+            {
+                'empresa': c.id_empresa.nom_empresa if c.id_empresa else None,
+                'estat': c.estat,
+                'carrec': c.carrec,
+                'data_contracte': c.data_contracte,
+                'data_fi': c.data_fi,
+                'salari': c.salari,
+            }
+            for c in contractes
+        ]
+
+        return Response(treballador_data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk, format=None):
+        treballador = get_object_or_404(Treballador, pk=pk)
+        serializer = TreballadorSerializer(treballador, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        treballador = get_object_or_404(Treballador, pk=pk)
+        treballador.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ───────────────────────────────────────────────
+# UBICACIÓ
+# ───────────────────────────────────────────────
+class UbicacioList(APIView):
+    def get(self, request, format=None):
+        ubicacions = Ubicacio.objects.all()
+        serializer = UbicacioSerializer(ubicacions, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, format=None):
+        serializer = UbicacioSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UbicacioDetail(APIView):
+    def get(self, request, pk, format=None):
+        ubicacio = get_object_or_404(Ubicacio, pk=pk)
+        serializer = UbicacioSerializer(ubicacio)
+        return Response(serializer.data)
+
+    def put(self, request, pk, format=None):
+        ubicacio = get_object_or_404(Ubicacio, pk=pk)
+        serializer = UbicacioSerializer(ubicacio, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        ubicacio = get_object_or_404(Ubicacio, pk=pk)
+        ubicacio.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ContracteTreballadorList(APIView):
+    """
+    Endpoint per gestionar la llista de contractes.
+    - GET: permet obtenir contractes amb filtres opcionals
+    - POST: permet crear nous contractes
+    """
+
+    def get(self, request, format=None):
+        # Obtenim tots els contractes de la base de dades
+        qs = ContracteTreballador.objects.all()
+
+        # ───── Lectura de paràmetres de filtratge ─────
+        id_treballador = request.query_params.get('id_treballador')
+        empresa_id     = request.query_params.get('empresa')
+        estat          = request.query_params.get('estat')        # actiu/baixa/acomiadat
+        actiu          = request.query_params.get('actiu')        # '1' → data_fi és NULL
+        vigent_en      = request.query_params.get('vigent_en')    # data en format YYYY-MM-DD
+
+        # ───── Aplicació dels filtres ─────
+        if id_treballador:
+            qs = qs.filter(id_treballador_id=id_treballador)  # Filtra per ID de treballador
+        if empresa_id:
+            qs = qs.filter(id_empresa_id=empresa_id)              # Filtra per empresaid_empresa_id es el valor numeric
+        if estat:
+            qs = qs.filter(estat=estat)                        # Filtra per estat del contracte
+        if actiu == '1':
+            qs = qs.filter(data_fi__isnull=True)                # Només contractes sense data de finalització
+        if vigent_en:
+            try:
+                # Convertim la data de text a objecte date
+                data_ref = datetime.fromisoformat(vigent_en).date()
+                # Contractes amb data d'inici ≤ data_ref i sense data final o amb data final ≥ data_ref
+                qs = qs.filter(
+                    data_contracte__lte=data_ref
+                ).filter(
+                    Q(data_fi__isnull=True) | Q(data_fi__gte=data_ref)
+                )
+            except ValueError:
+                pass  # Si el format és incorrecte, ignorem aquest filtre
+
+        # Serialitzem els resultats i els retornem en format JSON
+        serializer = ContracteTreballadorSerializer(qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, format=None):
+        """
+        Crea un nou contracte.
+        - Comprova que el serializer és vàlid
+        - Si viola unique_together, es captura l'excepció
+        """
+        serializer = ContracteTreballadorSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                instance = serializer.save()  # Desa el contracte a la BBDD
+                return Response(ContracteTreballadorSerializer(instance).data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                # Error com violació de unique_together
+                return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ContracteTreballadorDetail(APIView):
+    """
+    Endpoint per gestionar un contracte concret.
+    - GET: obté un contracte i informació extra
+    - PUT: reemplaça totes les dades del contracte
+    - PATCH: actualitza parcialment
+    - DELETE: elimina el contracte
+    """
+
+    def get_object(self, pk):
+        # Recupera el contracte o retorna 404 si no existeix
+        return get_object_or_404(ContracteTreballador, pk=pk)
+
+    def get(self, request, pk, format=None):
+        obj = self.get_object(pk)  # Obtenim el contracte
+        data = ContracteTreballadorSerializer(obj).data
+
+        # ───── Afegim camp calculat "vigent_avui" ─────
+        avui = timezone.now().date()
+        data['vigent_avui'] = (obj.data_contracte is None or obj.data_contracte <= avui) and \
+                              (obj.data_fi is None or obj.data_fi >= avui)
+
+        # ───── Afegim informació bàsica de relacions ─────
+        if obj.id_treballador_id:
+            data['treballador'] = {'id': obj.id_treballador_id}
+        if obj.id_empresa_id:
+            data['empresa_info'] = {'id': obj.id_empresa_id}
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk, format=None):
+        """
+        Reemplaça totes les dades del contracte amb les noves
+        """
+        obj = self.get_object(pk)
+        serializer = ContracteTreballadorSerializer(obj, data=request.data, partial=False)
+        if serializer.is_valid():
+            try:
+                instance = serializer.save()
+                return Response(ContracteTreballadorSerializer(instance).data, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk, format=None):
+        """
+        Actualitza parcialment un contracte (només camps enviats)
+        """
+        obj = self.get_object(pk)
+        serializer = ContracteTreballadorSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            try:
+                instance = serializer.save()
+                return Response(ContracteTreballadorSerializer(instance).data, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        """
+        Elimina un contracte concret
+        """
+        obj = self.get_object(pk)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TreballadorContracteVigentView(APIView):
+    """
+    Endpoint específic per obtenir el contracte vigent d'un treballador avui.
+    GET /api/treballadors/<id_treballador>/contracte_vigent/
+    """
+    def get(self, request, id_treballador, format=None):
+        avui = timezone.now().date()
+        # Filtra contractes que comencen abans o igual a avui i que no han acabat
+        obj = (
+            ContracteTreballador.objects
+            .filter(id_treballador_id=id_treballador, data_contracte__lte=avui)
+            .filter(Q(data_fi__isnull=True) | Q(data_fi__gte=avui))
+            .order_by('-data_contracte')  # El més recent primer
+            .first()
+        )
+        if not obj:
+            # Si no hi ha contracte vigent, retornem 404
+            return Response({'detail': 'Sense contracte vigent'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ContracteTreballadorSerializer(obj).data, status=status.HTTP_200_OK)
 
 
 
@@ -109,8 +506,8 @@ class ObraDetail(APIView):
         # Afegir el responsable d’obra (si n'hi ha)
         # ───────────────────────────────────────────────
         try:
-            responsable = ResponsableObra.objects.get(id_obra=obra)
-            obra_data['responsable'] = ResponsableObraSerializer(responsable).data
+            responsable = ResponsableObra.objects.filter(id_obra=obra)
+            obra_data['responsable'] = ResponsableObraSerializer(responsable, many=True).data
         except ResponsableObra.DoesNotExist:
             obra_data['responsable'] = None
 
@@ -168,36 +565,6 @@ class TasquesList(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
-
-class RecursosList(APIView):
-
-    def get(self, request,format=None):
-        recursos = Recurs.objects.all()
-        serializer = RecursSerializer(recursos, many=True)
-        return Response(serializer.data)
-    
-    def post(self, request, format=None):
-        serializer = RecursSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-     
-    def delete(self, request, format=None):
-        recursos = Recurs.objects.all()
-        recursos.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-     
-    def put(self, request, format=None):
-        recursos = Recurs.objects.all()
-        serializer = RecursSerializer(recursos, data=request.data, many=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-
 class RecursDetail(APIView):
     """
     API View que retorna tots els detalls d'un recurs concret, incloent:
@@ -259,11 +626,6 @@ class IncidenciaDetail(APIView):
 
         return Response(incidencia_data, status=status.HTTP_200_OK)
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-
 
 class TasquesDetail(APIView):
     def get(self, request, pk):
@@ -293,7 +655,7 @@ class TasquesDetail(APIView):
         # Afegir treballador assignat (si n'hi ha)
         try:
             tasca_treballador = TascaTreballador.objects.get(id_tasca=tasca)
-            treballador_data = UsuariSerializer(tasca_treballador.id_treballador).data
+            treballador_data = TreballadorSerializer(tasca_treballador.id_treballador).data
             tasca_data['treballador_assignat'] = {
                 'usuari': treballador_data,
                 'comentari': tasca_treballador.comentari
@@ -303,191 +665,6 @@ class TasquesDetail(APIView):
 
         return Response(tasca_data, status=status.HTTP_200_OK)
 
-
-class UsuariList(APIView):
-    def get(self, request, format=None):
-        qs = Usuari.objects.all()
-        tipus = request.query_params.get('tipus')
-        if tipus:
-            qs = qs.filter(tipus=tipus)
-        serializer = UsuariSerializer(qs, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = UsuariSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class UsuariDetail(APIView):
-    """
-    API endpoint que retorna tota la informació d'un usuari concret.
-    Inclou:
-      - Dades bàsiques de l'usuari
-      - Informació de persona o empresa (segons tipus)
-      - Configuració
-      - Permisos
-      - Logs de sessió
-      - Tasques on participa
-      - Obres on és responsable
-    """
-
-    # ───────────────────────────────────────────────
-    # GET
-    # ───────────────────────────────────────────────
-    def get(self, request, pk, format=None):
-        # 1) Usuari principal (404 si no existeix)
-        usuari = get_object_or_404(Usuari, pk=pk)
-
-        usuari_data = {
-            'id': usuari.id,
-            'tipus': usuari.tipus,
-            'telefon': usuari.telefon,
-            'data_creacio': usuari.data_creacio,
-        }
-
-        # 2) Persona o Empresa (OneToOne)
-        try:
-            persona = UPersona.objects.get(usuari=usuari)
-            usuari_data['persona'] = {
-                'id': persona.pk,
-                'nom': persona.nom,
-                'cognoms': persona.cognoms,
-                'rol': persona.rol,
-                'estat': persona.estat,
-                'nickname': persona.nickname,   # només si existeix la columna!
-
-            }
-        except UPersona.DoesNotExist:
-            usuari_data['persona'] = None
-
-        try:
-            empresa = UEmpresa.objects.get(usuari=usuari)
-            usuari_data['empresa'] = {
-                'id': empresa.pk,
-                'nom': empresa.nom,
-                'correu': empresa.correu,
-            }
-        except UEmpresa.DoesNotExist:
-            usuari_data['empresa'] = None
-
-        # 3) Configuració
-        try:
-            cfg = Configuracio.objects.get(id_usuari=usuari)
-            usuari_data['configuracio'] = {
-                'idioma': cfg.idioma,
-                'acceptacio_terms': cfg.acceptacio_terms,
-                'imatge_perfil': cfg.imatge_perfil,
-            }
-        except Configuracio.DoesNotExist:
-            usuari_data['configuracio'] = None
-
-        # 4) Permisos
-        permisos = PermisUsuari.objects.filter(id_usuari=usuari)
-        usuari_data['permisos'] = [
-            {
-                'id': p.id,
-                'id_permis': p.id_permis_id,
-                'lectura': p.lectura,
-                'escriptura': p.escriptura,
-                'edicio': p.edicio,
-                'data_creacio': p.data_creacio,
-                'data_modif': p.data_modif,
-            }
-            for p in permisos
-        ]
-
-        # 5) Logs de sessió
-        logs = LogDeSessio.objects.filter(id_usuari=usuari)
-        usuari_data['logs_sessio'] = [
-            {
-                'id': l.id,
-                'data_inici': l.data_inici,
-                'hora_inici': l.hora_inici,
-            }
-            for l in logs
-        ]
-
-        # 6) Tasques on és treballador
-        tasques_treb = TascaTreballador.objects.filter(id_treballador=usuari)
-        usuari_data['tasques'] = [
-            {
-                'id_tasca': t.id_tasca_id,
-                'comentari': t.comentari,
-                'descripcio': t.id_tasca.descripcio,
-                'data_inici': t.id_tasca.data_inici,
-                'data_fi': t.id_tasca.data_fi,
-                'prioritat': t.id_tasca.prioritat,
-            }
-            for t in tasques_treb
-        ]
-
-        # 7) Obres on és responsable
-        responsabilitats = ResponsableObra.objects.filter(id_treballador=usuari)
-        usuari_data['obres_responsable'] = [
-            {
-                'id_obra': r.id_obra_id,
-                'nom_obra': r.id_obra.nom,
-                'data_inici_resp': r.data_inici,
-                'data_fi_resp': r.data_fi,
-                'estat_obra': r.id_obra.estat,
-            }
-            for r in responsabilitats
-        ]
-
-        return Response(usuari_data, status=status.HTTP_200_OK)
-
-    # ───────────────────────────────────────────────
-    # DELETE
-    # ───────────────────────────────────────────────
-    def delete(self, request, pk, format=None):
-        usuari = get_object_or_404(Usuari, pk=pk)
-        usuari.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # ───────────────────────────────────────────────
-    # PUT  — només actualitza el model Usuari
-    # ───────────────────────────────────────────────
-    def put(self, request, pk, format=None):
-        usuari = get_object_or_404(Usuari, pk=pk)
-        allowed_fields = {'telefon', 'nickname'}  # afegeix-ne més si cal
-        for field in allowed_fields:
-            if field in request.data:
-                setattr(usuari, field, request.data[field])
-        usuari.save()
-        # retornem la representació actualitzada
-        return self.get(request, pk)
-
-
-
-class UPersonaList(APIView):
-    def get(self, request, format=None):
-        persones = UPersona.objects.all()
-        serializer = UPersonaSerializer(persones, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = UPersonaSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class UEmpresaList(APIView):
-    def get(self, request, format=None):
-        empreses = UEmpresa.objects.all()
-        serializer = UEmpresaSerializer(empreses, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = UEmpresaSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ContrasenyaList(APIView):
     def get(self, request, format=None):
@@ -515,18 +692,6 @@ class PermisList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class PermisUsuariList(APIView):
-    def get(self, request, format=None):
-        permisos = PermisUsuari.objects.all()
-        serializer = PermisUsuariSerializer(permisos, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = PermisUsuariSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ─────────────────────────────────────────────────────────────
 # Login d’usuari/empresa
@@ -543,59 +708,47 @@ class LoginView(APIView):
 
 
     def post(self, request, format=None):
-        ident = request.data.get('identificador')
+        ident = request.data.get('identificador')  # email (empresa) o nickname (treballador)
         password = request.data.get('password')
 
         if not ident or not password:
-            return Response(
-                {'detail': 'Cal identificador i contrasenya'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+          return Response({'detail': 'Cal identificador i contrasenya'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ───────────────────────────────────────
-        # 1. Localitzar l'usuari
-        # ───────────────────────────────────────
+        subject_type = None
+        subject_id = None
+
+    # 1) Localitza subjecte (empresa per email / treballador per nickname)
         try:
             if '@' in ident:
-                empresa = UEmpresa.objects.select_related('usuari').get(correu=ident)
-                usuari = empresa.usuari
+                empresa = Empresa.objects.get(email=ident)
+                subject_type = 'empresa'
+                subject_id = empresa.pk
+                pwd_qs = Contrasenya.objects.filter(id_empresa=empresa).order_by('-data_creacio')
             else:
-                print("Buscant usuari o persona amb nickname:", ident)
-                persona = UPersona.objects.select_related('usuari').get(nickname=ident)
-                usuari = persona.usuari
-        except (UEmpresa.DoesNotExist, UPersona.DoesNotExist):
-            return Response({'detail': 'Usuari incorrecte'}, status=status.HTTP_400_BAD_REQUEST)
+                persona = Treballador.objects.get(nickname=ident)
+                subject_type = 'treballador'
+                subject_id = persona.pk
+                pwd_qs = Contrasenya.objects.filter(id_treballador=persona).order_by('-data_creacio')
+        except (Empresa.DoesNotExist, Treballador.DoesNotExist):
+            return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ───────────────────────────────────────
-        # 2. Validar contrasenya més recent
-        # ───────────────────────────────────────
-        pwd_obj = (
-            Contrasenya.objects
-            .filter(id_usuari=usuari)
-            .order_by('-data_creacio')
-            .first()
-        )
-        print("⚠️la cntrsenya de l'usuari:",pwd_obj.clau)
-        print("⚠️ NEL que s'ha llegit:",password)
+    # 2) Valida contrasenya vigent (prioritza data_reemplas IS NULL)
+        pwd_obj = pwd_qs.filter(data_reemplas__isnull=True).first() or pwd_qs.first()
         if not pwd_obj:
-            print("⚠️ No s'ha trobat cap contrasenya per l'usuari:",pwd_obj.clau)
-            print("⚠️ No s'ha trobat cap contrasenya per l'usuari:",password)
-        elif not check_password(password, pwd_obj.clau):
-            print("⚠️ Contrasenya incorrecta")
-        # ───────────────────────────────────────
-        # 3. Generar token (exemple mínim)
-        # ───────────────────────────────────────
-        return generar_token_jwt(usuari)   # implementa-ho al teu projecte
+            return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
+#Tan sols per desenvolupament*****************************************************************************************************
+        ok, new_hash = _check_legacy_or_hash(password, pwd_obj.clau)
+        if not ok:
+            return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ───────────────────────────────────────
-        # 4. Retornar resposta
-        # ───────────────────────────────────────
-       
+        # Si estava en plaintext i ha passat, la reemplacem pel hash
+        if new_hash:
+            pwd_obj.clau = new_hash
+            pwd_obj.save(update_fields=['clau'])
 
-    # Opcionalment, podries afegir un GET per validar el token…
-    # def get(self, request, format=None):
-    #     return Response({'detail': 'OK'})  # només si ho necessites
-
+        # 3) Token
+        token = generar_token_jwt(subject_id, subject_type)
+        return Response({'token': token, 'subject_id': subject_id, 'tipus': subject_type}, status=status.HTTP_200_OK)
 
 class LogDeSessioList(APIView):
     def get(self, request, format=None):
@@ -799,20 +952,6 @@ class SolRecursList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ResponsableObraList(APIView):
-    def get(self, request, format=None):
-        responsables = ResponsableObra.objects.all()
-        serializer = ResponsableObraSerializer(responsables, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = ResponsableObraSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # -------------------- DOCUMENT_OBRA DETAIL --------------------
 class DocumentObraDetail(APIView):
     def get(self, request, pk, format=None):
@@ -936,165 +1075,21 @@ class SolRecursDetail(APIView):
         sol.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-# ---------- 1) Llista de UPersona (ja tens) + Detail opcional per usuari ----------
-
-class UPersonaDetail(APIView):
-    """
-    API endpoint que retorna tots els detalls d'una persona concreta.
-    Inclou:
-      - Dades bàsiques de la persona (UPersona)
-      - Dades bàsiques de l'Usuari associat
-      - Configuració
-      - Permisos
-      - Logs de sessió
-      - Tasques on participa
-      - Obres on és responsable
-    """
-
-    def get(self, request, pk, format=None):
-        # ──────────────────────────────────────────────
-        # 1) Persona principal (404 si no existeix)
-        # ──────────────────────────────────────────────
-        persona = get_object_or_404(UPersona, pk=pk)
-
-        persona_data = {
-            'id': persona.pk,
-            'nom': persona.nom,
-            'cognoms': persona.cognoms,
-            'nickname': persona.nickname,
-            'rol': persona.rol,
-            'estat': persona.estat,
-        }
-
-        # ──────────────────────────────────────────────
-        # 2) Usuari vinculat (OneToOne)
-        # ──────────────────────────────────────────────
-        usuari = persona.usuari
-        persona_data['usuari'] = {
-            'id': usuari.id,
-            'tipus': usuari.tipus,
-            'telefon': usuari.telefon,
-            'data_creacio': usuari.data_creacio,
-            # Només si has afegit 'nickname' al model Usuari
-        }
-
-        # ──────────────────────────────────────────────
-        # 3) Configuració (pot no existir)
-        # ──────────────────────────────────────────────
-        try:
-            c = Configuracio.objects.get(id_usuari=usuari)
-            persona_data['configuracio'] = {
-                'idioma': c.idioma,
-                'acceptacio_terms': c.acceptacio_terms,
-                'imatge_perfil': c.imatge_perfil,
-            }
-        except Configuracio.DoesNotExist:
-            persona_data['configuracio'] = None
-
-        # ──────────────────────────────────────────────
-        # 4) Permisos assignats
-        # ──────────────────────────────────────────────
-        permisos = PermisUsuari.objects.filter(id_usuari=usuari)
-        persona_data['permisos'] = [
-            {
-                'id': p.id,
-                'id_permis': p.id_permis_id,
-                'lectura': p.lectura,
-                'escriptura': p.escriptura,
-                'edicio': p.edicio,
-                'data_creacio': p.data_creacio,
-                'data_modif': p.data_modif,
-            }
-            for p in permisos
-        ]
-
-        # ──────────────────────────────────────────────
-        # 5) Logs de sessió
-        # ──────────────────────────────────────────────
-        logs = LogDeSessio.objects.filter(id_usuari=usuari)
-        persona_data['logs_sessio'] = [
-            {
-                'id': l.id,
-                'data_inici': l.data_inici,
-                'hora_inici': l.hora_inici,
-            }
-            for l in logs
-        ]
-
-        # ──────────────────────────────────────────────
-        # 6) Tasques on és treballador
-        # ──────────────────────────────────────────────
-        tasques_treb = TascaTreballador.objects.filter(id_treballador=usuari)
-        persona_data['tasques'] = [
-            {
-                'id_tasca': t.id_tasca_id,
-                'comentari': t.comentari,
-                # informació bàsica de la tasca
-                'descripcio': t.id_tasca.descripcio,
-                'data_inici': t.id_tasca.data_inici,
-                'data_fi': t.id_tasca.data_fi,
-                'prioritat': t.id_tasca.prioritat,
-            }
-            for t in tasques_treb
-        ]
-
-        # ──────────────────────────────────────────────
-        # 7) Obres on és responsable
-        # ──────────────────────────────────────────────
-        responsabilitats = ResponsableObra.objects.filter(id_treballador=usuari)
-        persona_data['obres_responsable'] = [
-            {
-                'id_obra': r.id_obra_id,
-                'nom_obra': r.id_obra.nom,
-                'data_inici_resp': r.data_inici,
-                'data_fi_resp': r.data_fi,
-                'estat_obra': r.id_obra.estat,
-            }
-            for r in responsabilitats
-        ]
-
-        return Response(persona_data, status=status.HTTP_200_OK)
-
-    # -----------------------------------------------------------------
-    # PUT i DELETE per coherència amb la resta dels teus …Detail
-    # -----------------------------------------------------------------
-    def delete(self, request, pk, format=None):
-        persona = get_object_or_404(UPersona, pk=pk)
-        persona.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def put(self, request, pk, format=None):
-        """
-        Només actualitza els camps d'UPersona (nom, cognoms, rol, estat…).
-        Si vols modificar l'Usuari o altres taules, fes-ho en endpoints
-        específics.
-        """
-        persona = get_object_or_404(UPersona, pk=pk)
-        allowed_fields = {'nom', 'cognoms', 'rol', 'estat'}
-        for field in allowed_fields:
-            if field in request.data:
-                setattr(persona, field, request.data[field])
-        persona.save()
-        # Retornem la nova representació
-        return self.get(request, pk)
-
-
 # ---------- 2) Permisos d'usuari: llista amb filtres + DETAIL amb PUT ----------
 class PermisUsuariList(APIView):
     def get(self, request, format=None):
-        qs = PermisUsuari.objects.all()
-        id_usuari = request.query_params.get('id_usuari')
+        qs = PermisTreballador.objects.all()
+        id_treballador = request.query_params.get('id_treballador')
         id_permis = request.query_params.get('id_permis')
-        if id_usuari:
-            qs = qs.filter(id_usuari_id=id_usuari)
+        if id_treballador:
+            qs = qs.filter(id_treballador_id=id_treballador)
         if id_permis:
             qs = qs.filter(id_permis_id=id_permis)
-        serializer = PermisUsuariSerializer(qs, many=True)
+        serializer = PermisTreballadorSerializer(qs, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        serializer = PermisUsuariSerializer(data=request.data)
+        serializer = PermisTreballadorSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(data_creacio=timezone.now())
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1102,27 +1097,27 @@ class PermisUsuariList(APIView):
 
 class PermisUsuariDetail(APIView):
     def get(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
-        return Response(PermisUsuariSerializer(obj).data)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
+        return Response(PermisTreballadorSerializer(obj).data)
 
     def put(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
-        serializer = PermisUsuariSerializer(obj, data=request.data, partial=False)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
+        serializer = PermisTreballadorSerializer(obj, data=request.data, partial=False)
         if serializer.is_valid():
             instance = serializer.save(data_modif=timezone.now())
-            return Response(PermisUsuariSerializer(instance).data, status=status.HTTP_200_OK)
+            return Response(PermisTreballadorSerializer(instance).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
-        serializer = PermisUsuariSerializer(obj, data=request.data, partial=True)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
+        serializer = PermisTreballadorSerializer(obj, data=request.data, partial=True)
         if serializer.is_valid():
             instance = serializer.save(data_modif=timezone.now())
-            return Response(PermisUsuariSerializer(instance).data, status=status.HTTP_200_OK)
+            return Response(PermisTreballadorSerializer(instance).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
-        obj = get_object_or_404(PermisUsuari, pk=pk)
+        obj = get_object_or_404(PermisTreballador, pk=pk)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1168,13 +1163,13 @@ class TascaTreballadorList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ---------- 5) Endpoint opcional: tasques d'un usuari (evita bucles al front) ----------
-class UsuariTasquesAssignadesView(APIView):
+class TreballladorTasquesAssignadesView(APIView):
     """Retorna les tasques detallades assignades a un usuari.
     GET /api/usuaris/<usuari_id>/tasques/
     """
-    def get(self, request, usuari_id, format=None):
+    def get(self, request, treballador_id, format=None):
         # ids de tasques assignades
-        tasca_ids = TascaTreballador.objects.filter(id_treballador_id=usuari_id).values_list('id_tasca_id', flat=True)
+        tasca_ids = TascaTreballador.objects.filter(id_treballador_id=treballador_id).values_list('id_tasca_id', flat=True)
         tasques = Tasca.objects.filter(id__in=list(tasca_ids))
         data = []
         for t in tasques:
@@ -1192,12 +1187,12 @@ class UsuariTasquesAssignadesView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 # ---------- 6) Endpoint opcional: obres participades per usuari ----------
-class UsuariObresParticipadesView(APIView):
+class TreballadorObresParticipadesView(APIView):
     """Retorna la llista d'obres on l'usuari ha participat (tasques o responsable)."""
-    def get(self, request, usuari_id, format=None):
-        ids_tasques = TascaTreballador.objects.filter(id_treballador_id=usuari_id).values_list('id_tasca_id', flat=True)
+    def get(self, request, treballador_id, format=None):
+        ids_tasques = TascaTreballador.objects.filter(id_treballador_id=treballador_id).values_list('id_tasca_id', flat=True)
         obra_ids_tasques = Tasca.objects.filter(id__in=list(ids_tasques)).values_list('id_obra_id', flat=True)
-        obra_ids_resp = ResponsableObra.objects.filter(id_treballador_id=usuari_id).values_list('id_obra_id', flat=True)
+        obra_ids_resp = ResponsableObra.objects.filter(id_treballador_id=treballador_id).values_list('id_obra_id', flat=True)
         ids = set(list(obra_ids_tasques) + list(obra_ids_resp))
         obres = Obra.objects.filter(id__in=list(ids))
         return Response(ObraSerializer(obres, many=True).data, status=status.HTTP_200_OK)

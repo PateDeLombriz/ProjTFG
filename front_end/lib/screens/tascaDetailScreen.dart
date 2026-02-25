@@ -362,14 +362,29 @@ class _WorkCard extends StatelessWidget {
                 children: [
                   Text(obra['nom'] ?? '—', style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text(obra['ubicacio'] ?? 'Sense ubicació', style: TextStyle(color: scheme.onSurfaceVariant)),
-                ],
+                  Text(_ubicacioSimple(obra['ubicacio']),
+                  style: TextStyle(color: scheme.onSurfaceVariant))                ],
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _ubicacioSimple(dynamic v) {
+    if (v == null) return 'Sense ubicació';
+    if (v is String) return v.trim().isEmpty ? 'Sense ubicació' : v;
+    if (v is int) return 'Ubicació #$v';
+    if (v is Map) {
+      final adreca = v['adreca'] ?? v['adreça'];
+      final ciutat = v['ciutat'];
+      return [adreca, ciutat]
+          .whereType<String>()
+          .where((s) => s.trim().isNotEmpty)
+          .join(', ');
+    }
+    return v.toString();
   }
 }
 

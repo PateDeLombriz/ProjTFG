@@ -1,4 +1,6 @@
-# # Etapa 1: Builder - instala las dependencias (incluyendo gunicorn)
+#COm es construeix la imatge, no s'executa cada vegada que arranques es contenidor 
+
+# Etapa 1: Builder - instala las dependencias (incluyendo gunicorn)
 FROM python:3.11-slim AS builder
 
 RUN apt-get update
@@ -32,5 +34,6 @@ ENV PYTHONUNBUFFERED=1
 USER appuser
 
 EXPOSE 8000
-
+# COmmand de gunicor pernsat ja per quant esta en profduccion, no desenvolupament es per aixo que ara mateix
+# es sobreescriu per runserver pensat per desarrollo. Es canvia en el compose.yaml
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "wsgi:application"]

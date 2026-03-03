@@ -16,7 +16,7 @@ PORT: 5432
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from django.utils import timezone
-
+from django.db.models import Q
 
 
 class Ubicacio(models.Model):
@@ -40,7 +40,7 @@ class Ubicacio(models.Model):
 class Obra(models.Model):
     id = models.AutoField(db_column='id', primary_key=True)  # Field name made lowercase.
     nom = models.CharField(db_column='nom', max_length=100)  # Field name made lowercase.
-    ubicacio = models.ForeignKey(Ubicacio, on_delete=models.SET_NULL, null=True, blank=True, db_column='ubicacio_id', db_index=True, related_name='obres')
+    ubicacio = models.ForeignKey(Ubicacio, on_delete=models.CASCADE, null=False, blank=False, db_column='ubicacio_id', db_index=True, related_name='obres')
     data_inici = models.DateField(db_column='data_inici')  # Field name made lowercase.
     data_prev_fi = models.DateField(db_column='data_prev_fi')  # Field name made lowercase.
     data_fi = models.DateField(db_column='data_fi', blank=True, null=True)
@@ -110,8 +110,8 @@ class ContracteTreballador(models.Model):
     ]
 
     id = models.AutoField(primary_key=True)
-    id_treballador = models.ForeignKey(Treballador, on_delete=models.CASCADE, db_column='id_treballador')
-    id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, db_column='id_empresa')  # ⚠ si mantens NOT NULL a SQL, canvia a CASCADE o treu NOT NULL a SQL
+    id_treballador = models.ForeignKey(Treballador, on_delete=models.RESTRICT,null=False, db_column='id_treballador')
+    id_empresa = models.ForeignKey(Empresa, on_delete=models.RESTRICT, null=False, db_column='id_empresa')  # ⚠ si mantens NOT NULL a SQL, canvia a CASCADE o treu NOT NULL a SQL
     data_contracte = models.DateField(blank=True, null=True)
     data_fi = models.DateField(blank=True, null=True)
     salari = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -138,19 +138,55 @@ class Configuracio(models.Model):
     class Meta:
         managed = False
         db_table = 'configuracio'
-
+        constraints = [
+            models.CheckConstraint(
+                name='chk_cfg_subjecte',
+                check=(Q(id_treballador__isnull=False) ^ Q(id_empresa__isnull=False))
+            ),
+            models.UniqueConstraint(
+                name='ux_cfg_treballador_one',
+                fields=['id_treballador'],
+                condition=Q(id_treballador__isnull=False),
+            ),
+            models.UniqueConstraint(
+                name='ux_cfg_empresa_one',
+                fields=['id_empresa'],
+                condition=Q(id_empresa__isnull=False),
+            ),
+        ]
 
 class Contrasenya(models.Model):
     id = models.AutoField(primary_key=True)
     id_treballador = models.ForeignKey(Treballador, models.CASCADE, db_column='id_treballador', blank=True, null=True)
     id_empresa = models.ForeignKey(Empresa, models.CASCADE, db_column='id_empresa', blank=True, null=True)
     clau = models.CharField(max_length=255)
-    data_creacio = models.DateTimeField()
+    data_creacio = models.DateTimeField(default=timezone.now)
     data_reemplas = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = 'contrasenya'
+        constraints = [
+            models.CheckConstraint(
+                name='chk_un_fk',
+                check=(
+                    (Q(id_treballador__isnull=False) & Q(id_empresa__isnull=True)) |
+                    (Q(id_treballador__isnull=True) & Q(id_empresa__isnull=False))
+                )
+            )
+        ]
+        indexes = [
+            models.Index(
+                name='idx_pwd_e_vigent',
+                fields=['id_empresa'],
+                condition=Q(data_reemplas__isnull=True),
+            ),
+            models.Index(
+                name='idx_pwd_t_vigent',
+                fields=['id_treballador'],
+                condition=Q(data_reemplas__isnull=True),
+            ),
+        ]
 
 '''
 class DjangoAdminLog(models.Model):
@@ -201,8 +237,8 @@ class DjangoSession(models.Model):
 class DocumentObra(models.Model):
     id = models.AutoField(primary_key=True) 
     id_obra = models.ForeignKey(Obra, models.DO_NOTHING, related_name= 'documents', db_column='id_obra')
-    id_creador = models.CharField(max_length=100)  # Assuming this is a username or similar identifier
-    nom = models.CharField(max_length=160)
+    id_creador = models.IntegerField( blank=False, null=False)  # Assuming this is a username or similar identifier
+    nom = models.CharField(max_length=160, null=False)
     format = models.CharField(max_length=40)
     mida = models.DecimalField(max_digits=6, decimal_places=2)  # Assuming size in MB
     comentari = models.TextField(blank=True, null=True)
@@ -216,8 +252,8 @@ class DocumentObra(models.Model):
 
 class Incidencia(models.Model):
     id = models.AutoField(primary_key=True) 
-    id_obra = models.ForeignKey('Obra', models.DO_NOTHING, related_name='incidencies', db_column='id_obra')
-    id_tasca = models.ForeignKey('Tasca', models.DO_NOTHING, db_column='id_tasca', blank=True, null=True)
+    id_obra = models.ForeignKey('Obra', models.CASCADE, related_name='incidencies', db_column='id_obra')
+    id_tasca = models.ForeignKey('Tasca', models.SET_NULL, db_column='id_tasca', blank=True, null=True)
     descripcio = models.TextField()
     data_inici = models.DateField()
     data_fi = models.DateField(blank=True, null=True)
@@ -241,10 +277,15 @@ class LogDeSessio(models.Model):
     class Meta:
         managed = False
         db_table = 'log_de_sessio'
+        constraints = [
+            models.CheckConstraint(
+                name='chk_log_subjecte',
+                check=(Q(id_treballador__isnull=False) ^ Q(id_empresa__isnull=False))
+            )
+        ]
 
 class Permis(models.Model):
     id = models.AutoField(primary_key=True) 
-
     clau_funcional = models.CharField(unique=True, max_length=100)
     descripcio = models.CharField(max_length=255)
 
@@ -257,10 +298,10 @@ class PermisTreballador(models.Model):
     id = models.AutoField(primary_key=True) 
     id_treballador = models.ForeignKey(Treballador, models.CASCADE, db_column='id_treballador')
     id_permis = models.ForeignKey(Permis, models.RESTRICT, db_column='id_permis')
-    lectura = models.BooleanField()
-    escriptura = models.BooleanField()
-    edicio = models.BooleanField()
-    data_creacio = models.DateTimeField()
+    lectura = models.BooleanField(default= False)
+    escriptura = models.BooleanField(default= False)
+    edicio = models.BooleanField(default= False)
+    data_creacio = models.DateTimeField(default=timezone.now)
     data_modif = models.DateTimeField(blank=True, null=True)
 
     class Meta:
@@ -290,9 +331,9 @@ class ResponsableObra(models.Model):
     class Meta:
         managed = False
         db_table = 'responsable_obra'
-        unique_together = (('id_obra', 'id_treballador', 'data_inici'),)
 
 
+#Solicitud de recurs per a una obra, pot ser per a una tasca concreta o no, i pot ser per a una incidencia concreta o no. Pot tenir un comentari i una data de necessitat, i opcionalment una data d'entrega i un proveïdor associat.
 class SolRecurs(models.Model):
     id = models.AutoField(primary_key=True) 
     id_obra = models.ForeignKey(Obra, models.DO_NOTHING, db_column='id_obra')
@@ -311,7 +352,7 @@ class SolRecurs(models.Model):
 
 class Solucio(models.Model):
     id = models.AutoField(primary_key=True) 
-    id_incidencia = models.ForeignKey(Incidencia, models.DO_NOTHING, db_column='id_incidencia')
+    id_incidencia = models.ForeignKey(Incidencia, models.CASCADE, db_column='id_incidencia')
     id_tasca = models.ForeignKey('Tasca', models.DO_NOTHING, db_column='id_tasca', blank=True, null=True)
     descripcio = models.TextField()
     cost_monetari = models.BigIntegerField()
@@ -326,13 +367,13 @@ class Solucio(models.Model):
 
 class Tasca(models.Model):
     id = models.AutoField(primary_key=True) 
-    id_obra = models.ForeignKey(Obra, models.DO_NOTHING,related_name='tasques', db_column='id_obra')
-    id_tasca_pare = models.ForeignKey('self', models.DO_NOTHING, db_column='id_tasca_pare', blank=True, null=True)
+    id_obra = models.ForeignKey(Obra, models.CASCADE,related_name='tasques', db_column='id_obra')
+    id_tasca_pare = models.ForeignKey('self', models.SET_NULL, db_column='id_tasca_pare', blank=True, null=True)
     descripcio = models.TextField()
     data_inici = models.DateField()
     data_fi = models.DateField(blank=True, null=True)
     prioritat = models.IntegerField()
-    visibilitat_tasca = models.BooleanField()
+    visibilitat_tasca = models.BooleanField(default=True)
 
     class Meta:
         managed = False
@@ -341,7 +382,7 @@ class Tasca(models.Model):
 
 class TascaTreballador(models.Model):
     id = models.AutoField(primary_key=True)
-    id_tasca = models.ForeignKey(Tasca, models.DO_NOTHING, db_column='id_tasca')
+    id_tasca = models.ForeignKey(Tasca, models.CASCADE, db_column='id_tasca')
     id_treballador = models.ForeignKey(Treballador, models.DO_NOTHING, db_column='id_treballador')
     comentari = models.TextField(blank=True, null=True)
 

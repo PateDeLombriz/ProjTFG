@@ -54,8 +54,8 @@ CREATE TABLE ubicacio (
     codi_postal VARCHAR(10),
     provincia VARCHAR(50),
     país VARCHAR(50) DEFAULT 'Espanya', 
-    latitud DECIMAL(2,6),
-    longitud DECIMAL(3,6)
+    latitud DECIMAL(8,6),
+    longitud DECIMAL(9,6)
 );
 
 CREATE TABLE treballador (
@@ -266,14 +266,14 @@ CREATE INDEX idx_ver_user ON verificacio(id_empresa);
 -- 2A. Obras o proyectos de construcción
 CREATE TABLE obra (
     id            SERIAL PRIMARY KEY,           -- PK autoincremental
-    nom           VARCHAR(160) NOT NULL,        -- Nombre comercial
+    nom           VARCHAR(100) NOT NULL,        -- Nombre comercial
     ubicacio_id      INTEGER NOT NULL,        -- Dirección o coordenadas
     data_inici    DATE         NOT NULL,        -- Inicio real
     data_prev_fi  DATE         NOT NULL,        -- Fin previsto
     data_fi       DATE         NULL,            -- Fin real (si existe)
     descripcio    TEXT         NULL,            -- Descripción larga
     pressupost    BIGINT       NOT NULL,        -- Presupuesto (€)
-    estat         VARCHAR(40)  NOT NULL,         -- Estado (en curso, etc.)
+    estat         VARCHAR(50)  NOT NULL,         -- Estado (en curso, etc.)
     CONSTRAINT fk_uni_obra
         FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
         ON DELETE CASCADE ON UPDATE CASCADE
@@ -290,10 +290,10 @@ CREATE TABLE responsable_obra (
     --Es mes net tenir un id com a primary jey i tenir foreign keys referenciant les taules
     CONSTRAINT fk_ro_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
+        ON DELETE NO ACTION ON UPDATE CASCADE,
     CONSTRAINT fk_ro_treballador
         FOREIGN KEY (id_treballador) REFERENCES treballador(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+        ON DELETE NO ACTION ON UPDATE CASCADE
 );
 
 -- 2C. Documentos asociados a la obra
@@ -310,7 +310,7 @@ CREATE TABLE responsable_obra (
 CREATE TABLE document_obra (
     id           SERIAL PRIMARY KEY,        -- PK autoincremental
     id_obra      INTEGER NOT NULL,          -- FK → obra.id
-    id_creador   INTEGER NULL,          -- Usuario o no usuario que sube el doc
+    id_creador   INTEGER NOT NULL,          -- Usuario o no usuario que sube el doc
     nom          VARCHAR(160) NOT NULL,     -- Nombre de archivo
     format       VARCHAR(40)  NOT NULL,     -- PDF, DWG, etc.
     mida         NUMERIC(6,2)      NOT NULL,     -- Tamaño (MB)
@@ -319,7 +319,7 @@ CREATE TABLE document_obra (
     tipus        VARCHAR(40)  NOT NULL,     -- Plano, informe…
     CONSTRAINT fk_doc_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+        ON DELETE NO ACTION ON UPDATE CASCADE
 );
 -- Índice para listar docs por obra
 CREATE INDEX idx_doc_obra ON document_obra (id_obra);
@@ -360,7 +360,7 @@ CREATE TABLE tasca_treballador (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_tt_treballador
         FOREIGN KEY (id_treballador) REFERENCES treballador(id)
-        ON DELETE CASCADE ON UPDATE CASCADE
+        ON DELETE NO ACTION ON UPDATE CASCADE
 );
 
 -- 3C. Incidencias
@@ -402,7 +402,7 @@ CREATE TABLE solucio (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_sol_tasca
         FOREIGN KEY (id_tasca) REFERENCES tasca(id)
-        ON DELETE SET NULL ON UPDATE CASCADE
+        ON DELETE NO ACTION ON UPDATE CASCADE
 );
 
 /*=============================================================
@@ -413,7 +413,7 @@ CREATE TABLE recurs (
     id             SERIAL PRIMARY KEY,      -- PK autoincremental
     nom            VARCHAR(120) NOT NULL,   -- Nombre genérico
     unitats_mesura VARCHAR(40)  NOT NULL,   -- Unidades (kg, m3…)
-    quantitat_stock NUMERIC NOT NULL,       -- Cantidad en almacén
+    quantitat_stock (NUMERIC(8,2)) NOT NULL,       -- Cantidad en almacén
     tipus_recurs   VARCHAR(60) NOT NULL     -- Material, equipo…
 );
 
@@ -430,10 +430,10 @@ CREATE TABLE sol_recurs (
     proveidor        VARCHAR(120) NULL,    -- Proveedor asignado
     CONSTRAINT fk_sr_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
+        ON DELETE NO ACTION ON UPDATE CASCADE,
     CONSTRAINT fk_sr_recurs
         FOREIGN KEY (id_recurs) REFERENCES recurs(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE  --Restric perque vul que quedi constancia de les solicituds de cada material.
+        ON DELETE NO ACTION ON UPDATE CASCADE  --Restric perque vul que quedi constancia de les solicituds de cada material.
 );
 -- Índices para filtros habituales
 CREATE INDEX idx_sr_obra   ON sol_recurs (id_obra);

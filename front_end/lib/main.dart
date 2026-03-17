@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/base/mainScaffold.dart';
-import 'package:front_end/screens/base/splash_screen.dart';
-
-import 'package:front_end/screens/treballador/perfil_treb.dart';
-import 'package:front_end/screens/base/log_in.dart';
-import 'screens/base/log_in.dart'; // Ruta correcta si tens obra_list.dart a lib/screens
+import 'package:front_end/screens/base/log_in.dart'; // Ruta correcta si tens obra_list.dart a lib/screens
 import 'screens/base/registerE.dart'; // Ruta correcta si tens register.dart a lib/screens
-import 'screens/obra_edit.dart'; // Ruta correcta si tens obra_create.dart a lib/screens
-import 'screens/base/splash_screen.dart'; // Ruta correcta si tens splash_screen.dart a lib/screens
 import 'screens/base/root_screen.dart'; 
-import 'screens/empresa/obra_form.dart'; // Ruta correcta si tens obra_edit.dart a lib/screens
-import 'screens/empresa/home_empresa.dart'; // Ruta correcta si tens home_screen.dart a lib/screens
-import 'models/obra.dart'; // Ruta correcta si tens obra.dart a lib/models
 import 'screens/empresa/treballador_form.dart';
 void main() {
   runApp(const MyApp());

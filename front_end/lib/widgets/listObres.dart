@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/obra.dart'; // Importa la classe Obra
+import '../models/obra_models.dart'; // Importa la classe Obra
 import '../services/api_service.dart'; // Importa la funció fetchObres
 class ObraListWidget extends StatefulWidget {
   const ObraListWidget({super.key});
@@ -34,8 +34,8 @@ class _ObraListWidgetState extends State<ObraListWidget> {
         itemBuilder: (context, index) {
           final obra = obres[index];
           return ListTile(
-            title: Text(obra.Nom),
-            subtitle: Text('${obra.Ubicacio} – Inici: ${obra.DataInici}'),
+            title: Text(obra.nom),
+            subtitle: Text('${obra.ubicacio} – Inici: ${obra.dataInici}'),
           );
         },
       ),

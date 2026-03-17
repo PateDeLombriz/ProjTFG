@@ -1,12 +1,12 @@
 from django.urls import path
 from .views import (
     # Obres
-    ObraList, ObraDetail,
+    MeView, ObraList, ObraDetail,
     # Empresa / Treballador
-    EmpresaList, EmpresaDetail,
+    EmpresaList, EmpresaDetail, ObresListEmpresa,
     TreballadorList, TreballadorDetail,
     # Altres entitats
-    ContrasenyaList,UbicacioList,
+    ContrasenyaList, UbicacioDetail,UbicacioList,
     PermisList, PermisUsuariList, PermisUsuariDetail,
     IncidenciaList, IncidenciaDetail,
     TasquesList, TasquesDetail,
@@ -23,9 +23,10 @@ from .views import (
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('', LoginView.as_view(), name='root-login'),
-
+    path('me/', MeView.as_view(), name='me'),
     # Obres
-    path('obres/', ObraList.as_view(), name='obra-list'),
+    path('obres/', ObraList.as_view(), name='obra-list'),#Totes les obres
+    path ('obresEmpresa/<int:pk>', ObresListEmpresa.as_view(), name='obres-empresa-list'),#Obres d'una empresa
     path('obres/<int:pk>/', ObraDetail.as_view(), name='obra-detail'),
 
     # Treballadors
@@ -40,6 +41,8 @@ urlpatterns = [
     path('contrasenyes/', ContrasenyaList.as_view(), name='contrasenya-list'),
     #Ubicacio
     path('ubicacio/', UbicacioList.as_view(), name='ubicacio-list'),
+    path('ubicacio/<int:pk>/', UbicacioDetail.as_view(), name='ubicacio-detail'),
+
     # Permisos
     path('permis/', PermisList.as_view(), name='permis-list'),
     path('permis_treballador/', PermisUsuariList.as_view(), name='permisusuari-list'),

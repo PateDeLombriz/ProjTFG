@@ -15,7 +15,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   // ───────────── Config API (ajusta paths si calen) ─────────────
-  static const _apiBase = 'http://localhost:8000/apiApp';
+  static const _apiBase = 'http://localhost:8000/api';
   static const _epEmpreses   = '$_apiBase/empreses/';     // POST empresa
   static const _epUbicacions = '$_apiBase/ubicacio/';     // POST ubicació (⚠️ si al teu urls és /ubicacions/, canvia-ho)
   static const _epPwds       = '$_apiBase/contrasenyes/'; // POST contrasenya
@@ -165,7 +165,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Empresa registrada correctament')),
+        const SnackBar(content: Text('Empresa registrada correctament')),
       );
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {

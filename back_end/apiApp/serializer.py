@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import (Obra, Treballador, Empresa, Contrasenya,
- Permis, PermisTreballador, LogDeSessio, Configuracio, Verificacio,
+from .models import (Obra, ObraEmpresa, Treballador, Empresa, Contrasenya,
+ Permis, PermisTreballador, LogDeSessio, Configuracio, Ubicacio, Verificacio,
     DocumentObra, Tasca, TascaTreballador, Incidencia, Solucio,
     Recurs, SolRecurs, ResponsableObra,   
     ResponsableObra,ContracteTreballador
@@ -12,22 +12,6 @@ class ObraSerializer(serializers.ModelSerializer):
     class Meta:
         model = Obra
         fields = '__all__'  # Serializes all fields of the Obra model
-'''
-class UsuariSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuari
-        fields = '__all__'
-
-class UPersonaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UPersona
-        fields = '__all__'
-
-class UEmpresaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UEmpresa
-        fields = '__all__'
-'''
 
 class EmpresaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,7 +29,7 @@ class ContrasenyaSerializer(serializers.ModelSerializer):
 
 class UbicacioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Treballador
+        model = Ubicacio
         fields = '__all__'
 
 class PermisSerializer(serializers.ModelSerializer):
@@ -118,4 +102,7 @@ class ResponsableObraSerializer(serializers.ModelSerializer):
         model = ResponsableObra
         fields = '__all__'
 
-        
+class ObraEmpresaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ObraEmpresa
+        fields = '__all__'

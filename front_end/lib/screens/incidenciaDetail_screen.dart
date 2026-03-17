@@ -57,7 +57,7 @@ class _IncidenciaDetailState extends State<IncidenciaDetail> {
   }
 
   Future<void> _carregarTasca(int id) async {
-    final res = await http.get(Uri.parse('http://localhost:8000/api/tasques/$id/'));
+    final res = await http.get(Uri.parse('http://localhost:8000/api/tasca/$id/'));
     if (res.statusCode == 200) {
       setState(() => tasca = jsonDecode(res.body));
     }

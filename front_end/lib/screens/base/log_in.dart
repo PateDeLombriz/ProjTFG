@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
-    try {
+    try {//defineix el endpoint de login segons el teu backend i ajusta el body si cal
       final res = await http.post(
         Uri.parse(_kApiLogin),
         headers: {'Content-Type': 'application/json'},
@@ -49,19 +49,17 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint('LOGIN body=${res.body}');
       debugPrint('LOGIN headers=${res.headers}');
 
+      //Aqui arrriba despres executar LoginView.Post i el backend retorna el token, subject_id i tipus. Segons el tipus redirigeix a una pantalla o altre
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         await _storage.write(key: 'token', value: data['token']);
-        await _storage.write(
-          key: 'subject_id',
-          value: data['subject_id'].toString(),
-        );
+        await _storage.write(key: 'subject_id', value: data['subject_id'].toString());
         await _storage.write(key: 'tipus', value: data['tipus']);
 
         if (!mounted) return;
 
         final tipus =
-            (data['tipus'] as String?)?.toLowerCase(); // Es pasaa minuscula
+            (data['tipus'] as String?)?.toLowerCase(); // Es pasa minuscula
 
         if (tipus == 'treballador') {
           Navigator.pushReplacement(

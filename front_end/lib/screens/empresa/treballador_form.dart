@@ -575,7 +575,7 @@ class _TreballadorFormState extends State<TreballadorForm> {
                 children: [
                   _flagChip(
                     label: 'Lectura',
-                    value: sel!.lectura,
+                    value: sel.lectura,
                     onChanged: (v) => setState(
                         () => _seleccioPermis[p.id] = sel.copyWith(lectura: v)),
                     color: scheme.primary,

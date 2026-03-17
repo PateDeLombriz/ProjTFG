@@ -1,86 +1,57 @@
-
 services:
   db:
     image: postgres:17
+    env_file:
+      - .env
     environment:
       POSTGRES_DB: ${DATABASE_NAME}
       POSTGRES_USER: ${DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-    ports:
-      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data #Amb django tmb es pot fer servir sqlite, pero per utilitzar la bd externa es necessari postgres.
-      - ../postgres/db-init:/docker-entrypoint-initdb.d #Arxiu per la inicialització de la base de dades
-    env_file:
-      - .env
+      - postgres_data:/var/lib/postgresql/data
+      - ../postgres/db-init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"   # treu-ho si no el necessites fora docker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   django-web:
     build:
       context: ../back_end
-    container_name: django-docker
+    env_file:
+      - .env
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ../back_end:/app
     ports:
       - "8000:8000"
     depends_on:
-      - db
-    environment:
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      DEBUG: ${DEBUG}
-      DJANGO_LOGLEVEL: ${DJANGO_LOGLEVEL}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
-      DATABASE_ENGINE: ${DATABASE_ENGINE}
-      DATABASE_NAME: ${DATABASE_NAME}
-      DATABASE_USERNAME: ${DATABASE_USERNAME}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_PORT: ${DATABASE_PORT}
-    env_file:
-      - .env
+      db:
+        condition: service_healthy
 
-  flutter-web: #AQUEST ES EL SERVICI DE FLUTTER PER A LA *********APLICACIO************
+  flutter-web:
     build:
-      context: ../front_end            # Carpeta donde está el Dockerfile y el código Flutter
-      dockerfile: Dockerfile           # Nombre del Dockerfile a usar para construir la imagen
-    container_name: flutter-docker     # Nombre fijo para el contenedor
+      context: ../front_end
+      dockerfile: Dockerfile
     ports:
-      - "9000:9000"                    # Expone el puerto 9000 del contenedor al 9000 del host (para Flutter web)
+      - "9000:9000"
     volumes:
       - ../front_end:/home/developer/app
+      - flutter_pub_cache:/home/developer/.pub-cache
+      # - android_sdk:/opt/android_sdk   # només si realment ho uses
+      # - gradle_cache:/home/developer/.gradle  # només si realment ho uses
     working_dir: /home/developer/app
-    #command: flutter run -d emulator-5554
-    #command: flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0
-    command: sh -c "cd /home/developer/app && flutter pub get && flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0"
+    command: sh -c "flutter pub get && flutter run -d web-server --web-port=9000 --web-hostname=0.0.0.0"
     depends_on:
-      - django-web                     # Espera que el servicio django-web esté listo antes de iniciar este contenedor
-    user: "1000:1000"                  # Ejecuta el contenedor con este UID:GID para evitar problemas de permisos
+      - django-web
     extra_hosts:
-      - "host.docker.internal:host-gateway"  # Permite que el contenedor acceda al host usando el alias host.docker.internal
-    environment:
-      - ANDROID_ADB_SERVER_ADDRESS=host.docker.internal   # Indica que adb debe conectarse al host y no al contenedor
-      - ANDROID_SDK_ROOT=/opt/android_sdk
-      - ANDROID_HOME=/opt/android_sdk             # Alias para la variable ANDROID_SDK_ROOT, usado por algunas herramientas Android
+      - "host.docker.internal:host-gateway"
 
-volumes: # Per referenciar els volums que es creen per a la base de dades i altres serveis
- # es fa un *docker volume inspect docker_postgres_data*  
- #on "docker" es el nom de directori + "postrges_data" el nom del volum
+volumes:
   postgres_data:
-  android_sdk:        # ← persistirá /opt/android_sdk (SDK, NDK, build-tools…)
-  flutter_pub_cache:  # ← persistirá ~/.pub-cache (paquetes de Dart/Flutter)
-  gradle_cache:       # ← persistirá ~/.gradle (si algún plugin usa Gradle)
-
-  #flutter-web:#AQUEST ES EL SERVICI DE FLUTTER PER A LA *********web************
-   #build:
-      #context: ../front_end
-      #dockerfile: Dockerfile
-    #container_name: flutter-docker
-    #ports:
-    #  - "9000:9000"
-    #volumes:
-    #  - ../front_end:/home/developer/app
-    #working_dir: /home/developer/app
-    #command: flutter run -d emulator-5554
-    #depends_on:
-    #  - django-web
-    #user: "1000:1000"
+  android_sdk:
+  flutter_pub_cache:
+  gradle_cache:

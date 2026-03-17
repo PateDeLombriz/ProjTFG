@@ -1,39 +1,54 @@
-#COm es construeix la imatge, no s'executa cada vegada que arranques es contenidor 
-
-# Etapa 1: Builder - instala las dependencias (incluyendo gunicorn)
+# Etapa 1: Builder - compila dependències (wheels)
 FROM python:3.11-slim AS builder
 
-RUN apt-get update
-RUN apt-get install -y build-essential
-RUN apt-get install -y gcc
-RUN apt-get install -y g++
-RUN apt-get install -y libpq-dev
-RUN rm -rf /var/lib/apt/lists/*
+# 1) Un sol layer d'APT + --no-install-recommends + neteja
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    libpq-dev \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# 2) Copiam requirements abans per aprofitar cache
 COPY requirements.txt /app/
-RUN pip install --upgrade pip 
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Etapa 2: Runtime - prepara la imagen final con el código y dependencias necesarias
+# 3) Generam wheels: evita copiar /usr/local sencer al runtime
+RUN pip install --upgrade pip \
+ && pip wheel --no-cache-dir -r requirements.txt -w /wheels
 
+
+# Etapa 2: Runtime - només el necessari per executar
 FROM python:3.11-slim
 
+# 4) Instal·lam només runtime deps:
+#    - libpq5: llibreria runtime per connectar a Postgres (psycopg2)
+#    - postgresql-client: aporta pg_isready (per l'entrypoint)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    postgresql-client \
+  && rm -rf /var/lib/apt/lists/*
+
+# 5) Usuari no-root
 RUN useradd -m -r appuser
 
 WORKDIR /app
-#Este copy es para copiar los archivos de la app al contenedor
-COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/ 
-COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+# 6) Instal·lam les deps des dels wheels (determinístic i net)
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/* \
+ && rm -rf /wheels
+
+# 7) Copiam el codi (propietari correcte)
 COPY --chown=appuser:appuser . .
 
+# 8) Flags de python (igual que tens, bé)
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1 
+ENV PYTHONUNBUFFERED=1
 
 USER appuser
-
 EXPOSE 8000
-# COmmand de gunicor pernsat ja per quant esta en profduccion, no desenvolupament es per aixo que ara mateix
-# es sobreescriu per runserver pensat per desarrollo. Es canvia en el compose.yaml
+
+# 9) CMD de producció; en dev ho sobreescrius al compose amb runserver
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "wsgi:application"]

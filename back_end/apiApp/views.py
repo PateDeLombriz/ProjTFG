@@ -1,4 +1,6 @@
+from datetime import datetime
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAdminUser
 from rest_framework import status
 from django.db.models import Q
 import jwt
@@ -7,11 +9,15 @@ from django.utils import timezone
 from datetime import datetime, timedelta,date
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from .models import (Obra,Empresa,Treballador, ContracteTreballador,Ubicacio, Contrasenya, Permis, PermisTreballador,
+from rest_framework.views import APIView
+from rest_framework import permissions
+from rest_framework.exceptions import PermissionDenied
+from .authentication import JWTSubjectAuthentication
+from .models import (Obra,Empresa, ObraEmpresa,Treballador, ContracteTreballador,Ubicacio, Contrasenya, Permis, PermisTreballador,
     LogDeSessio, Configuracio, Verificacio, DocumentObra, Tasca, TascaTreballador,
-    Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra)
+    Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra, LogDeSessio)
 from .serializer import (
-    ObraSerializer, TreballadorSerializer, EmpresaSerializer,
+    ObraEmpresaSerializer, ObraSerializer, TreballadorSerializer, EmpresaSerializer,
     ContracteTreballadorSerializer, ContrasenyaSerializer,
     PermisSerializer, PermisTreballadorSerializer, LogDeSessioSerializer, UbicacioSerializer,
     ConfiguracioSerializer, VerificacioSerializer, DocumentObraSerializer,
@@ -31,7 +37,7 @@ def generar_token_jwt(subject_id: int, subject_type: str, expires_hours: int = 2
     """
     now = timezone.now()
     payload = {
-        "sub":   subject_id,
+        "sub":   str(subject_id),  # ID del subjecte (empresa o treballador)
         "tipus": subject_type,  # 'empresa' | 'treballador'
         "iat":   int(now.timestamp()),
         "exp":   int((now + timedelta(hours=expires_hours)).timestamp()),
@@ -83,6 +89,8 @@ class EmpresaList(APIView):
     GET: llista d'empreses amb filtres opcionals (?estat=activa&sector=...&q=...)
     POST: crea empresa (via serializer)
     """
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         qs = Empresa.objects.select_related('ubicacio').all()
 
@@ -123,6 +131,8 @@ class EmpresaDetail(APIView):
       - treballadors contractats
       - obres relacionades
     """
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, pk, format=None):
         empresa = get_object_or_404(Empresa, pk=pk)
 
@@ -188,6 +198,9 @@ class EmpresaDetail(APIView):
 # TREBALLADOR
 # ───────────────────────────────────────────────
 class TreballadorList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, format=None):
         treballadors = Treballador.objects.all()
         serializer = TreballadorSerializer(treballadors, many=True)
@@ -208,7 +221,21 @@ class TreballadorDetail(APIView):
       - ubicació
       - contractes i empreses
     """
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, pk, format=None):
+        subject_type = request.auth["tipus"]
+        subject_id = int(request.auth["subject_id"])
+
+        # Aquesta vista només la poden usar empreses.
+        if subject_type != "empresa":
+            raise PermissionDenied("Només les empreses poden consultar aquestes obres.")
+
+        # Una empresa només pot consultar les seves pròpies obres.
+        if subject_id != pk:
+            raise PermissionDenied("No pots consultar les obres d'una altra empresa.")
+
         treballador = get_object_or_404(Treballador, pk=pk)
 
         treballador_data = {
@@ -259,6 +286,8 @@ class TreballadorDetail(APIView):
 # UBICACIÓ
 # ───────────────────────────────────────────────
 class UbicacioList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         ubicacions = Ubicacio.objects.all()
         serializer = UbicacioSerializer(ubicacions, many=True)
@@ -273,6 +302,10 @@ class UbicacioList(APIView):
 
 
 class UbicacioDetail(APIView):
+
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, pk, format=None):
         ubicacio = get_object_or_404(Ubicacio, pk=pk)
         serializer = UbicacioSerializer(ubicacio)
@@ -298,6 +331,8 @@ class ContracteTreballadorList(APIView):
     - GET: permet obtenir contractes amb filtres opcionals
     - POST: permet crear nous contractes
     """
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
         # Obtenim tots els contractes de la base de dades
@@ -361,6 +396,8 @@ class ContracteTreballadorDetail(APIView):
     - PATCH: actualitza parcialment
     - DELETE: elimina el contracte
     """
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self, pk):
         # Recupera el contracte o retorna 404 si no existeix
@@ -425,6 +462,8 @@ class TreballadorContracteVigentView(APIView):
     Endpoint específic per obtenir el contracte vigent d'un treballador avui.
     GET /api/treballadors/<id_treballador>/contracte_vigent/
     """
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, id_treballador, format=None):
         avui = timezone.now().date()
         # Filtra contractes que comencen abans o igual a avui i que no han acabat
@@ -442,14 +481,29 @@ class TreballadorContracteVigentView(APIView):
 
 
 
-
-
 #Gestiona llistes d'objectes del model d'Obres en aquest cas
 class ObraList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, format=None):
         obres = Obra.objects.all()
-        serializer = ObraSerializer(obres, many=True)
-        return Response(serializer.data)
+        obra_data = ObraSerializer(obres, many=True)
+        if(obra_data.ubicacio != None):
+                obra_data['ubicacio_info'] = {
+                'id_ubicacio': obra_data.ubicacio.id_ubicacio,
+                'adreca': obra_data.ubicacio.adreca,
+                'ciutat': obra_data.ubicacio.ciutat,
+                'codi_postal': obra_data.ubicacio.codi_postal,
+                'latitud': obra_data.ubicacio.latitud,
+                'longitud': obra_data.ubicacio.longitud,
+            }
+                
+        responsable = ResponsableObra.objects.filter(id_obra=obra_data.id_obra)
+        if(responsable.exists()):
+            obra_data['responsable'] = ResponsableObraSerializer(responsable, many=True).data
+
+        return Response(obra_data)
     
     def post(self, request, format=None):
         serializer = ObraSerializer(data=request.data)
@@ -458,7 +512,84 @@ class ObraList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class ObresListEmpresa(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk, format=None):
+        # Recuperam del JWT quin subjecte està autenticat.
+        subject_type = request.auth["tipus"]
+        subject_id = int(request.auth["subject_id"])
+
+        # Aquesta vista només la poden usar empreses.
+        if subject_type != "empresa":
+            raise PermissionDenied("Només les empreses poden consultar aquestes obres.")
+
+        # Una empresa només pot consultar les seves pròpies obres.
+        if subject_id != pk:
+            raise PermissionDenied("No pots consultar les obres d'una altra empresa.")
+
+        # Cercam les relacions empresa-obra d'aquesta empresa.
+        # select_related evita consultes extra en accedir a id_obra i ubicacio.
+        obres = ObraEmpresa.objects.filter(id_empresa=pk).select_related(
+            "id_obra",
+            "id_obra__ubicacio",
+        )
+
+        # Serialitzam la relació base ObraEmpresa.
+        serializer = ObraEmpresaSerializer(obres, many=True)
+        data = serializer.data
+
+        # Afegim només la informació d'obra que vols retornar.
+        for i, relacio in enumerate(obres):
+            obra = relacio.id_obra
+
+            if obra is None:
+                data[i]["obra_info"] = None
+                continue
+
+            data[i]["obra_info"] = {
+                "nom": obra.nom,
+                "descripcio": obra.descripcio,
+                "estat": obra.estat,
+                "ubicacio": obra.ubicacio.adreca if obra.ubicacio else None,
+            }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    def post(self, request, pk, format=None):
+        subject_type = request.auth["tipus"]
+        subject_id = int(request.auth["subject_id"])
+
+        if subject_type != "empresa":
+            raise PermissionDenied("Només les empreses poden crear obres.")
+
+        if subject_id != pk:
+            raise PermissionDenied("No pots crear obres per una altra empresa.")
+
+        serializer = ObraEmpresaSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        subject_type = request.auth["tipus"]
+        subject_id = int(request.auth["subject_id"])
+
+        if subject_type != "empresa":
+            raise PermissionDenied("Només les empreses poden eliminar obres.")
+
+        if subject_id != pk:
+            raise PermissionDenied("No pots eliminar obres d'una altra empresa.")
+
+        obres = ObraEmpresa.objects.filter(id_empresa=pk)
+        obres.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
+
     # Detall d'una obra amb totes les seves incidències, tasques i documents
 class ObraDetail(APIView):
     """
@@ -470,13 +601,42 @@ class ObraDetail(APIView):
     - Les sol·licituds de recursos
     - El responsable d'obra (si n'hi ha)
     """
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
+
+        subject_type = request.auth["tipus"]
+        subject_id = int(request.auth["subject_id"])
+
+        if subject_type != "empresa":
+            raise PermissionDenied("Només les empreses poden crear obres.")
+
+        if subject_id != pk:
+            raise PermissionDenied("No pots crear obres per una altra empresa.")
+
         # Comprovar que l'obra existeix o retornar 404
         obra = get_object_or_404(Obra, pk=pk)
 
         # Serialitzar l'obra
         obra_data = ObraSerializer(obra).data
+
+         # ───────────────────────────────────────────────
+        # Afegir informació detallada de la ubicació
+        # ───────────────────────────────────────────────
+        if obra.ubicacio != None:
+            obra_data['ubicacio_info'] = {
+                'id_ubicacio': obra.ubicacio.id_ubicacio,
+                'adreca': obra.ubicacio.adreca,
+                'ciutat': obra.ubicacio.ciutat,
+                'codi_postal': obra.ubicacio.codi_postal,
+                'provincia': obra.ubicacio.provincia,
+                'pais': obra.ubicacio.pais,
+                'latitud': obra.ubicacio.latitud,
+                'longitud': obra.ubicacio.longitud,
+            }
+        else:
+            obra_data['ubicacio_info'] = None
 
         # ───────────────────────────────────────────────
         # Llistar les incidències associades
@@ -527,6 +687,9 @@ class ObraDetail(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class TasquesList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
 # El metode_getObject obté una tasca específica per ID
     def getObject(self, pk):#Aixo he de mirar si va be i funciona correctament si se li passa un id
         try:
@@ -572,7 +735,8 @@ class RecursDetail(APIView):
     - Totes les sol·licituds associades (SolRecurs)
     - Informació bàsica de les obres implicades
     """
-
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, pk):
         # Busquem el recurs pel seu ID (primary key)
         recurs = get_object_or_404(Recurs, pk=pk)
@@ -603,6 +767,9 @@ class RecursDetail(APIView):
         return Response(recurs_data, status=status.HTTP_200_OK)
 
 class IncidenciaDetail(APIView):
+
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, pk):
         incidencia = get_object_or_404(Incidencia, pk=pk)
 
@@ -628,6 +795,8 @@ class IncidenciaDetail(APIView):
 
 
 class TasquesDetail(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, pk):
         tasca = get_object_or_404(Tasca, pk=pk)
 
@@ -667,6 +836,10 @@ class TasquesDetail(APIView):
 
 
 class ContrasenyaList(APIView):
+    permission_classes = [IsAdminUser]
+    authentication_classes = [JWTSubjectAuthentication]
+    #permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, format=None):
         contrasenyes = Contrasenya.objects.all()
         serializer = ContrasenyaSerializer(contrasenyes, many=True)
@@ -680,6 +853,8 @@ class ContrasenyaList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PermisList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         permisos = Permis.objects.all()
         serializer = PermisSerializer(permisos, many=True)
@@ -693,14 +868,16 @@ class PermisList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+
 # ─────────────────────────────────────────────────────────────
 # Login d’usuari/empresa
 # ─────────────────────────────────────────────────────────────
 class LoginView(APIView):
 
     authentication_classes = []      # <-- perquè aquest endpoint és públic
-    permission_classes = []       
-       # <-- cap permís requerit
+    permission_classes = [] # <-- cap permís requerit
+
     def get(self, request):
         print("⚠️ Algu ha fet un GET a /api/login/")
         print("User-Agent:", request.META.get('HTTP_USER_AGENT'))
@@ -729,6 +906,7 @@ class LoginView(APIView):
                 subject_type = 'treballador'
                 subject_id = persona.pk
                 pwd_qs = Contrasenya.objects.filter(id_treballador=persona).order_by('-data_creacio')
+        
         except (Empresa.DoesNotExist, Treballador.DoesNotExist):
             return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -736,7 +914,7 @@ class LoginView(APIView):
         pwd_obj = pwd_qs.filter(data_reemplas__isnull=True).first() or pwd_qs.first()
         if not pwd_obj:
             return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
-#Tan sols per desenvolupament*****************************************************************************************************
+        #Tan sols per desenvolupament perque aguanta contras hash i text pla*****************************************************************************************************
         ok, new_hash = _check_legacy_or_hash(password, pwd_obj.clau)
         if not ok:
             return Response({'detail': 'Credencials incorrectes'}, status=status.HTTP_400_BAD_REQUEST)
@@ -745,12 +923,136 @@ class LoginView(APIView):
         if new_hash:
             pwd_obj.clau = new_hash
             pwd_obj.save(update_fields=['clau'])
+        
+        # Prepara les dades per al registre de sessió a l'historial
+        now = timezone.localtime()
 
-        # 3) Token
+        log_data = {
+        'data_inici': now.date(),
+        'hora_inici': now.time().replace(microsecond=0),
+        }
+
+        if subject_type == 'treballador':
+            log_data['id_treballador_id'] = subject_id
+        else:
+            log_data['id_empresa_id'] = subject_id
+        #Crear elr registre a l'historial de entrades i l'envia a backend
+        LogDeSessio.objects.create(**log_data)
+
+        # 3) Token encriptat amb subject_id i subject_type
         token = generar_token_jwt(subject_id, subject_type)
+        
         return Response({'token': token, 'subject_id': subject_id, 'tipus': subject_type}, status=status.HTTP_200_OK)
 
+class MeView(APIView):
+    """
+    Endpoint de sessió per saber qui és l'usuari autenticat.
+
+    Aquesta vista NO necessita rebre cap id des del frontend.
+    Tot surt del token validat al backend.
+
+    Retorna:
+    - tipus del subjecte autenticat
+    - subject_id
+    - id_empresa resolt al backend
+    - una mica d'informació bàsica útil per la UI
+    """
+    def get(self, request, format=None):
+        subject_type = request.auth["tipus"] #objecte Empresa o Treballador
+        subject_id = request.auth["subject_id"]
+        subject_obj = request.user   #dades del token
+
+        empresa_activa = self.getEmpresaSubj(
+            subject_obj=subject_obj,
+            subject_type=subject_type,
+        )
+
+        resposta = {
+            "tipus": subject_type, 
+            "subject_id": subject_id,
+            "id_empresa": empresa_activa.id if empresa_activa else None,
+        }
+
+        # Afegim una mica d'informació bàsica segons el tipus
+        if subject_type == "empresa":
+            resposta["subjecte"] = {
+                "id": subject_obj.id,
+                "nom_empresa": subject_obj.nom_empresa,
+            }
+
+        elif subject_type == "treballador":
+            resposta["subjecte"] = {
+                "id": subject_obj.id,
+                "nom": subject_obj.nom,
+                "cognoms": subject_obj.cognoms,
+                "nickname": subject_obj.nickname,
+            }
+
+        # Afegim empresa activa si n'hi ha
+      # if empresa_activa:
+      #     resposta["empresa_activa"] = {
+      #         "id": empresa_activa.id,
+      #         "nom_empresa": empresa_activa.nom_empresa,
+      #         "email": empresa_activa.email,
+      #         "sector": empresa_activa.sector,
+      #         "estat": empresa_activa.estat,
+      #     }
+
+        return Response(resposta, status=status.HTTP_200_OK)
+    
+    @staticmethod
+    def getEmpresaSubj(subject_obj, subject_type):
+        """
+        Resol quina és l'empresa activa del subjecte autenticat.
+
+        Regles:
+        - Si el subjecte és una empresa, la seva empresa activa és ella mateixa.
+        - Si el subjecte és un treballador, cercam un contracte vigent avui:
+            * estat = 'actiu'
+            * data_contracte <= avui (o nul)
+            * data_fi >= avui (o nul)
+
+        Retorna:
+        - objecte Empresa si es pot determinar
+        - None si no hi ha empresa activa
+        """
+
+        # Cas 1: ha entrat una empresa
+        if subject_type == "empresa":
+            return subject_obj
+
+        # Cas 2: ha entrat un treballador
+        if subject_type == "treballador":
+            avui = date.today()
+
+            contracte = (
+                ContracteTreballador.objects
+                .select_related("id_empresa")
+                .filter(
+                    id_treballador=subject_obj,
+                    estat="actiu"
+                )
+                .filter(
+                    Q(data_contracte__isnull=True) | Q(data_contracte__lte=avui)
+                )
+                .filter(
+                    Q(data_fi__isnull=True) | Q(data_fi__gte=avui)
+                )
+                .order_by("-data_contracte", "-id")
+                .first()
+            )
+
+            if contracte and contracte.id_empresa:
+                return contracte.id_empresa
+
+            return None
+
+        # Si arriba un tipus desconegut, retornam None per seguretat
+        return None
+
 class LogDeSessioList(APIView):
+    permission_classes = [IsAdminUser]
+
     def get(self, request, format=None):
         logs = LogDeSessio.objects.all()
         serializer = LogDeSessioSerializer(logs, many=True)
@@ -764,6 +1066,10 @@ class LogDeSessioList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ConfiguracioList(APIView):
+
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, format=None):
         configs = Configuracio.objects.all()
         serializer = ConfiguracioSerializer(configs, many=True)
@@ -777,6 +1083,9 @@ class ConfiguracioList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class VerificacioList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, format=None):
         verificacions = Verificacio.objects.all()
         serializer = VerificacioSerializer(verificacions, many=True)
@@ -790,6 +1099,8 @@ class VerificacioList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DocumentObraList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         qs = DocumentObra.objects.all()
         id_obra = request.query_params.get('id_obra')
@@ -807,6 +1118,8 @@ class DocumentObraList(APIView):
 
 
 class TascaList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         tasques = Tasca.objects.all()
         serializer = TascaSerializer(tasques, many=True)
@@ -821,6 +1134,8 @@ class TascaList(APIView):
 
 
 class TascaTreballadorList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         qs = TascaTreballador.objects.all()
         id_tasca = request.query_params.get('id_tasca')
@@ -838,6 +1153,8 @@ class TascaTreballadorList(APIView):
 
 
 class IncidenciaList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         incidencies = Incidencia.objects.all()
         serializer = IncidenciaSerializer(incidencies, many=True)
@@ -852,6 +1169,8 @@ class IncidenciaList(APIView):
 
 
 class SolucioList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         qs = Solucio.objects.all()
         id_incidencia = request.query_params.get('id_incidencia')
@@ -868,6 +1187,8 @@ class SolucioList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SolucioDetail(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     """
     API endpoint per obtenir els detalls complets d'una solució.
     Inclou dades relacionades: incidència associada i tasca (si n'hi ha).
@@ -919,6 +1240,8 @@ class SolucioDetail(APIView):
 
 
 class RecursList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         recursos = Recurs.objects.all()
         serializer = RecursSerializer(recursos, many=True)
@@ -933,6 +1256,9 @@ class RecursList(APIView):
 
 
 class SolRecursList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, format=None):
         qs = SolRecurs.objects.all()
         id_obra = request.query_params.get('id_obra')
@@ -954,6 +1280,9 @@ class SolRecursList(APIView):
 
 # -------------------- DOCUMENT_OBRA DETAIL --------------------
 class DocumentObraDetail(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, pk, format=None):
         doc = get_object_or_404(DocumentObra, pk=pk)
         serializer = DocumentObraSerializer(doc)
@@ -975,6 +1304,9 @@ class DocumentObraDetail(APIView):
 
 # Opcional: pujada de fitxer BINARI amb multipart/form-data
 class DocumentObraUploadView(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, format=None):
@@ -1008,6 +1340,8 @@ class DocumentObraUploadView(APIView):
 
 # -------------------- TASCA_TREBALLADOR DETAIL & BULK DELETE --------------------
 class TascaTreballadorDetail(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, pk, format=None):
         assignacio = get_object_or_404(TascaTreballador, pk=pk)
         serializer = TascaTreballadorSerializer(assignacio)
@@ -1028,6 +1362,8 @@ class TascaTreballadorDetail(APIView):
 
 
 class TascaTreballadorBulkDeleteView(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     """
     Elimina totes les assignacions d'una tasca.
     URL: /api/tasca_treballador/<id_tasca>/bulk_delete/
@@ -1050,6 +1386,9 @@ class SolucioBulkDeleteView(APIView):
 
 # -------------------- SOL_RECurs DETAIL --------------------
 class SolRecursDetail(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, pk, format=None):
         sol = get_object_or_404(SolRecurs, pk=pk)
         data = SolRecursSerializer(sol).data
@@ -1077,6 +1416,8 @@ class SolRecursDetail(APIView):
 
 # ---------- 2) Permisos d'usuari: llista amb filtres + DETAIL amb PUT ----------
 class PermisUsuariList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         qs = PermisTreballador.objects.all()
         id_treballador = request.query_params.get('id_treballador')
@@ -1096,6 +1437,8 @@ class PermisUsuariList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PermisUsuariDetail(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, pk, format=None):
         obj = get_object_or_404(PermisTreballador, pk=pk)
         return Response(PermisTreballadorSerializer(obj).data)
@@ -1123,6 +1466,8 @@ class PermisUsuariDetail(APIView):
 
 # ---------- 3) ResponsableObra: afegeix filtres útils ----------
 class ResponsableObraList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         qs = ResponsableObra.objects.all()
         id_treballador = request.query_params.get('id_treballador')
@@ -1145,6 +1490,8 @@ class ResponsableObraList(APIView):
 
 # ---------- 4) TascaTreballador: afegeix filtre per id_treballador ----------
 class TascaTreballadorList(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, format=None):
         qs = TascaTreballador.objects.all()
         id_tasca = request.query_params.get('id_tasca')
@@ -1164,6 +1511,8 @@ class TascaTreballadorList(APIView):
 
 # ---------- 5) Endpoint opcional: tasques d'un usuari (evita bucles al front) ----------
 class TreballladorTasquesAssignadesView(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     """Retorna les tasques detallades assignades a un usuari.
     GET /api/usuaris/<usuari_id>/tasques/
     """
@@ -1188,6 +1537,8 @@ class TreballladorTasquesAssignadesView(APIView):
 
 # ---------- 6) Endpoint opcional: obres participades per usuari ----------
 class TreballadorObresParticipadesView(APIView):
+    authentication_classes = [JWTSubjectAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
     """Retorna la llista d'obres on l'usuari ha participat (tasques o responsable)."""
     def get(self, request, treballador_id, format=None):
         ids_tasques = TascaTreballador.objects.filter(id_treballador_id=treballador_id).values_list('id_tasca_id', flat=True)

@@ -207,7 +207,7 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
     };
 
     final res = await http.put(
-      Uri.parse('$baseUrl/tasques/$id/'),
+      Uri.parse('$baseUrl/tasca/$id/'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(payload),
     );

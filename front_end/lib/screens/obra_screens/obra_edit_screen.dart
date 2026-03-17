@@ -10,7 +10,10 @@
 // ---------------------------------------------------------------------------------
 
 import 'dart:convert';
+import 'package:front_end/dialogs/seleccionar_ubicacio_dialog.dart';
+
 import 'package:flutter/material.dart';
+import 'package:front_end/models/ubicacio.dart';
 import 'package:http/http.dart' as http;
 
 class ObraEditScreen extends StatefulWidget {
@@ -35,6 +38,11 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
 
   DateTime? _dataInici;
   DateTime? _dataPrevFi;
+  Ubicacio? _ubicacioTemporal;
+  int?
+      _ubicacioId; // per guardar l'id de la ubicació seleccionada al mapa, si es canvia des d'allà
+  double? _latitud;
+  double? _longitud;
 
   bool _loading = true; // mentre refresquem del servidor
   bool _saving = false;
@@ -64,12 +72,43 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
   }
 
   void _prefill(Map<String, dynamic> o) {
-    _nomCtrl.text = (o['nom'] ?? o['Nom'] ?? '') as String;
-    _ubicacioCtrl.text = (o['ubicacio'] ?? o['Ubicacio'] ?? '') as String;
+    _nomCtrl.text = (o['nom'] ?? o['Nom'] ?? '').toString();
+
+    // 1) Guardam la FK real de la ubicació
+    final ubicacioRaw = o['ubicacio'] ?? o['Ubicacio'];
+    if (ubicacioRaw is int) {
+      _ubicacioId = ubicacioRaw;
+    } else {
+      _ubicacioId = int.tryParse('${ubicacioRaw ?? ''}');
+    }
+
+    // 2) Si el backend ja ens envia la informació ampliada, la usam per mostrar text
+    final ubicacioInfo = o['ubicacio_info'];
+    if (ubicacioInfo is Map<String, dynamic>) {
+      final adreca = (ubicacioInfo['adreca'] ?? '').toString().trim();
+      final ciutat = (ubicacioInfo['ciutat'] ?? '').toString().trim();
+      final provincia = (ubicacioInfo['provincia'] ?? '').toString().trim();
+
+      _ubicacioCtrl.text = [
+        adreca,
+        ciutat,
+        provincia,
+      ].where((e) => e.isNotEmpty).join(', ');
+
+      _latitud = double.tryParse('${ubicacioInfo['latitud'] ?? ''}');
+      _longitud = double.tryParse('${ubicacioInfo['longitud'] ?? ''}');
+    } else {
+      // Si no hi ha ubicacio_info, deixam un text provisional
+      _ubicacioCtrl.text =
+          _ubicacioId == null ? '' : 'Ubicació seleccionada (#$_ubicacioId)';
+    }
+
     final pr = o['pressupost'];
     _pressupostCtrl.text = pr == null ? '' : '$pr';
-    _descripcioCtrl.text = (o['descripcio'] ?? o['Descripcio'] ?? '') as String;
-    _estat = (o['estat'] ?? o['Estat'] ?? _estat) as String;
+
+    _descripcioCtrl.text =
+        (o['descripcio'] ?? o['Descripcio'] ?? '').toString();
+
     _dataInici = _parseDate(o['data_inici'] ?? o['DataInici']);
     _dataPrevFi = _parseDate(o['data_prev_fi'] ?? o['DataPrevFi']);
 
@@ -79,10 +118,7 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
       _estat = _estats.first;
     } else {
       if (!_estats.contains(incoming)) {
-        _estats.insert(
-          0,
-          incoming,
-        ); // afegeix el valor desconegut com a opció vàlida
+        _estats.insert(0, incoming);
       }
       _estat = incoming;
     }
@@ -107,6 +143,31 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
     }
   }
 
+  Future<void> _seleccionarUbicacioMapa() async {
+    // Obrim el popup (dialog) en lloc de la pantalla completa
+    final Ubicacio? resultat = await mostrarSelectorUbicacio(context);
+
+    if (resultat == null || !mounted) return;
+
+    setState(() {
+      // Guardam l'objecte complet
+      _ubicacioTemporal = resultat;
+
+      // Encara no hi ha id definitiu si no s'ha guardat a backend
+      _ubicacioId = null; // aquí pots assignar si tens id backend
+
+      _latitud = resultat.latitud;
+      _longitud = resultat.longitud;
+
+      // Actualitzam el text visible
+      _ubicacioCtrl.text = resultat.displayName.isNotEmpty
+          ? resultat.displayName
+          : resultat.adreca.isNotEmpty
+              ? resultat.adreca
+              : 'Ubicació seleccionada';
+    });
+  }
+
   DateTime? _parseDate(dynamic v) {
     if (v == null) return null;
     if (v is String && v.isNotEmpty) {
@@ -126,6 +187,32 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
   String _fmtDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  Future<int?> _guardarUbicacioTemporalSiCal() async {
+    if (_ubicacioTemporal == null) return _ubicacioId;
+
+    final url = Uri.parse('$baseUrl/ubicacio/');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(_ubicacioTemporal),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      final nouId = data['id_ubicacio'] ?? data['id'];
+      _ubicacioId = nouId is int ? nouId : int.tryParse('$nouId');
+
+      // Ja s'ha convertit en ubicació definitiva
+      _ubicacioTemporal = null;
+
+      return _ubicacioId;
+    } else {
+      _showError('No s\'ha pogut guardar la ubicació: ${response.body}');
+      return null;
+    }
+  }
+
   // --------------------- SUBMIT ---------------------
   Future<void> _guardarCanvis() async {
     if (!_formKey.currentState!.validate()) return;
@@ -133,6 +220,12 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
       _snack('Selecciona les dates obligatòries.');
       return;
     }
+    if (_ubicacioId == null && _ubicacioTemporal == null) {
+      _snack('Selecciona una ubicació al mapa.');
+      return;
+    }
+    final ubicacioFinalId = await _guardarUbicacioTemporalSiCal();
+    if (ubicacioFinalId == null) return;
 
     final ok = await _confirm();
     if (ok != true) return;
@@ -141,7 +234,7 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
     final url = Uri.parse('$baseUrl/obres/$_id/');
     final payload = {
       'nom': _nomCtrl.text.trim(),
-      'ubicacio': _ubicacioCtrl.text.trim(),
+      'ubicacio': _ubicacioId,
       'data_inici': _fmtDate(_dataInici!),
       'data_prev_fi': _fmtDate(_dataPrevFi!),
       'pressupost': double.tryParse(_pressupostCtrl.text.replaceAll(',', '.')),
@@ -176,38 +269,36 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
   Future<bool?> _confirm() async {
     return showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Confirmació'),
-            content: const Text('Vols desar els canvis d\'aquesta obra?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel·la'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Desa'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmació'),
+        content: const Text('Vols desar els canvis d\'aquesta obra?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel·la'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desa'),
+          ),
+        ],
+      ),
     );
   }
 
   void _showError(String msg) {
     showDialog(
       context: context,
-      builder:
-          (_) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(msg),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Tancar'),
-              ),
-            ],
+      builder: (_) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tancar'),
           ),
+        ],
+      ),
     );
   }
 
@@ -294,24 +385,35 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
                     TextFormField(
                       controller: _nomCtrl,
                       decoration: _dec(context, 'Nom *', icon: Icons.title),
-                      validator:
-                          (v) =>
-                              v == null || v.trim().isEmpty
-                                  ? 'Camp obligatori'
-                                  : null,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Camp obligatori'
+                          : null,
                     ),
                     const SizedBox(height: 12),
 
                     TextFormField(
                       controller: _ubicacioCtrl,
+                      readOnly: true,
+                      onTap: _seleccionarUbicacioMapa,
                       decoration: _dec(
                         context,
                         'Ubicació',
                         icon: Icons.location_on_outlined,
+                      ).copyWith(
+                        hintText: 'Toca per seleccionar al mapa',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.map_outlined),
+                          onPressed: _seleccionarUbicacioMapa,
+                        ),
                       ),
+                      validator: (_) {
+                        if (_ubicacioId == null && _ubicacioTemporal == null)
+                          return 'Selecciona una ubicació al mapa';
+                        return null;
+                      },
                     ),
-                    const SizedBox(height: 12),
 
+                    //const SizedBox(height: 12),
                     TextFormField(
                       controller: _pressupostCtrl,
                       keyboardType: TextInputType.number,
@@ -348,15 +450,14 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
                         'Estat *',
                         icon: Icons.flag_outlined,
                       ),
-                      items:
-                          _estats
-                              .map(
-                                (s) => DropdownMenuItem<String>(
-                                  value: s,
-                                  child: Text(s),
-                                ),
-                              )
-                              .toList(),
+                      items: _estats
+                          .map(
+                            (s) => DropdownMenuItem<String>(
+                              value: s,
+                              child: Text(s),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (v) => setState(() => _estat = v),
                     ),
 
@@ -402,7 +503,6 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
               ),
             ],
           ),
-
           if (_loading || _saving)
             Container(
               color: Colors.black.withOpacity(0.1),

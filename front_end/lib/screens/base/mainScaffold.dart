@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/empresa/home_empresa.dart';
-import 'package:front_end/screens/empresa/obra_form.dart';
+import 'package:front_end/screens/obra_screens/obra_form.dart';
 import 'package:front_end/screens/empresa/tasquesList_screen.dart';
 import 'package:front_end/screens/empresa/recursosList_screen.dart';
 import 'package:front_end/screens/empresa/tasca_form.dart';

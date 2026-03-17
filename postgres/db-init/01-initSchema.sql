@@ -54,8 +54,8 @@ CREATE TABLE ubicacio (
     codi_postal VARCHAR(10),
     provincia VARCHAR(50),
     país VARCHAR(50) DEFAULT 'Espanya', 
-    latitud DECIMAL(8,6),
-    longitud DECIMAL(9,6)
+    latitud DECIMAL(10,7),
+    longitud DECIMAL(11,7)
 );
 
 CREATE TABLE treballador (
@@ -67,8 +67,10 @@ CREATE TABLE treballador (
     data_naixement DATE,
     telefon VARCHAR(20),
     email VARCHAR(100),
-    foto VARCHAR(255), -- Aqui se guarda es path fins a sa foto
+    path_foto VARCHAR(255), -- Aqui se guarda es path fins a sa foto
     comentaris TEXT
+
+
 );
 
 
@@ -86,7 +88,6 @@ CREATE TABLE empresa (
     data_alta DATE DEFAULT CURRENT_DATE,
     estat estat_empresa DEFAULT 'activa',
     persona_contacte VARCHAR(100),
-    num_empleats INT,
     comentaris TEXT,
     FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
         ON DELETE SET NULL
@@ -267,7 +268,7 @@ CREATE INDEX idx_ver_user ON verificacio(id_empresa);
 CREATE TABLE obra (
     id            SERIAL PRIMARY KEY,           -- PK autoincremental
     nom           VARCHAR(100) NOT NULL,        -- Nombre comercial
-    ubicacio_id      INTEGER NOT NULL,        -- Dirección o coordenadas
+    ubicacio_id   INTEGER NOT NULL,        -- Dirección o coordenadas
     data_inici    DATE         NOT NULL,        -- Inicio real
     data_prev_fi  DATE         NOT NULL,        -- Fin previsto
     data_fi       DATE         NULL,            -- Fin real (si existe)
@@ -279,6 +280,21 @@ CREATE TABLE obra (
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+CREATE TABLE obra_empresa(
+    id serial primary key,
+    id_empresa INTEGER NOT NULL,
+    id_obra INTEGER NOT NULL,
+    data_i  TIMESTAMP NOT NULL,
+    data_f TIMESTAMP NULL,
+    
+    CONSTRAINT fk_obra
+        FOREIGN KEY (id_obra) REFERENCES obra(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    
+    CONSTRAINT fk_empresa 
+        FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
 -- 2B. Responsables de obra (N-a-N débil)
 CREATE TABLE responsable_obra (
     id             SERIAL PRIMARY  KEY,
@@ -291,10 +307,11 @@ CREATE TABLE responsable_obra (
     CONSTRAINT fk_ro_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
         ON DELETE NO ACTION ON UPDATE CASCADE,
+
     CONSTRAINT fk_ro_treballador
         FOREIGN KEY (id_treballador) REFERENCES treballador(id)
         ON DELETE NO ACTION ON UPDATE CASCADE
-);
+);  
 
 -- 2C. Documentos asociados a la obra
 
@@ -311,7 +328,7 @@ CREATE TABLE document_obra (
     id           SERIAL PRIMARY KEY,        -- PK autoincremental
     id_obra      INTEGER NOT NULL,          -- FK → obra.id
     id_creador   INTEGER NOT NULL,          -- Usuario o no usuario que sube el doc
-    nom          VARCHAR(160) NOT NULL,     -- Nombre de archivo
+    path_doc     TEXT NOT NULL,                 -- Ruta + nom fins al fitxer dins el servidor Back End.
     format       VARCHAR(40)  NOT NULL,     -- PDF, DWG, etc.
     mida         NUMERIC(6,2)      NOT NULL,     -- Tamaño (MB)
     comentari    TEXT         NULL,         -- Comentario opcional
@@ -394,7 +411,7 @@ CREATE TABLE solucio (
     id_tasca      INTEGER NULL,             -- FK opcional → tasca.id: rEPRESENTA LES TASQUES QUE HAN DE FER-SE EFECTUAR LA SOLUCIÓ
     descripcio    TEXT     NOT NULL,        -- Descripción
     cost_monetari BIGINT   NOT NULL,        -- € de la solución
-    eficacia      INTEGER  NOT NULL,        -- 1-5
+    eficacia      INTEGER  NOT NULL CHECK (eficacia BETWEEN 0 AND 5),        -- 1-5
     cost_temporal INTEGER  NOT NULL,        -- Horas empleadas
     impacte       INTEGER  NOT NULL,    -- 1-10 (bajo-alto)
     CONSTRAINT fk_sol_inc
@@ -413,7 +430,7 @@ CREATE TABLE recurs (
     id             SERIAL PRIMARY KEY,      -- PK autoincremental
     nom            VARCHAR(120) NOT NULL,   -- Nombre genérico
     unitats_mesura VARCHAR(40)  NOT NULL,   -- Unidades (kg, m3…)
-    quantitat_stock (NUMERIC(8,2)) NOT NULL,       -- Cantidad en almacén
+    quantitat_stock NUMERIC(8,2) NOT NULL,       -- Cantidad en almacén
     tipus_recurs   VARCHAR(60) NOT NULL     -- Material, equipo…
 );
 

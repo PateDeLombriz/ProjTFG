@@ -26,8 +26,8 @@ class Ubicacio(models.Model):
     codi_postal = models.CharField(max_length=10, blank=True, null=True)
     provincia = models.CharField(max_length=50, blank=True, null=True)
     pais = models.CharField(max_length=50, default='Espanya', db_column='país')
-    latitud = models.DecimalField(max_digits=8, decimal_places=6, blank=True, null=True)
-    longitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    latitud = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
+    longitud = models.DecimalField(max_digits=11, decimal_places=7, blank=True, null=True)
     
     def __str__(self):
         parts = filter(None, [self.adreca, self.ciutat, self.provincia])
@@ -47,7 +47,11 @@ class Obra(models.Model):
     pressupost = models.BigIntegerField(db_column='pressupost')  # Field name made lowercase.
     descripcio = models.TextField(db_column='descripcio', blank=True, null=True)  # Field name made lowercase.
     estat = models.CharField(db_column='estat', max_length=50)  # Field name made lowercase.
-
+    
+    @property
+    def is_authenticated(self):
+        return True
+    
     class Meta:
         #Indica que Django gestionarà/no gestionarà la creación, modificación o eliminación de aquesta taula.
         # si makemigration i migrate tambe deixen de funcionar
@@ -56,6 +60,7 @@ class Obra(models.Model):
 
 
 class Empresa(models.Model):
+    
 
     ESTAT_EMPRESA = [
         ('activa', 'Activa'),
@@ -72,21 +77,51 @@ class Empresa(models.Model):
     web = models.URLField(max_length=100, blank=True, null=True)
     sector = models.CharField(max_length=50, blank=True, null=True)
     data_alta = models.DateField(auto_now_add=True)
-    num_empleats = models.IntegerField(db_column='num_empleats', blank=True, null=True)
     estat = models.CharField(max_length=20, choices=ESTAT_EMPRESA, default='activa')
     persona_contacte = models.CharField(max_length=100, blank=True, null=True)
     comentaris = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.nom_empresa
+
+    @property
+    def is_authenticated(self):
+        return True
     
     class Meta:
         managed = False
         db_table = 'empresa'
 
+    
+class ObraEmpresa(models.Model):
+    id = models.AutoField(primary_key=True)
+    id_empresa = models.ForeignKey(
+        'Empresa',
+        on_delete=models.CASCADE,
+        db_column='id_empresa',
+        related_name='relacions_obra'
+    )
+    id_obra = models.ForeignKey(
+        'Obra',
+        on_delete=models.CASCADE,
+        db_column='id_obra',
+        related_name='relacions_empresa'
+    )
+    data_i = models.DateTimeField()
+    data_f = models.DateTimeField(blank=True, null=True)
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    class Meta:
+        managed = False
+        db_table = 'obra_empresa'
+
 class Treballador(models.Model):
     nom = models.CharField(max_length=50)
     cognoms = models.CharField(max_length=100)
+    id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, db_column='id_empresa', blank=False, null=False)    
     nickname = models.CharField(max_length=100, blank=True, null=True)
     dni_nie_passaport = models.CharField(max_length=20, unique=True)
     data_naixement = models.DateField(blank=True, null=True)
@@ -97,6 +132,10 @@ class Treballador(models.Model):
 
     def __str__(self):
         return f"{self.nom} {self.cognoms}"
+    
+    @property #No estic utulitzant User de django, per tant aixo es necessari perque funcioni.
+    def is_authenticated(self):
+        return True
     
     class Meta:
         managed  = False          #  Django no l’ha de crear
@@ -188,57 +227,12 @@ class Contrasenya(models.Model):
             ),
         ]
 
-'''
-class DjangoAdminLog(models.Model):
-    action_time = models.DateTimeField()
-    object_id = models.TextField(blank=True, null=True)
-    object_repr = models.CharField(max_length=200)
-    action_flag = models.SmallIntegerField()
-    change_message = models.TextField()
-    content_type = models.ForeignKey('DjangoContentType', models.DO_NOTHING, blank=True, null=True)
-    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
-
-    class Meta:
-        managed = False
-        db_table = 'django_admin_log'
-
-
-class DjangoContentType(models.Model):
-    app_label = models.CharField(max_length=100)
-    model = models.CharField(max_length=100)
-
-    class Meta:
-        managed = False
-        db_table = 'django_content_type'
-        unique_together = (('app_label', 'model'),)
-
-
-class DjangoMigrations(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    app = models.CharField(max_length=255)
-    name = models.CharField(max_length=255)
-    applied = models.DateTimeField()
-
-    class Meta:
-        managed = False
-        db_table = 'django_migrations'
-
-
-class DjangoSession(models.Model):
-    session_key = models.CharField(primary_key=True, max_length=40)
-    session_data = models.TextField()
-    expire_date = models.DateTimeField()
-
-    class Meta:
-        managed = False
-        db_table = 'django_session'
-'''
 
 class DocumentObra(models.Model):
     id = models.AutoField(primary_key=True) 
     id_obra = models.ForeignKey(Obra, models.DO_NOTHING, related_name= 'documents', db_column='id_obra')
     id_creador = models.IntegerField( blank=False, null=False)  # Assuming this is a username or similar identifier
-    nom = models.CharField(max_length=160, null=False)
+    path_doc = models.TextField( null=False)  # Path to the file in the server
     format = models.CharField(max_length=40)
     mida = models.DecimalField(max_digits=6, decimal_places=2)  # Assuming size in MB
     comentari = models.TextField(blank=True, null=True)
@@ -390,8 +384,6 @@ class TascaTreballador(models.Model):
         managed = False
         db_table = 'tasca_treballador'
         unique_together = (('id_tasca', 'id_treballador'),)
-
-
 
 
 class Verificacio(models.Model):

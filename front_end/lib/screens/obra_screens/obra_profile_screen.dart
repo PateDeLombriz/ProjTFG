@@ -1,9 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:front_end/screens/obra_edit.dart';
+import 'package:front_end/screens/obra_screens/obra_edit_screen.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/tasca_form.dart';
 import 'package:front_end/screens/empresa/solicRec_form.dart';
@@ -25,7 +26,7 @@ class ObraProfileScreen extends StatefulWidget {
 
 class _ObraProfileScreenState extends State<ObraProfileScreen> {
   static const _baseUrl = 'http://localhost:8000/api';
-
+  final _storage = const FlutterSecureStorage();
   Map<String, dynamic> _obra = {};
   List<dynamic> _incidencies = [];
   List<dynamic> _tasques = [];
@@ -43,8 +44,19 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
   //──────────────────── API ────────────────────
   Future<void> _fetchDetails() async {
     setState(() => _loading = true);
+    final token = await _storage.read(key: 'token');
+    if (token == null || token.isEmpty) {
+      _snack('No hi ha sessió guardada');
+      return;
+    }
     try {
-      final res = await http.get(Uri.parse('$_baseUrl/obres/${_obra['id']}/'));
+      final res = await http.get(Uri.parse('$_baseUrl/obres/${_obra['id']}/'),
+      headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );   
+  
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         setState(() {

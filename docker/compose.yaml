@@ -35,7 +35,7 @@ services:
   flutter-web:
     build:
       context: ../front_end
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.web
     ports:
       - "9000:9000"
     volumes:

@@ -1,0 +1,55 @@
+FROM ubuntu:22.04
+
+# Dependencias del sistema + JDK para Android
+RUN apt update && apt install -y \
+    curl \
+    git \
+    unzip \
+    xz-utils \
+    zip \
+    libglu1-mesa \
+    openjdk-17-jdk \
+    wget \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crear usuario de desarrollo
+RUN useradd -u 1000 -ms /bin/bash developer && adduser developer sudo
+
+# Instalar Flutter
+USER developer
+WORKDIR /home/developer
+RUN git clone https://github.com/flutter/flutter.git --branch stable
+ENV PATH="$PATH:/home/developer/flutter/bin"
+
+# Precache Android
+RUN flutter precache --android
+
+# Instalar Android SDK
+USER root
+ENV ANDROID_SDK_ROOT=/opt/android_sdk
+ENV ANDROID_HOME=/opt/android_sdk
+ENV PATH="${PATH}:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools"
+
+RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    cd ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip && \
+    unzip cmdline-tools.zip && \
+    mv cmdline-tools latest
+
+RUN yes | sdkmanager --licenses && \
+    sdkmanager \
+      "platform-tools" \
+      "platforms;android-33" \
+      "build-tools;33.0.0" \
+      "ndk;26.3.11579264"
+
+RUN wget -q https://dl.google.com/android/repository/platform-tools-latest-linux.zip && \
+    unzip platform-tools-latest-linux.zip -d /opt/ && \
+    rm platform-tools-latest-linux.zip && \
+    ln -sf /opt/platform-tools/adb /usr/local/bin/adb
+
+RUN chown -R developer:developer /opt/android_sdk /home/developer/flutter /home/developer/.pub-cache /home/developer/app || true
+
+USER developer
+WORKDIR /home/developer/app

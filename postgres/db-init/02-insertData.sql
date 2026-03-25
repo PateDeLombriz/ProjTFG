@@ -1,4 +1,50 @@
+INSERT INTO usuari
+(id, username, password, email, first_name, last_name, tipus, login_field, is_active, is_staff, is_superuser, date_joined, last_login)
+VALUES
+  -- Empreses (1..6)
+  (1, 'info@alzina.com', 'pbkdf2_sha256$dummy$empresa1', 'info@alzina.com', NULL, NULL, 'empresa', 'info@alzina.com', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (2, 'contacte@servintmallorca.com', 'pbkdf2_sha256$dummy$empresa2', 'contacte@servintmallorca.com', NULL, NULL, 'empresa', 'contacte@servintmallorca.com', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (3, 'info@mallorcaobres.com', 'pbkdf2_sha256$dummy$empresa3', 'info@mallorcaobres.com', NULL, NULL, 'empresa', 'info@mallorcaobres.com', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (4, 'contacte@menorcaprojectes.com', 'pbkdf2_sha256$dummy$empresa4', 'contacte@menorcaprojectes.com', NULL, NULL, 'empresa', 'contacte@menorcaprojectes.com', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (5, 'admin@eivissainfra.com', 'pbkdf2_sha256$dummy$empresa5', 'admin@eivissainfra.com', NULL, NULL, 'empresa', 'admin@eivissainfra.com', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (6, 'hola@formenterarehab.com', 'pbkdf2_sha256$dummy$empresa6', 'hola@formenterarehab.com', NULL, NULL, 'empresa', 'hola@formenterarehab.com', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
 
+  -- Treballadors (7..39)
+  (7,  'JohanPaletas',   'pbkdf2_sha256$dummy$treb1',  NULL,                 'Joan',     'Garcia Mora',        'treballador', 'JohanPaletas',   TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (8,  'MartaSport',     'pbkdf2_sha256$dummy$treb2',  'marta@exemple.com',  'Marta',    'Riera Pont',         'treballador', 'MartaSport',     TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (9,  'PerePipes',      'pbkdf2_sha256$dummy$treb3',  NULL,                 'Pere',     'Fiol Serra',         'treballador', 'PerePipes',      TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (10, 'Tonicofrat',     'pbkdf2_sha256$dummy$treb4',  NULL,                 'Antoni',   'Mas Coll',           'treballador', 'Tonicofrat',     TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (11, 'MigFerralla',    'pbkdf2_sha256$dummy$treb5',  NULL,                 'Miguel',   'Santos Ruiz',        'treballador', 'MigFerralla',    TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (12, 'RafelGruista',   'pbkdf2_sha256$dummy$treb6',  NULL,                 'Rafel',    'Servera Nadal',      'treballador', 'RafelGruista',   TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (13, 'AinaPintora',    'pbkdf2_sha256$dummy$treb7',  NULL,                 'Aina',     'Fullana Puig',       'treballador', 'AinaPintora',    TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (14, 'BernatPeo',      'pbkdf2_sha256$dummy$treb8',  NULL,                 'Bernat',   'Crespí Llabrés',     'treballador', 'BernatPeo',      TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (15, 'XiscoPladur',    'pbkdf2_sha256$dummy$treb9',  NULL,                 'Xisco',    'Amengual Bauzà',     'treballador', 'XiscoPladur',    TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (16, 'LauraFusta',     'pbkdf2_sha256$dummy$treb10', NULL,                 'Laura',    'Pons Gelabert',      'treballador', 'LauraFusta',     TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (17, 'GabiMarge',      'pbkdf2_sha256$dummy$treb11', NULL,                 'Gabriel',  'Ramis Forteza',      'treballador', 'GabiMarge',      TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (18, 'SergiManobre',   'pbkdf2_sha256$dummy$treb12', NULL,                 'Sergi',    'Tugores Rosselló',   'treballador', 'SergiManobre',   TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (19, 'NuriSolda',      'pbkdf2_sha256$dummy$treb13', NULL,                 'Núria',    'Costa Mir',          'treballador', 'NuriSolda',      TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (20, 'MateuPicapedrer','pbkdf2_sha256$dummy$treb14', NULL,                 'Mateu',    'Vidal Ferrer',       'treballador', 'MateuPicapedrer',TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (21, 'DamiaExcava',    'pbkdf2_sha256$dummy$treb15', NULL,                 'Damià',    'Munar Torres',       'treballador', 'DamiaExcava',    TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (22, 'CrisReformes',   'pbkdf2_sha256$dummy$treb16', NULL,                 'Cristina', 'Llompart Sastre',    'treballador', 'CrisReformes',   TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (23, 'JaumeTiler',     'pbkdf2_sha256$dummy$treb17', NULL,                 'Jaume',    'Bestard Roca',       'treballador', 'JaumeTiler',     TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (24, 'IvanYesaire',    'pbkdf2_sha256$dummy$treb18', NULL,                 'Iván',     'Moreno Díaz',        'treballador', 'IvanYesaire',    TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (25, 'Miquelet',       'pbkdf2_sha256$dummy$treb19', NULL,                 'Miquel',   'Perelló Juan',       'treballador', 'Miquelet',       TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (26, 'PaulaCable',     'pbkdf2_sha256$dummy$treb20', NULL,                 'Paula',    'Escandell Tur',      'treballador', 'PaulaCable',     TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (27, 'ToniAigua',      'pbkdf2_sha256$dummy$treb21', NULL,                 'Toni',     'Prats Colom',        'treballador', 'ToniAigua',      TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (28, 'LlorencFormigo', 'pbkdf2_sha256$dummy$treb22', NULL,                 'Llorenç',  'Adrover Mut',        'treballador', 'LlorencFormigo', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (29, 'NeusAillaments', 'pbkdf2_sha256$dummy$treb23', NULL,                 'Neus',     'Cardona Ferragut',   'treballador', 'NeusAillaments', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (30, 'SalvaBastida',   'pbkdf2_sha256$dummy$treb24', NULL,                 'Salvador', 'Barceló Sureda',     'treballador', 'SalvaBastida',   TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (31, 'JordiDemolicio', 'pbkdf2_sha256$dummy$treb25', NULL,                 'Jordi',    'Ferrer Salas',       'treballador', 'JordiDemolicio', TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (32, 'MariaCompacta',  'pbkdf2_sha256$dummy$treb26', NULL,                 'Maria',    'Oliver Truyols',     'treballador', 'MariaCompacta',  TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (33, 'BielCobertes',   'pbkdf2_sha256$dummy$treb27', NULL,                 'Biel',     'Rosselló Martorell', 'treballador', 'BielCobertes',   TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (34, 'AndreuAsfalt',   'pbkdf2_sha256$dummy$treb28', NULL,                 'Andreu',   'Calafat Cifre',      'treballador', 'AndreuAsfalt',   TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (35, 'CatiPaviments',  'pbkdf2_sha256$dummy$treb29', NULL,                 'Caterina', 'Serra Alcover',      'treballador', 'CatiPaviments',  TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (36, 'VicençMur',      'pbkdf2_sha256$dummy$treb30', NULL,                 'Vicenç',   'Miralles Vaquer',    'treballador', 'VicençMur',      TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (37, 'DavidTall',      'pbkdf2_sha256$dummy$treb31', NULL,                 'David',    'Hernández López',    'treballador', 'DavidTall',      TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (38, 'CarlaMetal',     'pbkdf2_sha256$dummy$treb32', NULL,                 'Carla',    'Fuster Bennàssar',   'treballador', 'CarlaMetal',     TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL),
+  (39, 'MarcJardiObra',  'pbkdf2_sha256$dummy$treb33', NULL,                 'Marc',     'Reus Sampol',        'treballador', 'MarcJardiObra',  TRUE, FALSE, FALSE, CURRENT_TIMESTAMP, NULL);
+
+SELECT setval('usuari_id_seq', (SELECT MAX(id) FROM usuari));
 
 INSERT INTO ubicacio
 (id_ubicacio, adreça, ciutat, codi_postal, provincia, país, latitud, longitud) VALUES
@@ -38,51 +84,56 @@ SELECT setval('ubicacio_id_ubicacio_seq', (SELECT MAX(id_ubicacio) FROM ubicacio
    EMPRESA (abans u_empresa)
    ───────────────────────── */
 INSERT INTO empresa
-(id_empresa, nom_empresa, cif, ubicacio_id, telefon, email, web, sector, data_alta, estat, persona_contacte, comentaris) VALUES
-  (1, 'Construccions Alzina', 'B00000004', 7, '871123456', 'info@alzina.com', NULL, NULL, '2024-05-21', 'activa', NULL, NULL ),
-  (2, 'Serveis Integrals',    'B00000005', 8, '971987654', 'contacte@servintmallorca.com', NULL, NULL, '2024-05-25', 'activa', NULL, NULL),
-  (3, 'Mallorca Obres i Serveis', 'B00000006', 9,  '971111222', 'info@mallorcaobres.com', 'https://www.mallorcaobres.com', 'Construccio', '2024-06-02', 'activa', 'Joan Ferrer', 'Especialitzada en reformes residencials'),
-  (4, 'Menorca Projectes Tècnics', 'B00000007', 10, '971222333', 'contacte@menorcaprojectes.com', 'https://www.menorcaprojectes.com', 'Enginyeria', '2024-06-10', 'activa', 'Maria Pons',  'Projectes tècnics i direcció d’obra'),
-  (5, 'Eivissa Infraestructures', 'B00000008', 11, '971333444', 'admin@eivissainfra.com', 'https://www.eivissainfra.com', 'Obra publica', '2024-06-18', 'activa', 'Carles Serra',  'Especialitzada en urbanització i espais públics'),
-  (6, 'Formentera Rehabilitacions', 'B00000009', 12, '971444555', 'hola@formenterarehab.com', 'https://www.formenterarehab.com', 'Rehabilitacio', '2024-06-22', 'activa', 'Neus Cardona', 'Petites i mitjanes rehabilitacions');
+(id_empresa, nom_empresa, cif, ubicacio_id, telefon, email, web, sector, data_alta, estat, persona_contacte, comentaris, user_id) VALUES
+  (1, 'Construccions Alzina', 'B00000004', 7, '871123456', 'info@alzina.com', NULL, NULL, '2024-05-21', 'activa', NULL, NULL, 1),
+  (2, 'Serveis Integrals', 'B00000005', 8, '971987654', 'contacte@servintmallorca.com', NULL, NULL, '2024-05-25', 'activa', NULL, NULL, 2),
+  (3, 'Mallorca Obres i Serveis', 'B00000006', 9, '971111222', 'info@mallorcaobres.com', 'https://www.mallorcaobres.com', 'Construccio', '2024-06-02', 'activa', 'Joan Ferrer', 'Especialitzada en reformes residencials', 3),
+  (4, 'Menorca Projectes Tècnics', 'B00000007', 10, '971222333', 'contacte@menorcaprojectes.com', 'https://www.menorcaprojectes.com', 'Enginyeria', '2024-06-10', 'activa', 'Maria Pons', 'Projectes tècnics i direcció d’obra', 4),
+  (5, 'Eivissa Infraestructures', 'B00000008', 11, '971333444', 'admin@eivissainfra.com', 'https://www.eivissainfra.com', 'Obra publica', '2024-06-18', 'activa', 'Carles Serra', 'Especialitzada en urbanització i espais públics', 5),
+  (6, 'Formentera Rehabilitacions', 'B00000009', 12, '971444555', 'hola@formenterarehab.com', 'https://www.formenterarehab.com', 'Rehabilitacio', '2024-06-22', 'activa', 'Neus Cardona', 'Petites i mitjanes rehabilitacions', 6);
+
+SELECT setval('empresa_id_empresa_seq', (SELECT MAX(id_empresa) FROM empresa));
+
 /* ───────────────────────────
    TREBALLADOR (abans u_persona)
    ─────────────────────────── */
 INSERT INTO treballador
-(id, nom, cognoms, nickname, dni_nie_passaport, data_naixement, telefon, email, path_foto, comentaris) VALUES
-  (1,  'Joan',     'Garcia Mora',       'JohanPaletas',    'DNI0001A', NULL,         '600123001', NULL, 'back_end/media/fotos/fotoJohanPaletas', 'rol=Mestre Obra; estat=ACTIU'),
-  (2,  'Marta',    'Riera Pont',        'MartaSport',      'DNI0002B', NULL,         '600123002', 'marta@exemple.com', NULL, 'rol=Oficial 1a; estat=ACTIU'),
-  (3,  'Pere',     'Fiol Serra',        'PerePipes',       'DNI0003C', NULL,         '600123003', NULL, NULL, 'rol=Peó; estat=INACTIU'),
-  (4,  'Antoni',   'Mas Coll',          'Tonicofrat',      'DNI0004D', '1985-03-12', '600123004', NULL, NULL, 'rol=Encofrador; estat=ACTIU'),
-  (5,  'Miguel',   'Santos Ruiz',       'MigFerralla',     'DNI0005E', '1979-11-08', '600123005', NULL, NULL, 'rol=Ferrallista; estat=ACTIU'),
-  (6,  'Rafel',    'Servera Nadal',     'RafelGruista',    'DNI0006F', '1988-06-21', '600123006', NULL, NULL, 'rol=Gruista; estat=ACTIU'),
-  (7,  'Aina',     'Fullana Puig',      'AinaPintora',     'DNI0007G', '1992-01-17', '600123007', NULL, NULL, 'rol=Pintora; estat=ACTIU'),
-  (8,  'Bernat',   'Crespí Llabrés',    'BernatPeo',       'DNI0008H', '1996-09-03', '600123008', NULL, NULL, 'rol=Peó; estat=ACTIU'),
-  (9,  'Xisco',    'Amengual Bauzà',    'XiscoPladur',     'DNI0009I', '1987-04-25', '600123009', NULL, NULL, 'rol=Instal·lador Pladur; estat=ACTIU'),
-  (10, 'Laura',    'Pons Gelabert',     'LauraFusta',      'DNI0010J', '1991-07-14', '600123010', NULL, NULL, 'rol=Fustera; estat=ACTIU'),
-  (11, 'Gabriel',  'Ramis Forteza',     'GabiMarge',       'DNI0011K', '1983-12-01', '600123011', NULL, NULL, 'rol=Marger; estat=ACTIU'),
-  (12, 'Sergi',    'Tugores Rosselló',  'SergiManobre',    'DNI0012L', '1994-05-28', '600123012', NULL, NULL, 'rol=Manobre; estat=ACTIU'),
-  (13, 'Núria',    'Costa Mir',         'NuriSolda',       'DNI0013M', '1990-08-19', '600123013', NULL, NULL, 'rol=Soldadora; estat=ACTIU'),
-  (14, 'Mateu',    'Vidal Ferrer',      'MateuPicapedrer', 'DNI0014N', '1981-02-10', '600123014', NULL, NULL, 'rol=Picapedrer; estat=ACTIU'),
-  (15, 'Damià',    'Munar Torres',      'DamiaExcava',     'DNI0015O', '1986-10-30', '600123015', NULL, NULL, 'rol=Maquinista Excavadora; estat=ACTIU'),
-  (16, 'Cristina', 'Llompart Sastre',   'CrisReformes',    'DNI0016P', '1993-06-07', '600123016', NULL, NULL, 'rol=Oficial 1a; estat=ACTIU'),
-  (17, 'Jaume',    'Bestard Roca',      'JaumeTiler',      'DNI0017Q', '1989-09-11', '600123017', NULL, NULL, 'rol=Enrajolador; estat=ACTIU'),
-  (18, 'Iván',     'Moreno Díaz',       'IvanYesaire',     'DNI0018R', '1984-01-26', '600123018', NULL, NULL, 'rol=Guixaire; estat=ACTIU'),
-  (19, 'Miquel',   'Perelló Juan',      'Miquelet',        'DNI0019S', '1978-07-05', '600123019', NULL, NULL, 'rol=Mestre Obra; estat=ACTIU'),
-  (20, 'Paula',    'Escandell Tur',     'PaulaCable',      'DNI0020T', '1995-03-22', '600123020', NULL, NULL, 'rol=Electricista d''obra; estat=ACTIU'),
-  (21, 'Toni',     'Prats Colom',       'ToniAigua',       'DNI0021U', '1982-11-16', '600123021', NULL, NULL, 'rol=Lampista; estat=ACTIU'),
-  (22, 'Llorenç',  'Adrover Mut',       'LlorencFormigo',  'DNI0022V', '1980-04-09', '600123022', NULL, NULL, 'rol=Formigoner; estat=ACTIU'),
-  (23, 'Neus',     'Cardona Ferragut',  'NeusAillaments',  'DNI0023W', '1991-12-13', '600123023', NULL, NULL, 'rol=Instal·ladora Aïllaments; estat=ACTIU'),
-  (24, 'Salvador', 'Barceló Sureda',    'SalvaBastida',    'DNI0024X', '1987-08-27', '600123024', NULL, NULL, 'rol=Muntador Bastides; estat=ACTIU'),
-  (25, 'Jordi',    'Ferrer Salas',      'JordiDemolicio',  'DNI0025Y', '1988-05-31', '600123025', NULL, NULL, 'rol=Operari Demolició; estat=ACTIU'),
-  (26, 'Maria',    'Oliver Truyols',    'MariaCompacta',   'DNI0026Z', '1994-10-18', '600123026', NULL, NULL, 'rol=Maquinista Compactadora; estat=ACTIU'),
-  (27, 'Biel',     'Rosselló Martorell','BielCobertes',    'DNI0027A', '1983-01-04', '600123027', NULL, NULL, 'rol=Especialista Cobertes; estat=ACTIU'),
-  (28, 'Andreu',   'Calafat Cifre',     'AndreuAsfalt',    'DNI0028B', '1986-06-29', '600123028', NULL, NULL, 'rol=Asfaltador; estat=ACTIU'),
-  (29, 'Caterina', 'Serra Alcover',     'CatiPaviments',   'DNI0029C', '1990-09-20', '600123029', NULL, NULL, 'rol=Col·locadora Paviments; estat=ACTIU'),
-  (30, 'Vicenç',   'Miralles Vaquer',   'VicençMur',       'DNI0030D', '1977-02-15', '600123030', NULL, NULL, 'rol=Paleta; estat=ACTIU'),
-  (31, 'David',    'Hernández López',   'DavidTall',       'DNI0031E', '1992-07-09', '600123031', NULL, NULL, 'rol=Tallador Materials; estat=ACTIU'),
-  (32, 'Carla',    'Fuster Bennàssar',  'CarlaMetal',      'DNI0032F', '1993-11-24', '600123032', NULL, NULL, 'rol=Muntadora Estructures Metàl·liques; estat=ACTIU'),
-  (33, 'Marc',     'Reus Sampol',       'MarcJardiObra',   'DNI0033G', '1996-04-02', '600123033', NULL, NULL, 'rol=Peó; estat=ACTIU');
+(id, nom, cognoms, nickname, dni_nie_passaport, data_naixement, telefon, email, foto, comentaris, user_id) VALUES
+  (1,  'Joan',     'Garcia Mora',       'JohanPaletas',    'DNI0001A', NULL,         '600123001', NULL,                'back_end/media/fotos/fotoJohanPaletas', 'rol=Mestre Obra; estat=ACTIU', 7),
+  (2,  'Marta',    'Riera Pont',        'MartaSport',      'DNI0002B', NULL,         '600123002', 'marta@exemple.com', NULL,                                 'rol=Oficial 1a; estat=ACTIU', 8),
+  (3,  'Pere',     'Fiol Serra',        'PerePipes',       'DNI0003C', NULL,         '600123003', NULL,                NULL,                                 'rol=Peó; estat=INACTIU', 9),
+  (4,  'Antoni',   'Mas Coll',          'Tonicofrat',      'DNI0004D', '1985-03-12', '600123004', NULL,                NULL,                                 'rol=Encofrador; estat=ACTIU', 10),
+  (5,  'Miguel',   'Santos Ruiz',       'MigFerralla',     'DNI0005E', '1979-11-08', '600123005', NULL,                NULL,                                 'rol=Ferrallista; estat=ACTIU', 11),
+  (6,  'Rafel',    'Servera Nadal',     'RafelGruista',    'DNI0006F', '1988-06-21', '600123006', NULL,                NULL,                                 'rol=Gruista; estat=ACTIU', 12),
+  (7,  'Aina',     'Fullana Puig',      'AinaPintora',     'DNI0007G', '1992-01-17', '600123007', NULL,                NULL,                                 'rol=Pintora; estat=ACTIU', 13),
+  (8,  'Bernat',   'Crespí Llabrés',    'BernatPeo',       'DNI0008H', '1996-09-03', '600123008', NULL,                NULL,                                 'rol=Peó; estat=ACTIU', 14),
+  (9,  'Xisco',    'Amengual Bauzà',    'XiscoPladur',     'DNI0009I', '1987-04-25', '600123009', NULL,                NULL,                                 'rol=Instal·lador Pladur; estat=ACTIU', 15),
+  (10, 'Laura',    'Pons Gelabert',     'LauraFusta',      'DNI0010J', '1991-07-14', '600123010', NULL,                NULL,                                 'rol=Fustera; estat=ACTIU', 16),
+  (11, 'Gabriel',  'Ramis Forteza',     'GabiMarge',       'DNI0011K', '1983-12-01', '600123011', NULL,                NULL,                                 'rol=Marger; estat=ACTIU', 17),
+  (12, 'Sergi',    'Tugores Rosselló',  'SergiManobre',    'DNI0012L', '1994-05-28', '600123012', NULL,                NULL,                                 'rol=Manobre; estat=ACTIU', 18),
+  (13, 'Núria',    'Costa Mir',         'NuriSolda',       'DNI0013M', '1990-08-19', '600123013', NULL,                NULL,                                 'rol=Soldadora; estat=ACTIU', 19),
+  (14, 'Mateu',    'Vidal Ferrer',      'MateuPicapedrer', 'DNI0014N', '1981-02-10', '600123014', NULL,                NULL,                                 'rol=Picapedrer; estat=ACTIU', 20),
+  (15, 'Damià',    'Munar Torres',      'DamiaExcava',     'DNI0015O', '1986-10-30', '600123015', NULL,                NULL,                                 'rol=Maquinista Excavadora; estat=ACTIU', 21),
+  (16, 'Cristina', 'Llompart Sastre',   'CrisReformes',    'DNI0016P', '1993-06-07', '600123016', NULL,                NULL,                                 'rol=Oficial 1a; estat=ACTIU', 22),
+  (17, 'Jaume',    'Bestard Roca',      'JaumeTiler',      'DNI0017Q', '1989-09-11', '600123017', NULL,                NULL,                                 'rol=Enrajolador; estat=ACTIU', 23),
+  (18, 'Iván',     'Moreno Díaz',       'IvanYesaire',     'DNI0018R', '1984-01-26', '600123018', NULL,                NULL,                                 'rol=Guixaire; estat=ACTIU', 24),
+  (19, 'Miquel',   'Perelló Juan',      'Miquelet',        'DNI0019S', '1978-07-05', '600123019', NULL,                NULL,                                 'rol=Mestre Obra; estat=ACTIU', 25),
+  (20, 'Paula',    'Escandell Tur',     'PaulaCable',      'DNI0020T', '1995-03-22', '600123020', NULL,                NULL,                                 'rol=Electricista d''obra; estat=ACTIU', 26),
+  (21, 'Toni',     'Prats Colom',       'ToniAigua',       'DNI0021U', '1982-11-16', '600123021', NULL,                NULL,                                 'rol=Lampista; estat=ACTIU', 27),
+  (22, 'Llorenç',  'Adrover Mut',       'LlorencFormigo',  'DNI0022V', '1980-04-09', '600123022', NULL,                NULL,                                 'rol=Formigoner; estat=ACTIU', 28),
+  (23, 'Neus',     'Cardona Ferragut',  'NeusAillaments',  'DNI0023W', '1991-12-13', '600123023', NULL,                NULL,                                 'rol=Instal·ladora Aïllaments; estat=ACTIU', 29),
+  (24, 'Salvador', 'Barceló Sureda',    'SalvaBastida',    'DNI0024X', '1987-08-27', '600123024', NULL,                NULL,                                 'rol=Muntador Bastides; estat=ACTIU', 30),
+  (25, 'Jordi',    'Ferrer Salas',      'JordiDemolicio',  'DNI0025Y', '1988-05-31', '600123025', NULL,                NULL,                                 'rol=Operari Demolició; estat=ACTIU', 31),
+  (26, 'Maria',    'Oliver Truyols',    'MariaCompacta',   'DNI0026Z', '1994-10-18', '600123026', NULL,                NULL,                                 'rol=Maquinista Compactadora; estat=ACTIU', 32),
+  (27, 'Biel',     'Rosselló Martorell','BielCobertes',    'DNI0027A', '1983-01-04', '600123027', NULL,                NULL,                                 'rol=Especialista Cobertes; estat=ACTIU', 33),
+  (28, 'Andreu',   'Calafat Cifre',     'AndreuAsfalt',    'DNI0028B', '1986-06-29', '600123028', NULL,                NULL,                                 'rol=Asfaltador; estat=ACTIU', 34),
+  (29, 'Caterina', 'Serra Alcover',     'CatiPaviments',   'DNI0029C', '1990-09-20', '600123029', NULL,                NULL,                                 'rol=Col·locadora Paviments; estat=ACTIU', 35),
+  (30, 'Vicenç',   'Miralles Vaquer',   'VicençMur',       'DNI0030D', '1977-02-15', '600123030', NULL,                NULL,                                 'rol=Paleta; estat=ACTIU', 36),
+  (31, 'David',    'Hernández López',   'DavidTall',       'DNI0031E', '1992-07-09', '600123031', NULL,                NULL,                                 'rol=Tallador Materials; estat=ACTIU', 37),
+  (32, 'Carla',    'Fuster Bennàssar',  'CarlaMetal',      'DNI0032F', '1993-11-24', '600123032', NULL,                NULL,                                 'rol=Muntadora Estructures Metàl·liques; estat=ACTIU', 38),
+  (33, 'Marc',     'Reus Sampol',       'MarcJardiObra',   'DNI0033G', '1996-04-02', '600123033', NULL,                NULL,                                 'rol=Peó; estat=ACTIU', 39);
+
+SELECT setval('treballador_id_seq', (SELECT MAX(id) FROM treballador));
 /* ───────────
    OBRA (igual)
    ─────────── */

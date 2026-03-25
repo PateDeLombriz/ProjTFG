@@ -35,7 +35,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class TreballadorProfileScreen extends StatefulWidget {
   const TreballadorProfileScreen({super.key, required this.usuariId});
@@ -50,7 +51,7 @@ class TreballadorProfileScreen extends StatefulWidget {
 class _TreballadorProfileScreenState extends State<TreballadorProfileScreen> {
   // ───────────────────────── Config ─────────────────────────
   static const String baseUrl = 'http://localhost:8000/api';
-  static const _storage = FlutterSecureStorage();
+  //static const _storage = FlutterSecureStorage();
 
   // ───────────────────────── Estat ─────────────────────────
   bool _loading = true;
@@ -95,9 +96,11 @@ class _TreballadorProfileScreenState extends State<TreballadorProfileScreen> {
 
   // ───────────────────────── Helpers HTTP ─────────────────────────
   Future<Map<String, String>> _authHeaders() async {
-    final token = await _storage.read(key: 'token');
+    final token = await SharedPreferences.getInstance();
     final h = <String, String>{'Content-Type': 'application/json'};
-    if (token != null && token.isNotEmpty) h['Authorization'] = 'Bearer $token';
+    token.getString('token');
+    if (token != '') 
+    h['Authorization'] = 'Bearer $token';
     return h;
   }
 
@@ -356,9 +359,12 @@ class _TreballadorProfileScreenState extends State<TreballadorProfileScreen> {
   }
 
   Future<void> _logout() async {
-    await _storage.delete(key: 'token');
-    await _storage.delete(key: 'subject_id');
-    await _storage.delete(key: 'tipus');
+    final SharedPreferences token = await SharedPreferences.getInstance();
+    await token.remove('token');
+
+    await token.remove('subject_id');
+    await token.remove('tipus');
+    
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }

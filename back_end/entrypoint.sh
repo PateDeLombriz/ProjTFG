@@ -7,7 +7,7 @@ echo "Starting entrypoint..."
 : "${DJANGO_ENV:=dev}"                 # dev | prod
 : "${DJANGO_AUTOMIGRATE:=false}"       # true per fer makemigrations automàtic
 : "${DJANGO_SEED:=auto}"               # auto | always | never
-: "${DJANGO_RESET_DB:=False}"          # true per esborrar dades (dev només)
+: "${DJANGO_RESET_DB:=false}"          # true per esborrar dades (dev només)
 
 # Espera Postgres si l'engine és postgres (o si hi ha host)
 if [ "${DATABASE_ENGINE}" = "django.db.backends.postgresql" ] || [ -n "${DATABASE_HOST}" ]; then

@@ -46,6 +46,25 @@ CREATE TABLE u_persona (
 );
 
 */
+CREATE TABLE usuari (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(150),
+    password VARCHAR(128) NOT NULL,
+    email VARCHAR(254),
+    first_name VARCHAR(150),
+    last_name VARCHAR(150),
+
+    tipus VARCHAR(20) CHECK (tipus IN ('treballador', 'empresa')),
+    login_field VARCHAR(150) UNIQUE NOT NULL,
+
+    is_active BOOLEAN DEFAULT TRUE,
+    is_staff BOOLEAN DEFAULT FALSE,
+    is_superuser BOOLEAN DEFAULT FALSE,
+
+    date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL
+);
+
 
 CREATE TABLE ubicacio (
     id_ubicacio  SERIAL PRIMARY KEY,
@@ -62,25 +81,29 @@ CREATE TABLE treballador (
     id SERIAL PRIMARY KEY,
     nom VARCHAR(50) NOT NULL,
     cognoms VARCHAR(100) NOT NULL,
-    nickname  VARCHAR(100),
+    nickname VARCHAR(100),
     dni_nie_passaport VARCHAR(20) UNIQUE NOT NULL,
     data_naixement DATE,
     telefon VARCHAR(20),
     email VARCHAR(100),
-    path_foto VARCHAR(255), -- Aqui se guarda es path fins a sa foto
-    comentaris TEXT
+    foto VARCHAR(255),
+    comentaris TEXT,
+    user_id INTEGER NOT NULL UNIQUE,
 
-
+    CONSTRAINT fk_treballador_user
+        FOREIGN KEY (user_id) REFERENCES usuari(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
 );
 
 
-CREATE TYPE estat_empresa AS ENUM ('activa', 'inactiva', 'suspesa');  
+CREATE TYPE estat_empresa AS ENUM ('activa', 'inactiva', 'suspesa');
 
 CREATE TABLE empresa (
-    id_empresa SERIAL PRIMARY KEY ,
+    id_empresa SERIAL PRIMARY KEY,
     nom_empresa VARCHAR(100) NOT NULL,
     cif VARCHAR(20) UNIQUE NOT NULL,
-    ubicacio_id INT,
+    ubicacio_id INTEGER,
     telefon VARCHAR(20),
     email VARCHAR(100),
     web VARCHAR(100),
@@ -89,10 +112,20 @@ CREATE TABLE empresa (
     estat estat_empresa DEFAULT 'activa',
     persona_contacte VARCHAR(100),
     comentaris TEXT,
-    FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
+    user_id INTEGER NOT NULL UNIQUE,
+
+    CONSTRAINT fk_empresa_ubicacio
+        FOREIGN KEY (ubicacio_id) REFERENCES ubicacio(id_ubicacio)
         ON DELETE SET NULL
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_empresa_user
+        FOREIGN KEY (user_id) REFERENCES usuari(id)
         ON UPDATE CASCADE
+        ON DELETE CASCADE
 );
+
+
 -- 1. Enum per tipus de contracte
 CREATE TYPE estat_treballador_enum AS ENUM ('actiu', 'baixa', 'acomiadat');
 

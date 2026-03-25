@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 import os
 
@@ -25,19 +26,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'corsheaders',
     'rest_framework',
+    'rest_framework_simplejwt',
+    'cryptography',
     'apiApp',
+    'fastapi',
+    'uvicorn',
 ]
 
 REST_FRAMEWORK = {
     # A partir d'ara, per defecte, totes les vistes intentaran
     # autenticar l'usuari amb el nostre JWT.
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'apiApp.authentication.JWTSubjectAuthentication',
-    ],
-
+        'rest_framework.authentication.SessionAuthentication',  # Per admin i test s
+        'rest_framework_simplejwt.authentication.JWTAuthentication', #Django admin neceessita aquesta llibreria 
+     ],
+ 
     # Per defecte, totes les vistes requeriran usuari autenticat.
     # Les vistes públiques, com LoginView, ja les deixarem obertes
     # explícitament amb authentication_classes = [] i permission_classes = [].
@@ -49,10 +54,7 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-
-    # CORS should be high in the stack
     'corsheaders.middleware.CorsMiddleware',
-
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -85,6 +87,15 @@ CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:9000"
 CORS_ALLOWED_ORIGINS = [o.strip() for o in CORS_ALLOWED_ORIGINS if o.strip()]
 CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "false").lower() in ("1", "true", "yes")
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME': timedelta(days=30),
+    'SLIDING_TOKEN_REFRESH_LIFETIME_LATE_USER': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME_LATE_USER': timedelta(days=30),
+    "TOKEN_OBTAIN_SERIALIZER": "apiApp.serializer.MyTokenObtainPairSerializer",
+}
+
 DATABASES = {
     'default': {
         'ENGINE': os.getenv("DATABASE_ENGINE", "django.db.backends.postgresql"),
@@ -100,6 +111,8 @@ LANGUAGE_CODE = os.getenv("LANGUAGE_CODE", "en-us")
 TIME_ZONE = os.getenv("TIME_ZONE", "Europe/Madrid")
 USE_I18N = True
 USE_TZ = True
+
+AUTH_USER_MODEL= 'apiApp.Usuari'# Necessari per utilitzar simpleJwt
 
 STATIC_URL = 'static/'
 

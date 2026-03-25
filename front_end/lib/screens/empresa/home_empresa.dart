@@ -3,9 +3,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:front_end/screens/obra_screens/obra_profile_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Pantalla principal per a empreses amb llistat d'obres, estadístiques i filtres.
 /// Estètica i UX alineades amb la resta de pantalles (bordes arrodonits, colors de tema,
@@ -19,7 +19,6 @@ class HomeEmpresa extends StatefulWidget {
 
 class _HomeEmpresaState extends State<HomeEmpresa> {
   static const _baseUrl = 'http://localhost:8000/api';
-  final _storage = const FlutterSecureStorage();
   final List<Map<String, dynamic>> _obres = [];
   bool _loading = true;
   String _statusFilter = 'Totes';
@@ -38,8 +37,9 @@ class _HomeEmpresaState extends State<HomeEmpresa> {
   //──────────────────────── API ────────────────────────
 
   Future<void> _carregarSessio() async {
-    final token = await _storage.read(key: 'token');
-    if (token == null || token.isEmpty) {
+    final token = await SharedPreferences.getInstance();
+    token.getString('token');
+    if ( token == '') {
       _snack('No hi ha sessió guardada');
       return;
     }
@@ -61,9 +61,9 @@ class _HomeEmpresaState extends State<HomeEmpresa> {
         // Aquí podries carregar dades específiques de l'empresa o mostrar un missatge de benvinguda
         if (data['subject_id'] != null) {
           //data['tipus']=='empresa' &&
-          await _storage.write(
-            key: 'subject_id',
-            value: data['subject_id'].toString(),
+          await token.setString(
+             'subject_id',
+             data['subject_id'].toString(),
           );
         }
       } else {
@@ -75,15 +75,16 @@ class _HomeEmpresaState extends State<HomeEmpresa> {
   }
 
   Future<void> _fetchObres() async {
+    SharedPreferences localVol = await SharedPreferences.getInstance();
     setState(() => _loading = true);
-    final token = await _storage.read(key: 'token');
+    final token = await localVol.getString('token');
     if (token == null || token.isEmpty) {
       _snack('No hi ha sessió guardada');
       return;
     }
     try {
       //Agafa l'id guardat a carregaSessio a flutter secure storage per a fer la consulta de les obres d'aquesta empresa
-      final idEmpresa = await _storage.read(key: 'subject_id') ?? '';
+      final idEmpresa = await localVol.getString('subject_id') ?? '';
 
       final res = await http
           .get(Uri.parse('$_baseUrl/obresEmpresa/$idEmpresa'), headers: {

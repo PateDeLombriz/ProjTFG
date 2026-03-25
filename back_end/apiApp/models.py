@@ -14,10 +14,71 @@ PORT: 5432
 #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from django.db.models import Q
+from django.contrib.auth.models import AbstractUser
 
+#Per questions d'autentificacio de sessio es necessari crear aquest usuari
+#No s'emplearà per la loginca de negoci
+class Usuari(AbstractUser):
+    TIPUS = (
+        ('treballador', 'Treballador'),
+        ('empresa', 'Empresa'),
+    )
+    tipus = models.CharField(max_length=20, choices=TIPUS, default=None, null=False)
+    loginField=models.CharField(max_length=150, unique=True,db_column="login_field") #Aquest camp es el que s'utilitza per autenticar a l'usuari, pot ser el username o el email, segons el que es decideixi. Es necessari per a que funcioni simplejwt
+
+    USERNAME_FIELD = 'loginField' #Indica a Django que aquest es el camp que s'utilitza per autenticar a l'usuari, en lloc del username per defecte
+    #Aquesta contraitn obliga a que tan sols un dels 2 camps de FK sigui no null, es a dir, que un usuari sigui o treballador o empresa, pero no els dos alhora.
+    class Meta:
+        managed = True
+        db_table = 'usuari'
+#
+#class DjangoAdminLog(models.Model):
+#    action_time = models.DateTimeField()
+#    object_id = models.TextField(blank=True, null=True)
+#    object_repr = models.CharField(max_length=200)
+#    action_flag = models.SmallIntegerField()
+#    change_message = models.TextField()
+#    content_type = models.ForeignKey('DjangoContentType', models.DO_NOTHING, blank=True, null=True)
+#    user = models.ForeignKey(Usuari, models.DO_NOTHING)
+#
+#    class Meta:
+#        managed = True
+#        db_table = 'django_admin_log'
+#
+#
+#class DjangoContentType(models.Model):
+#    app_label = models.CharField(max_length=100)
+#    model = models.CharField(max_length=100)
+#
+#    class Meta:
+#        managed = True
+#        db_table = 'django_content_type'
+#        unique_together = (('app_label', 'model'),)
+#
+#
+#class DjangoMigrations(models.Model):
+#    id = models.BigAutoField(primary_key=True)
+#    app = models.CharField(max_length=255)
+#    name = models.CharField(max_length=255)
+#    applied = models.DateTimeField()
+#
+#    class Meta:
+#        managed = True
+#        db_table = 'django_migrations'
+#
+#
+#class DjangoSession(models.Model):
+#    session_key = models.CharField(primary_key=True, max_length=40)
+#    session_data = models.TextField()
+#    expire_date = models.DateTimeField()
+#
+#    class Meta:
+#        managed = True
+#        db_table = 'django_session'
 
 class Ubicacio(models.Model):
     id_ubicacio = models.AutoField(db_column='id_ubicacio', primary_key=True)
@@ -34,7 +95,7 @@ class Ubicacio(models.Model):
         return ', '.join(parts)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'ubicacio'
 
 class Obra(models.Model):
@@ -48,19 +109,15 @@ class Obra(models.Model):
     descripcio = models.TextField(db_column='descripcio', blank=True, null=True)  # Field name made lowercase.
     estat = models.CharField(db_column='estat', max_length=50)  # Field name made lowercase.
     
-    @property
-    def is_authenticated(self):
-        return True
     
     class Meta:
         #Indica que Django gestionarà/no gestionarà la creación, modificación o eliminación de aquesta taula.
         # si makemigration i migrate tambe deixen de funcionar
-        managed = False  
+        managed = True  
         db_table = 'obra'
 
 
 class Empresa(models.Model):
-    
 
     ESTAT_EMPRESA = [
         ('activa', 'Activa'),
@@ -81,15 +138,16 @@ class Empresa(models.Model):
     persona_contacte = models.CharField(max_length=100, blank=True, null=True)
     comentaris = models.TextField(blank=True, null=True)
 
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='empresa',
+        )
     def __str__(self):
         return self.nom_empresa
-
-    @property
-    def is_authenticated(self):
-        return True
     
     class Meta:
-        managed = False
+        managed = True
         db_table = 'empresa'
 
     
@@ -110,18 +168,15 @@ class ObraEmpresa(models.Model):
     data_i = models.DateTimeField()
     data_f = models.DateTimeField(blank=True, null=True)
 
-    @property
-    def is_authenticated(self):
-        return True
-
     class Meta:
-        managed = False
+        managed = True
         db_table = 'obra_empresa'
 
 class Treballador(models.Model):
+    id = models.AutoField(db_column='id', primary_key=True)
     nom = models.CharField(max_length=50)
     cognoms = models.CharField(max_length=100)
-    id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, db_column='id_empresa', blank=False, null=False)    
+    #id_empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, db_column='id_empresa', blank=False, null=False)    
     nickname = models.CharField(max_length=100, blank=True, null=True)
     dni_nie_passaport = models.CharField(max_length=20, unique=True)
     data_naixement = models.DateField(blank=True, null=True)
@@ -129,16 +184,15 @@ class Treballador(models.Model):
     email = models.EmailField(max_length=100, blank=True, null=True)
     foto = models.ImageField(upload_to='fotos_treballadors/', blank=True, null=True)#La imatge queda gardada dins un fitxer delno dins la BD
     comentaris = models.TextField(blank=True, null=True)
+    #Necessari per a que funcioni simplejwt, ja que aquest necessita un usuari per autenticar, i en aquest cas el nostre usuari es el treballador, per tant el FK a Usuari es necessari per a que funcioni simplejwt
+    user =models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='treballador',)
+
 
     def __str__(self):
         return f"{self.nom} {self.cognoms}"
     
-    @property #No estic utulitzant User de django, per tant aixo es necessari perque funcioni.
-    def is_authenticated(self):
-        return True
-    
     class Meta:
-        managed  = False          #  Django no l’ha de crear
+        managed  = True          #  Django no l’ha de crear
         db_table = 'treballador'  #  nom real a PostgreSQL
     
 class ContracteTreballador(models.Model):
@@ -161,7 +215,7 @@ class ContracteTreballador(models.Model):
     estat = models.CharField(max_length=20, choices=ESTAT_TREBALLADOR_CHOICES, default='actiu')
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'contracte_treballador'
         unique_together = (('id_treballador', 'data_contracte'),)
 
@@ -175,7 +229,7 @@ class Configuracio(models.Model):
     imatge_perfil = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'configuracio'
         constraints = [
             models.CheckConstraint(
@@ -203,7 +257,7 @@ class Contrasenya(models.Model):
     data_reemplas = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'contrasenya'
         constraints = [
             models.CheckConstraint(
@@ -240,7 +294,7 @@ class DocumentObra(models.Model):
     tipus = models.CharField(max_length=40)
     #Ubicacio del fitxer potser sigui necesssari
     class Meta:
-        managed = False
+        managed = True
         db_table = 'document_obra'
 
 
@@ -257,7 +311,7 @@ class Incidencia(models.Model):
     estat = models.CharField(max_length=40)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'incidencia'
 
 
@@ -269,7 +323,7 @@ class LogDeSessio(models.Model):
     hora_inici = models.TimeField()
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'log_de_sessio'
         constraints = [
             models.CheckConstraint(
@@ -284,7 +338,7 @@ class Permis(models.Model):
     descripcio = models.CharField(max_length=255)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'permis'
 
 
@@ -299,7 +353,7 @@ class PermisTreballador(models.Model):
     data_modif = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'permis_treballador'
 
 
@@ -311,7 +365,7 @@ class Recurs(models.Model):
     tipus_recurs = models.CharField(max_length=60)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'recurs'
 
 
@@ -323,7 +377,7 @@ class ResponsableObra(models.Model):
     data_fi = models.DateField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'responsable_obra'
 
 
@@ -340,7 +394,7 @@ class SolRecurs(models.Model):
     proveidor = models.CharField(max_length=120, blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'sol_recurs'
 
 
@@ -355,7 +409,7 @@ class Solucio(models.Model):
     impacte = models.IntegerField()
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'solucio'
 
 
@@ -370,7 +424,7 @@ class Tasca(models.Model):
     visibilitat_tasca = models.BooleanField(default=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tasca'
 
 
@@ -381,7 +435,7 @@ class TascaTreballador(models.Model):
     comentari = models.TextField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'tasca_treballador'
         unique_together = (('id_tasca', 'id_treballador'),)
 
@@ -395,5 +449,5 @@ class Verificacio(models.Model):
     data_token = models.DateTimeField()
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'verificacio'

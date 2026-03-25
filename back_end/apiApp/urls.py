@@ -1,18 +1,18 @@
 from django.urls import path
 from .views import (
     # Obres
-    MeView, ObraList, ObraDetail,
+    ContracteTreballadorDetail, MeView, ObraDetail,
     # Empresa / Treballador
-    EmpresaList, EmpresaDetail, ObresListEmpresa,
-    TreballadorList, TreballadorDetail,
+    EmpresaDetail, ObresListEmpresa,
+     TreballadorDetail,
     # Altres entitats
-    ContrasenyaList, UbicacioDetail,UbicacioList,
-    PermisList, PermisUsuariList, PermisUsuariDetail,
+     UbicacioDetail,
+     PermisUsuariList, PermisUsuariDetail,
     IncidenciaList, IncidenciaDetail,
-    TasquesList, TasquesDetail,
+     TasquesDetail,
     RecursList, RecursDetail,
     SolucioList, SolucioDetail, SolucioBulkDeleteView,
-    DocumentObraList, DocumentObraDetail, DocumentObraUploadView,
+    DocumentObraList, DocumentObraDetail,
     TascaTreballadorList, TascaTreballadorDetail, TascaTreballadorBulkDeleteView,
     SolRecursList, SolRecursDetail,
     ResponsableObraList,
@@ -22,29 +22,30 @@ from .views import (
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
-    path('', LoginView.as_view(), name='root-login'),
+    #path('', LoginView.as_view(), name='root-login'),
     path('me/', MeView.as_view(), name='me'),
     # Obres
-    path('obres/', ObraList.as_view(), name='obra-list'),#Totes les obres
+    #path('obres/', ObraList.as_view(), name='obra-list'),#Totes les obres
     path ('obresEmpresa/<int:pk>', ObresListEmpresa.as_view(), name='obres-empresa-list'),#Obres d'una empresa
     path('obres/<int:pk>/', ObraDetail.as_view(), name='obra-detail'),
 
     # Treballadors
-    path('treballadors/', TreballadorList.as_view(), name='treballador-list'),
+    #path('treballadors/', TreballadorList.as_view(), name='treballador-list'),
     path('treballadors/<int:pk>/', TreballadorDetail.as_view(), name='treballador-detail'),
 
     # Empreses
-    path('empreses/', EmpresaList.as_view(), name='empresa-list'),
+    #path('empreses/', EmpresaList.as_view(), name='empresa-list'),
     path('empreses/<int:pk>/', EmpresaDetail.as_view(), name='empresa-detail'),
 
     # Contrasenyes
-    path('contrasenyes/', ContrasenyaList.as_view(), name='contrasenya-list'),
+    #path('contrasenyes/', ContrasenyaList.as_view(), name='contrasenya-list'),
     #Ubicacio
-    path('ubicacio/', UbicacioList.as_view(), name='ubicacio-list'),
+    #path('ubicacio/', UbicacioList.as_view(), name='ubicacio-list'),
     path('ubicacio/<int:pk>/', UbicacioDetail.as_view(), name='ubicacio-detail'),
 
+    path('contracte_treballador/<int:pk>/', ContracteTreballadorDetail.as_view(), name= 'contractetreballador-detail'),
     # Permisos
-    path('permis/', PermisList.as_view(), name='permis-list'),
+    #path('permis/', PermisList.as_view(), name='permis-list'),
     path('permis_treballador/', PermisUsuariList.as_view(), name='permisusuari-list'),
     path('permis_treballador/<int:pk>/', PermisUsuariDetail.as_view(), name='permisusuari-detail'),
 
@@ -53,7 +54,7 @@ urlpatterns = [
     path('incidencia/<int:pk>/', IncidenciaDetail.as_view(), name='incidencia-detail'),
 
     # Tasques
-    path('tasques/', TasquesList.as_view(), name='tasques-list'),
+    #path('tasques/', TasquesList.as_view(), name='tasques-list'),
     path('tasca/<int:pk>/', TasquesDetail.as_view(), name='tasques-detail'),
 
     # Recursos
@@ -68,7 +69,7 @@ urlpatterns = [
     # Documents d’obra
     path('document_obra/', DocumentObraList.as_view(), name='documentobra-list'),
     path('document_obra/<int:pk>/', DocumentObraDetail.as_view(), name='documentobra-detail'),
-    path('document_obra/upload/', DocumentObraUploadView.as_view(), name='documentobra-upload'),
+    #path('document_obra/upload/', DocumentObraUploadView.as_view(), name='documentobra-upload'),
 
     # TascaTreballador
     path('tasca_treballador/', TascaTreballadorList.as_view(), name='tascatreballador-list'),

@@ -1,9 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:front_end/screens/obra_screens/obra_edit_screen.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/tasca_form.dart';
@@ -26,13 +25,14 @@ class ObraProfileScreen extends StatefulWidget {
 
 class _ObraProfileScreenState extends State<ObraProfileScreen> {
   static const _baseUrl = 'http://localhost:8000/api';
-  final _storage = const FlutterSecureStorage();
+  //final _storage = const FlutterSecureStorage();
   Map<String, dynamic> _obra = {};
   List<dynamic> _incidencies = [];
   List<dynamic> _tasques = [];
   List<dynamic> _documents = [];
   List<dynamic> _solRec = [];
   bool _loading = true;
+  SharedPreferences? _prefs;
 
   @override
   void initState() {
@@ -43,8 +43,9 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
 
   //──────────────────── API ────────────────────
   Future<void> _fetchDetails() async {
-    setState(() => _loading = true);
-    final token = await _storage.read(key: 'token');
+    _prefs = await SharedPreferences.getInstance();
+
+    final token = await _prefs?.getString('token');
     if (token == null || token.isEmpty) {
       _snack('No hi ha sessió guardada');
       return;

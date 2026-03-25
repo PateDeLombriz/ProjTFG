@@ -2,7 +2,7 @@
 // Flux: (opcional) POST /ubicacio(ns)/ -> id  →  POST /empreses/ -> id  →  POST /contrasenyes/ amb id_empresa + hash
 import 'dart:convert';
 import 'dart:math';
-import 'package:cryptography/cryptography.dart';
+//import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -52,24 +52,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final rnd = Random.secure();
     return List.generate(length, (_) => chars[rnd.nextInt(chars.length)]).join();
-  }
-
-  /// Genera hash PBKDF2-SHA256 compatible amb Django:
-  ///   pbkdf2_sha256$<iterations>$<salt>$<base64(digest)>
-  Future<String> _djangoHash(String password, {int iterations = 260000}) async {
-    final salt = _randomSalt(12);
-    final algo = Pbkdf2(
-      macAlgorithm: Hmac.sha256(),
-      iterations: iterations,
-      bits: 256, // 32 bytes
-    );
-    final derived = await algo.deriveKey(
-      secretKey: SecretKey(utf8.encode(password)),
-      nonce: utf8.encode(salt), // 'salt'
-    );
-    final bytes = await derived.extractBytes();
-    final digestB64 = base64.encode(bytes);
-    return 'pbkdf2_sha256\$$iterations\$$salt\$$digestB64';
   }
 
   // ───────────── Registre (Ubicacio? -> Empresa -> Contrasenya hash) ─────────────
@@ -149,13 +131,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final empresaId = (eBody['id'] as num).toInt(); // serializer de Empresa sol retornar 'id'
 
       // 3) Hash + CONTRASENYA (XOR → id_empresa)
-      final pwdHash = await _djangoHash(_passwordController.text);
+     // final pwdHash = await _djangoHash(_passwordController.text);
       final pRes = await http.post(
         Uri.parse(_epPwds),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'id_empresa': empresaId,
-          'clau': pwdHash, // <-- ja encriptada (format Django)
+          'clau': _passwordController.text, // <-- ja encriptada (format Django)
           'data_creacio': DateTime.now().toIso8601String(),
         }),
       );

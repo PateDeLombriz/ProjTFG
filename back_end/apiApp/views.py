@@ -48,13 +48,8 @@ from .authentication.helpers import (
     _assert_query_treballador_in_context,
     _empresa_accessible_obra_ids,
     _empresa_accessible_treballador_ids,
-    _assert_empresa_can_access_obra,
-    _assert_empresa_can_access_treballador,
-    _empresa_accessible_obra_ids,
-    _empresa_accessible_treballador_ids,
-    _assert_query_obra_in_context,
-    _assert_query_treballador_in_context,
-    _is_contracte_vigent,
+    
+
 )
 class LoginView(TokenObtainPairView):
     authentication_classes = []
@@ -77,7 +72,7 @@ class ObraDetail(APIView):
 
     def get(self, request, pk):
         _assert_empresa_can_access_obra(request, pk)
-
+        
         obra = get_object_or_404(Obra, pk=pk)
 
         obra_data = ObraSerializer(obra).data
@@ -169,11 +164,6 @@ class ObresListEmpresa(APIView):
                     "id_ubicacio": obra.ubicacio.id_ubicacio,
                     "adreca": obra.ubicacio.adreca,
                     "ciutat": obra.ubicacio.ciutat,
-                    "codi_postal": obra.ubicacio.codi_postal,
-                    "provincia": obra.ubicacio.provincia,
-                    "pais": obra.ubicacio.pais,
-                    "latitud": obra.ubicacio.latitud,
-                    "longitud": obra.ubicacio.longitud,
                 } if obra.ubicacio else None,
             }
 
@@ -364,6 +354,8 @@ class IncidenciaDetail(APIView):
         incidencia_data['solucions'] = solucions_data
 
         return Response(incidencia_data, status=status.HTTP_200_OK)
+
+
 class TasquesDetail(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
@@ -720,6 +712,7 @@ class MeView(APIView):
         - objecte Empresa si es pot determinar
         - None si no hi ha empresa activa
         """
+        print(f"Resolent empresa per subjecte_type={subject_type}, subject_obj={subject_obj}")
 
         # Cas 1: ha entrat una empresa
         if subject_type == "empresa":
@@ -728,12 +721,12 @@ class MeView(APIView):
         # Cas 2: ha entrat un treballador
         if subject_type == "treballador":
             avui = date.today()
-
+            idTreballador = Treballador.objects.filter(nickname=subject_obj).first()
             contracte = (
                 ContracteTreballador.objects
                 .select_related("id_empresa")
                 .filter(
-                    id_treballador=subject_obj,
+                    id_treballador=idTreballador,
                     estat="actiu"
                 )
                 .filter(
@@ -753,8 +746,112 @@ class MeView(APIView):
 
         # Si arriba un tipus desconegut, retornam None per seguretat
         return None
+    
+class TreballadorProfileView(APIView):
+    """
+    Perfil d'un treballador.
+    - Treballador autenticat: només pot veure el seu propi perfil.
+    - Empresa autenticada: pot veure el perfil d'un treballador del seu context.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request, pk, format=None):
+        subject_type = request.auth["tipus"]
+        subject_id = int(request.auth["subject_id"])
 
+        if subject_type == "treballador":
+            if subject_id != pk:
+                raise PermissionDenied("No pots accedir al perfil d'un altre treballador.")
+        elif subject_type == "empresa":
+            _assert_empresa_can_access_treballador(request, pk)
+        else:
+            raise PermissionDenied("Tipus de subjecte no autoritzat.")
+
+        treballador = get_object_or_404(Treballador, pk=pk)
+        avui = timezone.now().date()
+
+        contracte = (
+            ContracteTreballador.objects
+            .select_related("id_empresa")
+            .filter(
+                id_treballador=treballador,
+                estat="actiu",
+            )
+            .filter(
+                Q(data_contracte__isnull=True) | Q(data_contracte__lte=avui)
+            )
+            .filter(
+                Q(data_fi__isnull=True) | Q(data_fi__gte=avui)
+            )
+            .order_by("-data_contracte", "-id")
+            .first()
+        )
+
+        tasques_count = (
+            TascaTreballador.objects
+            .filter(id_treballador=treballador)
+            .values("id_tasca_id")
+            .distinct()
+            .count()
+        )
+
+        obra_ids_tasques = list(
+            Tasca.objects
+            .filter(
+                id__in=TascaTreballador.objects.filter(
+                    id_treballador=treballador
+                ).values_list("id_tasca_id", flat=True)
+            )
+            .values_list("id_obra_id", flat=True)
+            .distinct()
+        )
+
+        obra_ids_responsable = list(
+            ResponsableObra.objects
+            .filter(id_treballador=treballador)
+            .values_list("id_obra_id", flat=True)
+            .distinct()
+        )
+
+        obres_count = len(set(obra_ids_tasques + obra_ids_responsable))
+
+        cfg = (
+            Configuracio.objects
+            .filter(id_treballador=treballador)
+            .first()
+        )
+
+        foto_url = None
+        if treballador.foto:
+            foto_url = request.build_absolute_uri(treballador.foto.url)
+        elif cfg and cfg.imatge_perfil:
+            foto_url = cfg.imatge_perfil
+
+        data = {
+            "id": treballador.id,
+            "nom": treballador.nom,
+            "cognoms": treballador.cognoms,
+            "nickname": treballador.nickname,
+            "telefon": treballador.telefon,
+            "email": treballador.email,
+            "foto": foto_url,
+            "empresa_actual": (
+                {
+                    "id": contracte.id_empresa.id,
+                    "nom_empresa": contracte.id_empresa.nom_empresa,
+                }
+                if contracte and contracte.id_empresa else None
+            ),
+            "carrec_actual": contracte.carrec if contracte else None,
+            "estat_contracte": contracte.estat if contracte else None,
+            "tasques_count": tasques_count,
+            "obres_count": obres_count,
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+        
 class RecursDetail(APIView):
     """
     API View que retorna els detalls d'un recurs concret,
@@ -856,9 +953,9 @@ class TascaTreballadorBulkDeleteView(APIView):
     URL: /api/tasca_treballador/<id_tasca>/bulk_delete/
     """
     def delete(self, request, id_tasca, format=None):
-        _assert_empresa_can_access_obra(
+        _assert_empresa_can_access_tasca_treballador(
             request,
-            get_object_or_404(Tasca, pk=id_tasca).id_obra_id
+            get_object_or_404(Tasca, pk=id_tasca).id
         )
 
         deleted, _ = TascaTreballador.objects.filter(id_tasca_id=id_tasca).delete()
@@ -874,14 +971,12 @@ class SolucioBulkDeleteView(APIView):
 
     def delete(self, request, id_incidencia, format=None):
         incidencia = get_object_or_404(Incidencia, pk=id_incidencia)
-        _assert_empresa_can_access_obra(request, incidencia.id_obra_id)
+        _assert_empresa_can_access_incidencia(request, incidencia)
 
         deleted, _ = Solucio.objects.filter(id_incidencia_id=id_incidencia).delete()
         return Response({'deleted': deleted}, status=status.HTTP_204_NO_CONTENT)
     
-    #--------------------------------------
-    #----------------LISTS-----------------
-    #--------------------------------------
+
 
 
 class DocumentObraList(APIView):
@@ -1085,7 +1180,7 @@ class TascaTreballadorList(APIView):
 
         if id_tasca:
             tasca = get_object_or_404(Tasca, pk=id_tasca)
-            _assert_empresa_can_access_obra(request, tasca.id_obra_id)
+            _assert_empresa_can_access_tasca(request, tasca)
             qs = qs.filter(id_tasca_id=id_tasca)
 
         if id_treballador:
@@ -1100,7 +1195,7 @@ class TascaTreballadorList(APIView):
 
         if id_tasca:
             tasca = get_object_or_404(Tasca, pk=id_tasca)
-            _assert_empresa_can_access_obra(request, tasca.id_obra_id)
+            _assert_empresa_can_access_tasca(request, tasca)
 
         if id_treballador:
             _assert_query_treballador_in_context(request, id_treballador)
@@ -1195,12 +1290,12 @@ class SolucioList(APIView):
 
         if id_incidencia:
             incidencia = get_object_or_404(Incidencia, pk=id_incidencia)
-            _assert_empresa_can_access_obra(request, incidencia.id_obra_id)
+            _assert_empresa_can_access_incidencia(request, incidencia)
             qs = qs.filter(id_incidencia_id=id_incidencia)
 
         if id_tasca:
             tasca = get_object_or_404(Tasca, pk=id_tasca)
-            _assert_empresa_can_access_obra(request, tasca.id_obra_id)
+            _assert_empresa_can_access_tasca(request, tasca)
             qs = qs.filter(id_tasca_id=id_tasca)
 
         return Response(SolucioSerializer(qs, many=True).data)
@@ -1211,11 +1306,11 @@ class SolucioList(APIView):
 
         if id_incidencia:
             incidencia = get_object_or_404(Incidencia, pk=id_incidencia)
-            _assert_empresa_can_access_obra(request, incidencia.id_obra_id)
+            _assert_empresa_can_access_incidencia(request, incidencia)
 
         if id_tasca:
             tasca = get_object_or_404(Tasca, pk=id_tasca)
-            _assert_empresa_can_access_obra(request, tasca.id_obra_id)
+            _assert_empresa_can_access_tasca(request, tasca)
 
         serializer = SolucioSerializer(data=request.data)
         if serializer.is_valid():

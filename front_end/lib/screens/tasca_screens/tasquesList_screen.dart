@@ -2,10 +2,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:front_end/screens/tascaDetailScreen.dart';
-import 'package:front_end/screens/empresa/tasca_form.dart';
+import 'package:front_end/screens/tasca_screens/tasca_profile_screen.dart';
 
 /// Pantalla de **Gestió de Tasques** amb la mateixa estètica que la resta
 /// (estadístiques, cercador, targetes riques, RefreshIndicator, menú d'accions).
@@ -17,7 +17,7 @@ class TasquesScreen extends StatefulWidget {
 }
 
 class _TasquesScreenState extends State<TasquesScreen> {
-  static const _baseUrl = 'http://localhost:8000/api';
+  static const _baseUrl = ApiConstants.baseUrl;
 
   final List<Map<String, dynamic>> _tasques = [];
   bool _loading = true;
@@ -209,7 +209,7 @@ class _TascaCard extends StatelessWidget {
           final id = int.tryParse('${tasca['id']}') ?? -1;
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TascaDetailScreen(tascaId: id)),
+            MaterialPageRoute(builder: (_) => TascaProfileScreen(tascaId: id,baseUrl: '' )),
           );
         },
         trailing: PopupMenuButton<String>(

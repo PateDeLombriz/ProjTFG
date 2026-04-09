@@ -2,16 +2,15 @@ import 'dart:convert';
 
 import 'package:front_end/models/document_models.dart';
 import 'package:front_end/models/incidencia_models.dart';
-import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/responsable_models.dart';
+import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/tasca_models.dart';
-
-
 
 class Obra {
   final int id;
   final String nom;
   final ObraUbicacioRef? ubicacio;
+  final ObraUbicacioInfo? ubicacioInfo;
   final DateTime? dataInici;
   final DateTime? dataPrevFi;
   final DateTime? dataFi;
@@ -23,6 +22,7 @@ class Obra {
     required this.id,
     required this.nom,
     required this.ubicacio,
+    required this.ubicacioInfo,
     required this.dataInici,
     required this.dataPrevFi,
     required this.dataFi,
@@ -36,6 +36,7 @@ class Obra {
       id: _asInt(map['id']),
       nom: _asString(map['nom']) ?? 'Obra',
       ubicacio: ObraUbicacioRef.fromDynamic(map['ubicacio']),
+      ubicacioInfo: ObraUbicacioInfo.fromDynamic(map['ubicacio_info']),
       dataInici: _asDate(map['data_inici']),
       dataPrevFi: _asDate(map['data_prev_fi']),
       dataFi: _asDate(map['data_fi']),
@@ -43,6 +44,35 @@ class Obra {
       descripcio: _asString(map['descripcio']),
       estat: _asString(map['estat']),
     );
+  }
+
+  bool get hasDescription => descripcio != null && descripcio!.trim().isNotEmpty;
+
+  bool get hasMapCoordinates =>
+      ubicacioInfo?.latitud != null && ubicacioInfo?.longitud != null;
+
+  bool get hasLocationData =>
+      ubicacioInfo?.hasVisualData == true ||
+      (ubicacio?.etiqueta != null && ubicacio!.etiqueta!.trim().isNotEmpty) ||
+      ubicacio?.id != null;
+
+  String get locationLabel {
+    final info = ubicacioInfo;
+    if (info != null && info.displayLabel.isNotEmpty) {
+      return info.displayLabel;
+    }
+
+    final etiqueta = ubicacio?.etiqueta?.trim();
+    if (etiqueta != null && etiqueta.isNotEmpty) {
+      return etiqueta;
+    }
+
+    final id = ubicacio?.id;
+    if (id != null) {
+      return 'Ubicació #$id';
+    }
+
+    return 'Sense ubicació';
   }
 }
 
@@ -110,6 +140,7 @@ class ObraUbicacioRef {
       return ObraUbicacioRef(
         id: _asIntOrNull(value['id'] ?? value['id_ubicacio']),
         etiqueta: _firstNonEmptyString([
+          value['display_name'],
           value['adreca'],
           value['adreça'],
           value['nom'],
@@ -123,6 +154,65 @@ class ObraUbicacioRef {
       etiqueta: value.toString(),
     );
   }
+}
+
+class ObraUbicacioInfo {
+  final int? idUbicacio;
+  final String? adreca;
+  final String? ciutat;
+  final String? codiPostal;
+  final String? provincia;
+  final String? pais;
+  final double? latitud;
+  final double? longitud;
+
+  const ObraUbicacioInfo({
+    required this.idUbicacio,
+    required this.adreca,
+    required this.ciutat,
+    required this.codiPostal,
+    required this.provincia,
+    required this.pais,
+    required this.latitud,
+    required this.longitud,
+  });
+
+  factory ObraUbicacioInfo.fromDynamic(dynamic value) {
+    if (value is! Map<String, dynamic>) {
+      return const ObraUbicacioInfo(
+        idUbicacio: null,
+        adreca: null,
+        ciutat: null,
+        codiPostal: null,
+        provincia: null,
+        pais: null,
+        latitud: null,
+        longitud: null,
+      );
+    }
+
+    return ObraUbicacioInfo(
+      idUbicacio: _asIntOrNull(value['id_ubicacio'] ?? value['id']),
+      adreca: _asString(value['adreca'] ?? value['adreça']),
+      ciutat: _asString(value['ciutat']),
+      codiPostal: _asString(value['codi_postal']),
+      provincia: _asString(value['provincia']),
+      pais: _asString(value['pais'] ?? value['país']),
+      latitud: _asDouble(value['latitud']),
+      longitud: _asDouble(value['longitud']),
+    );
+  }
+
+  bool get hasVisualData =>
+      displayLabel.isNotEmpty || latitud != null || longitud != null;
+
+  String get displayLabel => _firstNonEmptyString([
+        adreca,
+        ciutat,
+        provincia,
+        pais,
+      ]) ??
+      '';
 }
 
 List<T> _mapList<T>(
@@ -166,6 +256,13 @@ num? _asNum(dynamic value) {
   if (value == null) return null;
   if (value is num) return value;
   return num.tryParse(value.toString());
+}
+
+double? _asDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
 }
 
 DateTime? _asDate(dynamic value) {

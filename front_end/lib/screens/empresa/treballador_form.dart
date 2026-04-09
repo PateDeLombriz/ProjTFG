@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:http/http.dart' as http;
 
 /// ─────────────────────────────────────────────────────────────────────────────
@@ -19,8 +20,7 @@ class TreballadorForm extends StatefulWidget {
 
 class _TreballadorFormState extends State<TreballadorForm> {
   //==================== CONFIG/API ====================
-  late final String _baseApi =
-      kIsWeb ? 'http://localhost:8000/api' : 'http://10.0.2.2:8000/api';
+  late final String _baseApi =ApiConstants.baseUrl;
 
   // TODO(auth): Obtenir el token real de login (p.ex. FlutterSecureStorage)
   Future<String?> _readToken() async {

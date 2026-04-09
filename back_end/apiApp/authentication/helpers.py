@@ -36,10 +36,15 @@ def _assert_empresa_subject(request):
 
 
 def _empresa_te_acces_a_obra(empresa_id, obra_id):
-    return ObraEmpresa.objects.filter(
-        id_empresa_id=empresa_id,
-        id_obra_id=obra_id
+    print(f"Comprovant _empresa_te_acces_a_obra accés de empresa {empresa_id} a obra {obra_id}...")
+    aux = ObraEmpresa.objects.filter(
+        id_empresa=empresa_id,
+        id_obra=obra_id
     ).exists()
+
+    print (f"Resultat de _empresa_te_acces_a_obra: {aux}")
+    
+    return aux
 
 
 def _empresa_te_acces_a_treballador(empresa_id, treballador_id):
@@ -54,10 +59,25 @@ def _empresa_te_acces_a_treballador(empresa_id, treballador_id):
 
 def _assert_empresa_can_access_obra(request, obra_id):
     empresa_id = _assert_empresa_subject(request)
+    
     if not _empresa_te_acces_a_obra(empresa_id, obra_id):
         raise PermissionDenied("No pots accedir a una obra d'una altra empresa.")
+    
     return empresa_id
 
+def _assert_can_access_treballador_profile(request, treballador_id):
+    subject_type = request.auth["tipus"]
+    subject_id = int(request.auth["subject_id"])
+
+    if subject_type == "treballador":
+        if subject_id != int(treballador_id):
+            raise PermissionDenied("No pots accedir al perfil d'un altre treballador.")
+        return subject_id
+
+    if subject_type == "empresa":
+        return _assert_empresa_can_access_treballador(request, treballador_id)
+
+    raise PermissionDenied("Tipus de subjecte no autoritzat.")
 
 def _assert_empresa_can_access_treballador(request, treballador_id):
     empresa_id = _assert_empresa_subject(request)
@@ -160,7 +180,7 @@ def _assert_empresa_can_access_solucio(request, solucio):
 
     return empresa_id
 
-
+#retorna una llista amb els ids de les obres a les que pot accedir una empresa, per a fer consultes del tipus "id_obra__in=..." i evitar errors de permisos a nivell de base de dades
 def _empresa_accessible_obra_ids(empresa_id):
     return list(
         ObraEmpresa.objects.filter(
@@ -213,14 +233,6 @@ def _assert_empresa_can_access_configuracio(request, cfg):
 
 def _assert_empresa_can_access_verificacio(request, verificacio):
     return _assert_empresa_can_access_empresa(request, verificacio.id_empresa_id)
-
-
-def _empresa_accessible_obra_ids(empresa_id):
-    return list(
-        ObraEmpresa.objects.filter(
-            id_empresa_id=empresa_id
-        ).values_list('id_obra_id', flat=True)
-    )
 
 def _empresa_accessible_treballador_ids(empresa_id):
     contractes = (

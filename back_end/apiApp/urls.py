@@ -4,7 +4,7 @@ from .views import (
     ContracteTreballadorDetail, MeView, ObraDetail,
     # Empresa / Treballador
     EmpresaDetail, ObresListEmpresa,
-     TreballadorDetail,
+     TreballadorDetail, TreballadorProfileView,
     # Altres entitats
      UbicacioDetail,
      PermisUsuariList, PermisUsuariDetail,
@@ -26,13 +26,25 @@ urlpatterns = [
     path('me/', MeView.as_view(), name='me'),
     # Obres
     #path('obres/', ObraList.as_view(), name='obra-list'),#Totes les obres
-    path ('obresEmpresa/<int:pk>', ObresListEmpresa.as_view(), name='obres-empresa-list'),#Obres d'una empresa
+    path ('obresEmpresa/<int:pk>/', ObresListEmpresa.as_view(), name='obres-empresa-list'),#Obres d'una empresa
     path('obres/<int:pk>/', ObraDetail.as_view(), name='obra-detail'),
 
     # Treballadors
     #path('treballadors/', TreballadorList.as_view(), name='treballador-list'),
     path('treballadors/<int:pk>/', TreballadorDetail.as_view(), name='treballador-detail'),
+    path('treballadors/profile/<int:pk>/', TreballadorProfileView.as_view(), name='treballador-profile'),
+        # Vistes de conveniència per Treballador
+    path('treballadors/<int:treballador_id>/obres_participades/', TreballadorObresParticipadesView.as_view(), name='treballador-obres-participades'),
+    path('treballadors/<int:treballador_id>/tasques/', TreballladorTasquesAssignadesView.as_view(), name='treballador-tasques-assignades'),
+    
+        # TascaTreballador
+    #path('tasca_treballador/', TascaTreballadorList.as_view(), name='tascatreballador-list'),
+    path('tasca_treballador/<int:pk>/', TascaTreballadorDetail.as_view(), name='tascatreballador-detail'),
+    path('tasca_treballador/<int:id_tasca>/bulk_delete/', TascaTreballadorBulkDeleteView.as_view(), name='tascatreballador-bulk-delete'),
 
+    path('contracte_treballador/<int:pk>/', ContracteTreballadorDetail.as_view(), name= 'contractetreballador-detail'),
+
+    
     # Empreses
     #path('empreses/', EmpresaList.as_view(), name='empresa-list'),
     path('empreses/<int:pk>/', EmpresaDetail.as_view(), name='empresa-detail'),
@@ -43,7 +55,6 @@ urlpatterns = [
     #path('ubicacio/', UbicacioList.as_view(), name='ubicacio-list'),
     path('ubicacio/<int:pk>/', UbicacioDetail.as_view(), name='ubicacio-detail'),
 
-    path('contracte_treballador/<int:pk>/', ContracteTreballadorDetail.as_view(), name= 'contractetreballador-detail'),
     # Permisos
     #path('permis/', PermisList.as_view(), name='permis-list'),
     path('permis_treballador/', PermisUsuariList.as_view(), name='permisusuari-list'),
@@ -71,10 +82,6 @@ urlpatterns = [
     path('document_obra/<int:pk>/', DocumentObraDetail.as_view(), name='documentobra-detail'),
     #path('document_obra/upload/', DocumentObraUploadView.as_view(), name='documentobra-upload'),
 
-    # TascaTreballador
-    path('tasca_treballador/', TascaTreballadorList.as_view(), name='tascatreballador-list'),
-    path('tasca_treballador/<int:pk>/', TascaTreballadorDetail.as_view(), name='tascatreballador-detail'),
-    path('tasca_treballador/<int:id_tasca>/bulk_delete/', TascaTreballadorBulkDeleteView.as_view(), name='tascatreballador-bulk-delete'),
 
     # Sol·licituds de recursos
     path('sol_recurs/', SolRecursList.as_view(), name='solrecurs-list'),
@@ -83,7 +90,4 @@ urlpatterns = [
     # Responsable d’obra (N-a-N; només llista/filtre)
     path('responsable_obra/', ResponsableObraList.as_view(), name='responsableobra-list'),
 
-    # Vistes de conveniència per Treballador
-    path('treballadors/<int:treballador_id>/obres_participades/', TreballadorObresParticipadesView.as_view(), name='treballador-obres-participades'),
-    path('treballadors/<int:treballador_id>/tasques/', TreballladorTasquesAssignadesView.as_view(), name='treballador-tasques-assignades'),
 ]

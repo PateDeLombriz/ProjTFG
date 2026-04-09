@@ -3,6 +3,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:http/http.dart' as http;
 
 /// Pantalla de **Gestió de Recursos** amb una estètica coherent amb la resta
@@ -22,7 +23,7 @@ class RecursosScreen extends StatefulWidget {
 }
 
 class _RecursosScreenState extends State<RecursosScreen> {
-  static const _baseUrl = 'http://localhost:8000/api';
+  static const _baseUrl = ApiConstants.baseUrl;
 
   final List<Map<String, dynamic>> _recursos = [];
   bool _loading = true;

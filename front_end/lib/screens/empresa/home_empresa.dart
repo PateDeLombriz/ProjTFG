@@ -1,11 +1,10 @@
 //FET
 
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:front_end/screens/treballador/perfil_treb.dart';
+import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/screens/obra_screens/obra_profile_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:front_end/services/obra_service.dart';
 
 /// Pantalla principal per a empreses amb llistat d'obres, estadístiques i filtres.
 /// Estètica i UX alineades amb la resta de pantalles (bordes arrodonits, colors de tema,
@@ -18,93 +17,40 @@ class HomeEmpresa extends StatefulWidget {
 }
 
 class _HomeEmpresaState extends State<HomeEmpresa> {
-  static const _baseUrl = 'http://localhost:8000/api';
-  final List<Map<String, dynamic>> _obres = [];
+  static const _baseUrl = ApiConstants.baseUrl;
+  static List<Map<String, dynamic>> _obres = [];
   bool _loading = true;
   String _statusFilter = 'Totes';
-
+  final ObraService _obraService = ObraService(baseUrl: _baseUrl);
   @override
   void initState() {
     super.initState();
-    _init();
+    _loadObres();
   }
-
-  Future<void> _init() async {
-    await _carregarSessio();
-    await _fetchObres();
-  }
-
-  //──────────────────────── API ────────────────────────
-
-  Future<void> _carregarSessio() async {
-    final token = await SharedPreferences.getInstance();
-    token.getString('token');
-    if ( token == '') {
-      _snack('No hi ha sessió guardada');
-      return;
-    }
-    try {
-      final res = await http.get(
-        Uri.parse('$_baseUrl/me/'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ); //Ajusta endpoint si cal
-
-      debugPrint('ME status=${res.statusCode}');
-      debugPrint('ME body=${res.body}');
- 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        debugPrint('Usuari carregat: $data');
-        // Aquí podries carregar dades específiques de l'empresa o mostrar un missatge de benvinguda
-        if (data['subject_id'] != null) {
-          //data['tipus']=='empresa' &&
-          await token.setString(
-             'subject_id',
-             data['subject_id'].toString(),
-          );
-        }
-      } else {
-        throw Exception('Status ${res.statusCode}');
-      }
-    } catch (e) {
-      _snack('Error al carregar la sessió: $e');
-    }
-  }
-
-  Future<void> _fetchObres() async {
-    SharedPreferences localVol = await SharedPreferences.getInstance();
+  
+Future<void> _loadObres() async {
+  if (mounted) {
     setState(() => _loading = true);
-    final token = await localVol.getString('token');
-    if (token == null || token.isEmpty) {
-      _snack('No hi ha sessió guardada');
-      return;
-    }
-    try {
-      //Agafa l'id guardat a carregaSessio a flutter secure storage per a fer la consulta de les obres d'aquesta empresa
-      final idEmpresa = await localVol.getString('subject_id') ?? '';
-
-      final res = await http
-          .get(Uri.parse('$_baseUrl/obresEmpresa/$idEmpresa'), headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      }); //Ajusta endpoint si cal
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as List<dynamic>;
-        _obres
-          ..clear()
-          ..addAll(data.cast<Map<String, dynamic>>());
-      } else {
-        throw Exception('Status ${res.statusCode}');
-      }
-    } catch (e) {
-      _snack('Error al carregar les obres: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
+
+  try {
+    final obres = await _obraService.fetchMyEmpresaObres();
+
+    if (!mounted) return;
+    setState(() {
+      _obres = obres;
+      _loading = false;
+    });
+  } on ObraServiceException catch (e) {
+    if (!mounted) return;
+    setState(() => _loading = false);
+    _snack(e.message);
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _loading = false);
+    _snack('Error al carregar les obres: $e');
+  }
+}
 
   //──────────────────────── UI ─────────────────────────
   @override
@@ -117,9 +63,15 @@ class _HomeEmpresaState extends State<HomeEmpresa> {
           IconButton(
               icon: const Icon(Icons.notifications_none), onPressed: () {}),
           const SizedBox(width: 4),
-          CircleAvatar(
-              backgroundColor: scheme.primaryContainer,
-              child: const Icon(Icons.person)),
+          IconButton(
+              color: scheme.primaryContainer,
+              icon: const Icon(Icons.person),
+              onPressed: () { Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const HomeEmpresa(),
+              ),
+            );}),
           const SizedBox(width: 12),
         ],
       ),
@@ -186,7 +138,7 @@ class _HomeEmpresaState extends State<HomeEmpresa> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchObres,
+      onRefresh: _loadObres,
       child: ListView.separated(
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -197,11 +149,13 @@ class _HomeEmpresaState extends State<HomeEmpresa> {
 
   //───────────────────── Navegació ──────────────────────
   void _openObra(Map<String, dynamic> obra) async {
+    print('Obra seleccionada: $obra');
+    print(obra['ObraId']);
     final updated = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => ObraProfileScreen(obra: obra)),
+      MaterialPageRoute(builder: (_) => ObraProfileScreen(obraId: obra['id_obra'], baseUrl: _baseUrl)),
     );
-    if (updated == true) _fetchObres();
+    if (updated == true) _loadObres();
   }
 
   void _snack(String msg) =>
@@ -274,11 +228,11 @@ class _ObraCard extends StatelessWidget {
 
     Color _color(String s) {
       switch (s) {
-        case 'En curs':
+        case ('En curs' || 'EN CURS'):
           return Colors.orange;
-        case 'Finalitzada':
+        case 'Finalitzada' || 'FINALITZADA':
           return Colors.green;
-        case 'Res Firmat':
+        case 'Res Firmat' || 'RES FIRMAT':
           return Colors.grey;
         default:
           return scheme.primary;
@@ -317,7 +271,9 @@ class _ObraCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                        _ubicacioSimple(info['ubicacio']), //abans ubicacio
+                        _ubicacioSimple(info['ubicacio_info']['adreca'] +
+                            ", " +
+                            info['ubicacio_info']['ciutat']), //abans ubicacio
                         style: TextStyle(color: scheme.onSurfaceVariant)),
                     Row(
                       children: [
@@ -351,7 +307,7 @@ class _ObraCard extends StatelessWidget {
   }
 
   String _ubicacioSimple(dynamic v) {
-  if (v is String) return v.trim().isEmpty ? 'NO string' : v;
-  return v.toString();
-}
+    if (v is String) return v.trim().isEmpty ? 'NO string' : v;
+    return v.toString();
+  }
 }

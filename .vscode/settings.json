@@ -1,4 +1,5 @@
 {
     "java.configuration.updateBuildConfiguration": "interactive",
+    "cmake.ignoreCMakeListsMissing": true,
     //"cmake.sourceDirectory": "C:/Users/tonis/Desktop/TFG/ProjTFG/front_end/linux" //Estoy haciendo una web, no es necesario CMake que es para crear una capa nativa de ala app, para que pueda ser una app de escritorio.
 }

@@ -3,87 +3,199 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:front_end/models/obra_models.dart';
+import 'package:front_end/models/tasca_models.dart';
 
-class ObraServiceException implements Exception {
+class TascaServiceException implements Exception {
   final String message;
   final int? statusCode;
 
-  const ObraServiceException(this.message, {this.statusCode});
+  const TascaServiceException(this.message, {this.statusCode});
 
   @override
   String toString() => message;
 }
 
-class ObraService {
+class TascaService {
   final String baseUrl;
   final http.Client _client;
 
   String? _validatedToken;
 
-  ObraService({
+  TascaService({
     required this.baseUrl,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
-  Future<ObraProfileData> fetchObraProfile(int obraId) async {
-    final raw = await fetchObraRaw(obraId);
-    return ObraProfileData.fromMap(raw);
+  Future<TascaProfileData> fetchTascaProfile(int tascaId) async {
+    final raw = await fetchTascaRaw(tascaId);
+    return TascaProfileData.fromMap(raw);
   }
 
-  Future<Map<String, dynamic>> fetchObraRaw(int obraId) async {
+  Future<Map<String, dynamic>> fetchTascaDetail(int tascaId) async {
+    return fetchTascaRaw(tascaId);
+  }
+
+  Future<Map<String, dynamic>> fetchTascaRaw(int tascaId) async {
     final token = await _requireAuthenticatedSession();
-    print('FetchObraraw amb token: $token i obraId: $obraId');
+
     final response = await _client.get(
-      Uri.parse('$baseUrl/obres/$obraId/'),
+      Uri.parse('$baseUrl/tasca/$tascaId/'),
       headers: _authHeaders(token),
     );
 
     if (response.statusCode != 200) {
       await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
+      throw TascaServiceException(
         _extractErrorMessage(
           response,
-          fallback: 'Error carregant l’obra',
+          fallback: 'Error carregant la tasca',
         ),
         statusCode: response.statusCode,
       );
     }
 
     final decoded = jsonDecode(response.body);
-    print('Decoded obra raw: $decoded');
     if (decoded is! Map<String, dynamic>) {
-      throw const ObraServiceException('La resposta de l’obra no és vàlida.');
+      throw const TascaServiceException('La resposta de la tasca no és vàlida.');
     }
 
     return decoded;
   }
 
-  Future<List<Map<String, dynamic>>> fetchObresEmpresa(int idEmpresa) async {
+  /// Requereix que l'endpoint GET /tasques/ estigui exposat a urls.
+  ///
+  /// Al backend que m'has passat, la vista TascaList existeix,
+  /// però la ruta està comentada a urls - apiApp.py.
+  Future<List<Map<String, dynamic>>> fetchTasques({int? obraId}) async {
     final token = await _requireAuthenticatedSession();
+
+    final uri = Uri.parse('$baseUrl/tasques/').replace(
+      queryParameters: {
+        if (obraId != null) 'id_obra': obraId.toString(),
+      },
+    );
+
     final response = await _client.get(
-      Uri.parse('$baseUrl/obresEmpresa/$idEmpresa/'),
+      uri,
       headers: _authHeaders(token),
     );
 
     if (response.statusCode != 200) {
       await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
+      throw TascaServiceException(
         _extractErrorMessage(
           response,
-          fallback: 'Error carregant les obres de l’empresa',
+          fallback: 'Error carregant les tasques',
         ),
         statusCode: response.statusCode,
       );
     }
 
-    final data = jsonDecode(response.body) as List<dynamic>;
-    return data.cast<Map<String, dynamic>>();
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw const TascaServiceException('La resposta de les tasques no és vàlida.');
+    }
+
+    return decoded.map((item) {
+      if (item is Map<String, dynamic>) {
+        return item;
+      }
+      return Map<String, dynamic>.from(item as Map);
+    }).toList();
   }
 
-  Future<List<Map<String, dynamic>>> fetchMyEmpresaObres() async {
-    final idEmpresa = await requireEmpresaId();
-    return fetchObresEmpresa(idEmpresa);
+  Future<List<Map<String, dynamic>>> fetchTasquesByObra(int obraId) async {
+    return fetchTasques(obraId: obraId);
+  }
+
+  /// Requereix que l'endpoint POST /tasques/ estigui exposat a urls.
+  Future<Map<String, dynamic>> createTasca(Map<String, dynamic> payload) async {
+    final token = await _requireAuthenticatedSession();
+
+    final response = await _client.post(
+      Uri.parse('$baseUrl/tasques/'),
+      headers: _authHeaders(token),
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode != 201) {
+      await _handleUnauthorizedIfNeeded(response.statusCode);
+      throw TascaServiceException(
+        _extractErrorMessage(
+          response,
+          fallback: 'Error creant la tasca',
+        ),
+        statusCode: response.statusCode,
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const TascaServiceException('La resposta de creació de la tasca no és vàlida.');
+    }
+
+    return decoded;
+  }
+
+
+  Future<List<Map<String, dynamic>>> fetchAssignacionsTasca(int tascaId) async {
+    final token = await _requireAuthenticatedSession();
+
+    final uri = Uri.parse('$baseUrl/tasca_treballador/').replace(
+      queryParameters: {
+        'id_tasca': tascaId.toString(),
+      },
+    );
+
+    final response = await _client.get(
+      uri,
+      headers: _authHeaders(token),
+    );
+
+    if (response.statusCode != 200) {
+      await _handleUnauthorizedIfNeeded(response.statusCode);
+      throw TascaServiceException(
+        _extractErrorMessage(
+          response,
+          fallback: 'Error carregant les assignacions de la tasca',
+        ),
+        statusCode: response.statusCode,
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw const TascaServiceException(
+        'La resposta de les assignacions de la tasca no és vàlida.',
+      );
+    }
+
+    return decoded.map((item) {
+      if (item is Map<String, dynamic>) {
+        return item;
+      }
+      return Map<String, dynamic>.from(item as Map);
+    }).toList();
+  }
+
+  Future<void> deleteAssignacionsTasca(int tascaId) async {
+    final token = await _requireAuthenticatedSession();
+
+    final response = await _client.delete(
+      Uri.parse('$baseUrl/tasca_treballador/$tascaId/bulk_delete/'),
+      headers: _authHeaders(token),
+    );
+
+    if (response.statusCode != 204) {
+      await _handleUnauthorizedIfNeeded(response.statusCode);
+      throw TascaServiceException(
+        _extractErrorMessage(
+          response,
+          fallback: 'Error eliminant les assignacions de la tasca',
+        ),
+        statusCode: response.statusCode,
+      );
+    }
   }
 
   Future<int> requireEmpresaId() async {
@@ -93,38 +205,19 @@ class ObraService {
     final rawId = prefs.getString('subject_id')?.trim();
 
     if (rawId == null || rawId.isEmpty) {
-      throw const ObraServiceException(
+      throw const TascaServiceException(
         'No s’ha trobat l’identificador de l’empresa a la sessió.',
       );
     }
+
     final idEmpresa = int.tryParse(rawId);
     if (idEmpresa == null) {
-      throw ObraServiceException(
+      throw TascaServiceException(
         'L’identificador de l’empresa no és vàlid: $rawId',
       );
     }
 
     return idEmpresa;
-  }
-
-  Future<void> deleteObra(int obraId) async {
-    final token = await _requireAuthenticatedSession();
-
-    final response = await _client.delete(
-      Uri.parse('$baseUrl/obres/$obraId/'),
-      headers: _authHeaders(token),
-    );
-
-    if (response.statusCode != 204) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error eliminant l’obra',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
   }
 
   Future<void> ensureAuthenticatedSession() async {
@@ -135,17 +228,13 @@ class ObraService {
     final prefs = await SharedPreferences.getInstance();
     final token = _readStoredToken(prefs);
 
-      print('Token de session al requireAuthenticatedSession: $token');
     if (token == null || token.isEmpty) {
-      throw const ObraServiceException(
-        'No hi ha sessió guardada.',
-      );
+      throw const TascaServiceException('No hi ha sessió guardada.');
     }
-    print('Contingut de alidatedToken abans de validar: $_validatedToken');
+
     if (_validatedToken == token) {
       return token;
     }
-    print("Token no validat o canviat, validant token...");
 
     final response = await _client.get(
       Uri.parse('$baseUrl/me/'),
@@ -162,7 +251,7 @@ class ObraService {
 
     if (response.statusCode == 401 || response.statusCode == 403) {
       await _clearStoredSession();
-      throw ObraServiceException(
+      throw TascaServiceException(
         _extractErrorMessage(
           response,
           fallback: 'La sessió ha caducat o no és vàlida. Torna a fer login.',
@@ -171,7 +260,7 @@ class ObraService {
       );
     }
 
-    throw ObraServiceException(
+    throw TascaServiceException(
       _extractErrorMessage(
         response,
         fallback: 'Error al carregar la sessió.',
@@ -182,19 +271,14 @@ class ObraService {
 
   String? _readStoredToken(SharedPreferences prefs) {
     final token = prefs.getString('token')?.trim();
-    
-
     if (token != null && token.isNotEmpty) {
-      print("Token de detail obra service: $token");
       return token;
     }
 
     final legacyToken = prefs.getString('session_token')?.trim();
     if (legacyToken != null && legacyToken.isNotEmpty) {
-      print("Legacytoken de detail obra service: $legacyToken");
       return legacyToken;
     }
-    print('Token torna buit');
 
     return null;
   }

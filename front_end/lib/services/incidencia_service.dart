@@ -3,124 +3,110 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:front_end/models/obra_models.dart';
+import 'package:front_end/models/incidencia_models.dart';
 
-class ObraServiceException implements Exception {
+class IncidenciaServiceException implements Exception {
   final String message;
   final int? statusCode;
 
-  const ObraServiceException(this.message, {this.statusCode});
+  const IncidenciaServiceException(this.message, {this.statusCode});
 
   @override
   String toString() => message;
 }
 
-class ObraService {
+class IncidenciaService {
   final String baseUrl;
   final http.Client _client;
 
   String? _validatedToken;
 
-  ObraService({
+  IncidenciaService({
     required this.baseUrl,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
-  Future<ObraProfileData> fetchObraProfile(int obraId) async {
-    final raw = await fetchObraRaw(obraId);
-    return ObraProfileData.fromMap(raw);
+  Future<IncidenciaProfileData> fetchIncidenciaProfile(int incidenciaId) async {
+    final raw = await fetchIncidenciaRaw(incidenciaId);
+    return IncidenciaProfileData.fromMap(raw);
   }
 
-  Future<Map<String, dynamic>> fetchObraRaw(int obraId) async {
+  Future<Map<String, dynamic>> fetchIncidenciaRaw(int incidenciaId) async {
     final token = await _requireAuthenticatedSession();
-    print('FetchObraraw amb token: $token i obraId: $obraId');
+
     final response = await _client.get(
-      Uri.parse('$baseUrl/obres/$obraId/'),
+      Uri.parse('$baseUrl/incidencia/$incidenciaId/'),
       headers: _authHeaders(token),
     );
 
     if (response.statusCode != 200) {
       await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
+      throw IncidenciaServiceException(
         _extractErrorMessage(
           response,
-          fallback: 'Error carregant l’obra',
+          fallback: 'Error carregant la incidència',
         ),
         statusCode: response.statusCode,
       );
     }
 
     final decoded = jsonDecode(response.body);
-    print('Decoded obra raw: $decoded');
     if (decoded is! Map<String, dynamic>) {
-      throw const ObraServiceException('La resposta de l’obra no és vàlida.');
+      throw const IncidenciaServiceException(
+        'La resposta de la incidència no és vàlida.',
+      );
     }
 
     return decoded;
   }
 
-  Future<List<Map<String, dynamic>>> fetchObresEmpresa(int idEmpresa) async {
+  Future<Map<String, dynamic>> updateIncidencia(
+    int incidenciaId,
+    Map<String, dynamic> payload,
+  ) async {
     final token = await _requireAuthenticatedSession();
-    final response = await _client.get(
-      Uri.parse('$baseUrl/obresEmpresa/$idEmpresa/'),
+
+    final response = await _client.put(
+      Uri.parse('$baseUrl/incidencia/$incidenciaId/'),
       headers: _authHeaders(token),
+      body: jsonEncode(payload),
     );
 
     if (response.statusCode != 200) {
       await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
+      throw IncidenciaServiceException(
         _extractErrorMessage(
           response,
-          fallback: 'Error carregant les obres de l’empresa',
+          fallback: 'Error actualitzant la incidència',
         ),
         statusCode: response.statusCode,
       );
     }
 
-    final data = jsonDecode(response.body) as List<dynamic>;
-    return data.cast<Map<String, dynamic>>();
-  }
-
-  Future<List<Map<String, dynamic>>> fetchMyEmpresaObres() async {
-    final idEmpresa = await requireEmpresaId();
-    return fetchObresEmpresa(idEmpresa);
-  }
-
-  Future<int> requireEmpresaId() async {
-    await _requireAuthenticatedSession();
-
-    final prefs = await SharedPreferences.getInstance();
-    final rawId = prefs.getString('subject_id')?.trim();
-
-    if (rawId == null || rawId.isEmpty) {
-      throw const ObraServiceException(
-        'No s’ha trobat l’identificador de l’empresa a la sessió.',
-      );
-    }
-    final idEmpresa = int.tryParse(rawId);
-    if (idEmpresa == null) {
-      throw ObraServiceException(
-        'L’identificador de l’empresa no és vàlid: $rawId',
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const IncidenciaServiceException(
+        'La resposta d’actualització de la incidència no és vàlida.',
       );
     }
 
-    return idEmpresa;
+    return decoded;
   }
 
-  Future<void> deleteObra(int obraId) async {
+  Future<void> deleteIncidencia(int incidenciaId) async {
     final token = await _requireAuthenticatedSession();
 
     final response = await _client.delete(
-      Uri.parse('$baseUrl/obres/$obraId/'),
+      Uri.parse('$baseUrl/incidencia/$incidenciaId/'),
       headers: _authHeaders(token),
     );
 
     if (response.statusCode != 204) {
       await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
+      throw IncidenciaServiceException(
         _extractErrorMessage(
           response,
-          fallback: 'Error eliminant l’obra',
+          fallback: 'Error eliminant la incidència',
         ),
         statusCode: response.statusCode,
       );
@@ -135,17 +121,13 @@ class ObraService {
     final prefs = await SharedPreferences.getInstance();
     final token = _readStoredToken(prefs);
 
-      print('Token de session al requireAuthenticatedSession: $token');
     if (token == null || token.isEmpty) {
-      throw const ObraServiceException(
-        'No hi ha sessió guardada.',
-      );
+      throw const IncidenciaServiceException('No hi ha sessió guardada.');
     }
-    print('Contingut de alidatedToken abans de validar: $_validatedToken');
+
     if (_validatedToken == token) {
       return token;
     }
-    print("Token no validat o canviat, validant token...");
 
     final response = await _client.get(
       Uri.parse('$baseUrl/me/'),
@@ -162,7 +144,7 @@ class ObraService {
 
     if (response.statusCode == 401 || response.statusCode == 403) {
       await _clearStoredSession();
-      throw ObraServiceException(
+      throw IncidenciaServiceException(
         _extractErrorMessage(
           response,
           fallback: 'La sessió ha caducat o no és vàlida. Torna a fer login.',
@@ -171,7 +153,7 @@ class ObraService {
       );
     }
 
-    throw ObraServiceException(
+    throw IncidenciaServiceException(
       _extractErrorMessage(
         response,
         fallback: 'Error al carregar la sessió.',
@@ -182,21 +164,28 @@ class ObraService {
 
   String? _readStoredToken(SharedPreferences prefs) {
     final token = prefs.getString('token')?.trim();
-    
-
     if (token != null && token.isNotEmpty) {
-      print("Token de detail obra service: $token");
       return token;
+    }
+
+    final access = prefs.getString('access')?.trim();
+    if (access != null && access.isNotEmpty) {
+      return access;
     }
 
     final legacyToken = prefs.getString('session_token')?.trim();
     if (legacyToken != null && legacyToken.isNotEmpty) {
-      print("Legacytoken de detail obra service: $legacyToken");
       return legacyToken;
     }
-    print('Token torna buit');
 
     return null;
+  }
+
+  Map<String, String> _authHeaders(String token) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
   }
 
   Future<void> _storeSessionContext(
@@ -210,46 +199,41 @@ class ObraService {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) {
         final subjectId = decoded['subject_id'];
+        final tipus = decoded['tipus'];
+        final idEmpresa = decoded['id_empresa'];
+
         if (subjectId != null) {
           await prefs.setString('subject_id', subjectId.toString());
         }
 
-        final tipus = decoded['tipus'];
-        if (tipus is String && tipus.trim().isNotEmpty) {
-          await prefs.setString('tipus', tipus);
+        if (tipus != null) {
+          await prefs.setString('tipus', tipus.toString());
         }
 
-        final idEmpresa = decoded['id_empresa'];
         if (idEmpresa != null) {
           await prefs.setString('id_empresa', idEmpresa.toString());
         }
       }
     } catch (_) {
-      // Si /me/ no es pot parsejar, mantenim com a mínim el token validat.
-    }
-  }
-
-  Map<String, String> _authHeaders(String token) {
-    return <String, String>{
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
-
-  Future<void> _handleUnauthorizedIfNeeded(int statusCode) async {
-    if (statusCode == 401 || statusCode == 403) {
-      _validatedToken = null;
-      await _clearStoredSession();
+      // Si /me/ retorna un body inesperat, mantenim almenys el token.
     }
   }
 
   Future<void> _clearStoredSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
-    await prefs.remove('session_token');
-    await prefs.remove('subject_id');
+    await prefs.remove('access');
+    await prefs.remove('refresh');
     await prefs.remove('tipus');
+    await prefs.remove('subject_id');
     await prefs.remove('id_empresa');
+    _validatedToken = null;
+  }
+
+  Future<void> _handleUnauthorizedIfNeeded(int statusCode) async {
+    if (statusCode == 401 || statusCode == 403) {
+      await _clearStoredSession();
+    }
   }
 
   String _extractErrorMessage(
@@ -262,13 +246,40 @@ class ObraService {
       if (decoded is Map<String, dynamic>) {
         final detail = decoded['detail'];
         if (detail is String && detail.trim().isNotEmpty) {
-          return detail;
+          return detail.trim();
+        }
+
+        final message = decoded['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+
+        final nonFieldErrors = decoded['non_field_errors'];
+        if (nonFieldErrors is List && nonFieldErrors.isNotEmpty) {
+          return nonFieldErrors.first.toString();
+        }
+
+        if (decoded.isNotEmpty) {
+          return decoded.entries
+              .map((entry) => '${entry.key}: ${entry.value}')
+              .join(' | ');
         }
       }
+
+      if (decoded is List && decoded.isNotEmpty) {
+        return decoded.first.toString();
+      }
     } catch (_) {
-      // Ignoram errors de parseig i usam el fallback.
+      final raw = response.body.trim();
+      if (raw.isNotEmpty) {
+        return raw;
+      }
     }
 
-    return '$fallback (${response.statusCode})';
+    return fallback;
+  }
+
+  void dispose() {
+    _client.close();
   }
 }

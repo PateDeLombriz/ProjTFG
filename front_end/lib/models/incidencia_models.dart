@@ -1,3 +1,7 @@
+
+import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/models/obra_models.dart';
+
 class Incidencia {
   final int id;
   final int idObra;
@@ -59,4 +63,74 @@ int? _asIntOrNull(dynamic value) {
 DateTime? _asDate(dynamic value) {
   if (value == null) return null;
   return DateTime.tryParse(value.toString());
+}
+
+List<T> _mapList<T>(
+  dynamic raw,
+  T Function(Map<String, dynamic>) builder,
+) {
+  if (raw is! List) return <T>[];
+
+  return raw.map((item) {
+    return builder(Map<String, dynamic>.from(item));
+  }).toList();
+}
+
+class IncidenciaSolucioItem {
+  final int id;
+  final String descripcio;
+  final int? eficacia;
+  final int? costMonetari;
+  final int? costTemporal;
+  final int? impacte;
+
+  const IncidenciaSolucioItem({
+    required this.id,
+    required this.descripcio,
+    required this.eficacia,
+    required this.costMonetari,
+    required this.costTemporal,
+    required this.impacte,
+  });
+
+  factory IncidenciaSolucioItem.fromMap(Map<String, dynamic> map) {
+    return IncidenciaSolucioItem(
+      id: _asInt(map['id']),
+      descripcio: _asString(map['descripcio']) ?? '',
+      eficacia: _asIntOrNull(map['eficacia']),
+      costMonetari: _asIntOrNull(map['cost_monetari']),
+      costTemporal: _asIntOrNull(map['cost_temporal']),
+      impacte: _asIntOrNull(map['impacte']),
+    );
+  }
+}
+
+class IncidenciaProfileData {
+  final Incidencia incidencia;
+  final Obra? obra;
+  final Tasca? tasca;
+  final List<IncidenciaSolucioItem> solucions;
+
+  const IncidenciaProfileData({
+    required this.incidencia,
+    required this.obra,
+    required this.tasca,
+    required this.solucions,
+  });
+
+  factory IncidenciaProfileData.fromMap(Map<String, dynamic> map) {
+    return IncidenciaProfileData(
+      incidencia: Incidencia.fromMap(map),
+      obra: map['obra'] != null
+          ? Obra.fromMap(map['obra'])
+          : null,
+      tasca: map['tasca'] != null
+          ? Tasca.fromMap(map['tasca'])
+          : null,
+      solucions: _mapList(
+        map['solucions'],
+        IncidenciaSolucioItem.fromMap,
+      ),
+    );
+  }
 }

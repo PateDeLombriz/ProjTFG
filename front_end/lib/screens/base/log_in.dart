@@ -28,11 +28,11 @@ class _LoginScreenState extends State<LoginScreen> {
   // - Android emulator: 10.0.2.2
   // - dispositiu físic: IP LAN del PC
   static String get _apiBase {
-  if (!kIsWeb && Platform.isAndroid) {
-    return 'http://10.0.2.2:8000/api/';
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:8000/api/';
+    }
+    return 'http://localhost:8000/api/';
   }
-  return 'http://localhost:8000/api/';
-}
 
   static String get _apiLogin => '${_apiBase}login/';
 
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => TreballadorProfileScreen(
-                usuariId: subjectId,
+                treballadorId: subjectId,
               ),
             ),
           );

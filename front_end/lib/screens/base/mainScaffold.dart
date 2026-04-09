@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/empresa/home_empresa.dart';
 import 'package:front_end/screens/obra_screens/obra_form.dart';
-import 'package:front_end/screens/empresa/tasquesList_screen.dart';
+import 'package:front_end/screens/tasca_screens/tasquesList_screen.dart';
 import 'package:front_end/screens/empresa/recursosList_screen.dart';
-import 'package:front_end/screens/empresa/tasca_form.dart';
+import 'package:front_end/screens/tasca_screens/tasca_form.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/solicRec_form.dart';
 import 'package:front_end/screens/empresa/doc_form.dart';
@@ -28,7 +28,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   final List<BottomNavigationBarItem> _navItems = const [
     BottomNavigationBarItem(icon: Icon(Icons.business), label: 'Obres'),
     BottomNavigationBarItem(icon: Icon(Icons.task_alt_outlined), label: 'Tasques'),
-    BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Recursos'),
+    BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Sol Recursos'),
 
   ];
 

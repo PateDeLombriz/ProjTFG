@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/screens/obra_screens/obra_profile_screen.dart';
 import 'package:front_end/services/tasques_service.dart';
+import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/widgets/tasca_widgets.dart';
 
 class TascaDetailScreen extends StatefulWidget {
@@ -15,17 +15,17 @@ class TascaDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<TascaDetailScreen> createState() => _TascaProfileScreenState();
+  State<TascaDetailScreen> createState() => _TascaDetailScreenState();
 }
 
-class _TascaProfileScreenState extends State<TascaDetailScreen> {
+class _TascaDetailScreenState extends State<TascaDetailScreen> {
   late final TascaService _service;
   late Future<TascaProfileData> _future;
 
   @override
   void initState() {
     super.initState();
-    _service = TascaService(baseUrl: _resolveApiBaseUrl());
+    _service = TascaService(baseUrl: ApiConstants.baseUrl);
     _future = _service.fetchTascaProfile(widget.tascaId);
   }
 
@@ -33,23 +33,32 @@ class _TascaProfileScreenState extends State<TascaDetailScreen> {
     setState(() {
       _future = _service.fetchTascaProfile(widget.tascaId);
     });
+
     await _future;
   }
 
-   void _openObraInt(int obra) {
-    print('Id de lobra: '+ obra.toString());
+  void _openObra(Map<String, dynamic> obra) {
+    final obraId = int.tryParse('${obra['id'] ?? ''}');
+
+    if (obraId == null) {
+      _showPendingNavigation('obra', 0);
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ObraProfileScreen(obraId: obra, baseUrl: '',),
+        builder: (_) => ObraProfileScreen(
+          obraId: obraId,
+          baseUrl: ApiConstants.baseUrl,
+        ),
       ),
     );
   }
 
-   void _openObraMap(Map<String, dynamic> obra) {
-    print('Id de lobra: '+ obra['id'].toString());
+  void _openTascaPare(int id) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ObraProfileScreen(obraId: obra['id'], baseUrl: '',),
+        builder: (_) => TascaDetailScreen(tascaId: id),
       ),
     );
   }
@@ -73,9 +82,7 @@ class _TascaProfileScreenState extends State<TascaDetailScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresca',
-            onPressed: () {
-              _reload();
-            },
+            onPressed: _reload,
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -84,7 +91,9 @@ class _TascaProfileScreenState extends State<TascaDetailScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
           if (snapshot.hasError) {
@@ -95,6 +104,7 @@ class _TascaProfileScreenState extends State<TascaDetailScreen> {
           }
 
           final data = snapshot.data;
+
           if (data == null) {
             return TascaEmptyState(onRetry: _reload);
           }
@@ -107,31 +117,40 @@ class _TascaProfileScreenState extends State<TascaDetailScreen> {
               children: [
                 TascaHeroCard(data: data),
                 const SizedBox(height: 16),
+
                 TascaObraSection(
                   obra: data.obra,
-                  onOpenObra: _openObraMap,
+                  onOpenObra: _openObra,
                 ),
                 const SizedBox(height: 16),
+
                 TascaPareSection(
                   tascaPare: data.tascaPare,
-                  onOpenTascaPare: (id) => _showPendingNavigation('tasca', id),
+                  onOpenTascaPare: _openTascaPare,
                 ),
                 const SizedBox(height: 16),
+
                 TascaAssignacioSection(
                   assignacio: data.treballadorAssignat,
-                  onOpenTreballador: (id) =>
-                      _showPendingNavigation('treballador', id),
+                  onOpenTreballador: (id) {
+                    _showPendingNavigation('treballador', id);
+                  },
                 ),
                 const SizedBox(height: 16),
+
                 TascaIncidenciesSection(
                   incidencies: data.incidencies,
-                  onOpenIncidencia: (id) =>
-                      _showPendingNavigation('incidència', id),
+                  onOpenIncidencia: (id) {
+                    _showPendingNavigation('incidència', id);
+                  },
                 ),
                 const SizedBox(height: 16),
+
                 TascaSolucionsSection(
                   solucions: data.solucions,
-                  onOpenSolucio: (id) => _showPendingNavigation('solució', id),
+                  onOpenSolucio: (id) {
+                    _showPendingNavigation('solució', id);
+                  },
                 ),
               ],
             ),
@@ -140,8 +159,4 @@ class _TascaProfileScreenState extends State<TascaDetailScreen> {
       ),
     );
   }
-}
-
-String _resolveApiBaseUrl() {
-  return kIsWeb ? 'http://localhost:8000/api' : 'http://10.0.2.2:8000/api';
 }

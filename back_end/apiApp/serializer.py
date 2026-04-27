@@ -1,12 +1,23 @@
+
+#El serializer s’encarrega de les dades:
+#
+#definir quins camps entren o surten
+#validar els valors
+#transformar dades
+#crear o actualitzar objectes si toca
+from django.db import transaction
+from django.utils import timezone
+import secrets
+
 from rest_framework import serializers
-from django.contrib.auth.hashers import check_password
-from .models import (Obra, ObraEmpresa, Treballador, Empresa, Contrasenya,
- Permis, PermisTreballador, LogDeSessio, Configuracio, Ubicacio, Usuari, Verificacio,
-    DocumentObra, Tasca, TascaTreballador, Incidencia, Solucio,
-    Recurs, SolRecurs, ResponsableObra,   
-    ResponsableObra,ContracteTreballador
+from django.contrib.auth.hashers import check_password,make_password
+from .models import (Usuari, Empresa, Contrasenya, Verificacio, Obra, ObraEmpresa, Treballador, Empresa, Contrasenya,
+    Permis, PermisTreballador, LogDeSessio, Configuracio, Ubicacio, Usuari, Verificacio,
+    DocumentObra, Tasca, TascaTreballador, Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra, ResponsableObra,ContracteTreballador
 )
 from .authentication.helpers import _is_contracte_vigent
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
 #Aquesta classee ara com ara tan sols prepara l'informacio per ser
 # resnderitzada a json, pot ser canvii.
 
@@ -14,6 +25,12 @@ class ObraSerializer(serializers.ModelSerializer):
     class Meta:
         model = Obra
         fields = '__all__'  # Serializes all fields of the Obra model
+
+class ObraRefSerializer(serializers.ModelSerializer):
+    """Minimal Obra reference for nested responses"""
+    class Meta:
+        model = Obra
+        fields = ['id', 'nom']
 
 class EmpresaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -94,10 +111,21 @@ class RecursSerializer(serializers.ModelSerializer):
         model = Recurs
         fields = '__all__'
 
+class RecursRefSerializer(serializers.ModelSerializer):
+    """Minimal Recurs reference for nested responses"""
+    class Meta:
+        model = Recurs
+        fields = ['id', 'nom', 'unitats_mesura', 'tipus_recurs']
+
 class SolRecursSerializer(serializers.ModelSerializer):
+    obra = ObraRefSerializer(source='id_obra', read_only=True)
+    recurs = RecursRefSerializer(source='id_recurs', read_only=True)
+    
     class Meta:
         model = SolRecurs
-        fields = '__all__'
+        fields = ['id', 'id_empresa', 'id_obra', 'id_recurs', 'quantitat', 
+                  'data_necessitat', 'comentari', 'data_entrega', 'data_creacio', 
+                  'proveidor', 'obra', 'recurs']
 
 class ResponsableObraSerializer(serializers.ModelSerializer):
     class Meta:
@@ -110,8 +138,85 @@ class ObraEmpresaSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
+
+class EmpresaRegisterSerializer(serializers.Serializer):
+    nom_empresa = serializers.CharField(max_length=100)
+    cif = serializers.CharField(max_length=20)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True, min_length=8)
+    telefon = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
+    persona_contacte = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    sector = serializers.CharField(max_length=50, required=False, allow_blank=True, allow_null=True)
+
+    def validate_email(self, value):
+        email = value.strip().lower()
+        if Usuari.objects.filter(loginField=email).exists():
+            raise serializers.ValidationError("Ja existeix un usuari amb aquest correu.")
+        return email
+
+    def validate_cif(self, value):
+        cif = value.strip().upper()
+        if Empresa.objects.filter(cif=cif).exists():
+            raise serializers.ValidationError("Ja existeix una empresa amb aquest CIF.")
+        return cif
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError({
+                "password_confirm": "Les contrasenyes no coincideixen."
+            })
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        validated_data.pop("password_confirm")
+
+        email = validated_data["email"]
+        token = secrets.token_urlsafe(32)
+        now = timezone.now()
+
+        user = Usuari.objects.create(
+            username=email,
+            loginField=email,
+            email=email,
+            tipus="empresa",
+            is_active=True,
+            password=make_password(password),
+        )
+
+        empresa = Empresa.objects.create(
+            user=user,
+            nom_empresa=validated_data["nom_empresa"],
+            cif=validated_data["cif"],
+            email=email,
+            telefon=validated_data.get("telefon"),
+            persona_contacte=validated_data.get("persona_contacte"),
+            sector=validated_data.get("sector"),
+            estat="activa",
+        )
+
+        Contrasenya.objects.create(
+            id_empresa=empresa,
+            clau=make_password(password),
+            data_creacio=now,
+        )
+
+        Verificacio.objects.create(
+            id_empresa=empresa,
+            estat_ver="pendent",
+            token_verificacio=token,
+            data_token=now,
+        )
+
+        return {
+            "empresa_id": empresa.id,
+            "email": empresa.email,
+            "requires_verification": True,
+            "message": "Compte creat correctament. Revisa el correu de verificació.",
+        }
+
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = "loginField"

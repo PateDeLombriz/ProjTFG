@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:front_end/screens/incidencia/incidenciaDetail_screen.dart';
-import 'package:front_end/screens/tasca_screens/tasca_profile_screen.dart';
-import 'package:front_end/screens/treballador/perfil_treb.dart';
-import 'package:front_end/screens/treballador/treballador_detail_screen.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/models/document_models.dart';
 import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/responsable_models.dart';
 import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/screens/incidencia/incidenciaDetail_screen.dart';
+import 'package:front_end/screens/tasca_screens/tasca_detail_screen.dart';
+import 'package:front_end/screens/treballador/treballador_detail_screen.dart';
+import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/map_selector_widget.dart';
+import 'package:front_end/utils/obra_feedback.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:front_end/shared/services/geocoding_services.dart';
 
 class ObraFabMenu extends StatelessWidget {
   final Future<void> Function(String value) onSelected;
@@ -21,53 +23,62 @@ class ObraFabMenu extends StatelessWidget {
     required this.onSelected,
   });
 
+  Future<void> _openMenu(BuildContext context) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final button = context.findRenderObject() as RenderBox;
+
+    final buttonRect = Rect.fromPoints(
+      button.localToGlobal(Offset.zero, ancestor: overlay),
+      button.localToGlobal(
+        button.size.bottomRight(Offset.zero),
+        ancestor: overlay,
+      ),
+    );
+
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(buttonRect, Offset.zero & overlay.size),
+      items: const [
+        PopupMenuItem<String>(
+          value: 'inc',
+          child: _ObraFabMenuItem(
+            icon: Icons.warning_amber_rounded,
+            label: 'Nova incidència',
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'tasca',
+          child: _ObraFabMenuItem(
+            icon: Icons.task_alt,
+            label: 'Nova tasca',
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'doc',
+          child: _ObraFabMenuItem(
+            icon: Icons.description_outlined,
+            label: 'Afegir document',
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'rec',
+          child: _ObraFabMenuItem(
+            icon: Icons.inventory_2_outlined,
+            label: 'Sol·licitar recurs',
+          ),
+        ),
+      ],
+    );
+
+    if (selected != null) {
+      await onSelected(selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
-      onPressed: () async {
-        final selected = await showMenu<String>(
-          context: context,
-          position: const RelativeRect.fromLTRB(1000, 1000, 16, 100),
-          items: const [
-            PopupMenuItem(
-              value: 'inc',
-              child: ListTile(
-                dense: true,
-                leading: Icon(Icons.warning_amber_rounded),
-                title: Text('Nova incidència'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'tasca',
-              child: ListTile(
-                dense: true,
-                leading: Icon(Icons.task_alt),
-                title: Text('Nova tasca'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'doc',
-              child: ListTile(
-                dense: true,
-                leading: Icon(Icons.description_outlined),
-                title: Text('Afegir document'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'rec',
-              child: ListTile(
-                dense: true,
-                leading: Icon(Icons.inventory_2_outlined),
-                title: Text('Sol·licitar recurs'),
-              ),
-            ),
-          ],
-        );
-
-        if (selected != null) {
-          await onSelected(selected);
-        }
-      },
+      onPressed: () => _openMenu(context),
       child: const Icon(Icons.add),
     );
   }
@@ -75,6 +86,7 @@ class ObraFabMenu extends StatelessWidget {
 
 class ObraHeaderCard extends StatelessWidget {
   final Obra obra;
+
   const ObraHeaderCard({
     super.key,
     required this.obra,
@@ -82,10 +94,11 @@ class ObraHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(24),
@@ -108,6 +121,7 @@ class ObraHeaderCard extends StatelessWidget {
               color: scheme.primary.withOpacity(0.10),
               borderRadius: BorderRadius.circular(22),
             ),
+            alignment: Alignment.center,
             child: Icon(
               Icons.apartment_rounded,
               color: scheme.primary,
@@ -121,8 +135,7 @@ class ObraHeaderCard extends StatelessWidget {
               children: [
                 Text(
                   obra.nom,
-                  style: const TextStyle(
-                    fontSize: 22,
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                     height: 1.15,
                   ),
@@ -133,7 +146,7 @@ class ObraHeaderCard extends StatelessWidget {
                     obra.descripcio!,
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                       height: 1.35,
                     ),
@@ -146,7 +159,7 @@ class ObraHeaderCard extends StatelessWidget {
                   children: [
                     _ObraTag(
                       icon: Icons.flag_outlined,
-                      label: _textOrFallback(obra.estat),
+                      label: _displayText(obra.estat),
                     ),
                     _ObraTag(
                       icon: Icons.location_on_outlined,
@@ -158,6 +171,168 @@ class ObraHeaderCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ObraCreateHeaderCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const ObraCreateHeaderCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: theme.textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ObraFormSection extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  const ObraFormSection({
+    super.key,
+    required this.title,
+    required this.child,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: theme.textTheme.titleLarge),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                subtitle!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ObraDateField extends StatelessWidget {
+  final String label;
+  final DateTime? value;
+  final VoidCallback onTap;
+
+  const ObraDateField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: const Icon(Icons.calendar_today_outlined),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(obraFormatDate(value)),
+      ),
+    );
+  }
+}
+
+class ObraCreateSummaryCard extends StatelessWidget {
+  final String nom;
+  final String pressupostText;
+  final String estat;
+  final ObraUbicacioInfo? ubicacio;
+  final DateTime? dataInici;
+  final DateTime? dataPrevFi;
+
+  const ObraCreateSummaryCard({
+    super.key,
+    required this.nom,
+    required this.pressupostText,
+    required this.estat,
+    required this.ubicacio,
+    required this.dataInici,
+    required this.dataPrevFi,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Resum', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 12),
+            _ObraSummaryRow(
+              label: 'Nom',
+              value: nom.trim().isEmpty ? '—' : nom.trim(),
+            ),
+            _ObraSummaryRow(
+              label: 'Ubicació',
+              value: ubicacio?.adreca.toString() ?? '—',
+            ),
+            _ObraSummaryRow(label: 'Estat', value: estat),
+            _ObraSummaryRow(label: 'Inici', value: obraFormatDate(dataInici)),
+            _ObraSummaryRow(
+              label: 'Fi prevista',
+              value: obraFormatDate(dataPrevFi),
+            ),
+            _ObraSummaryRow(
+              label: 'Pressupost',
+              value: obraFormatMoneyPreview(pressupostText),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -189,10 +364,9 @@ class ObraCompactInfoPanel extends StatelessWidget {
         children: [
           Text(
             'Informació general',
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -201,19 +375,19 @@ class ObraCompactInfoPanel extends StatelessWidget {
             children: [
               _ObraInfoPill(
                 label: 'Inici',
-                value: _formatDate(obra.dataInici),
+                value: obraFormatDate(obra.dataInici),
               ),
               _ObraInfoPill(
                 label: 'Fi prevista',
-                value: _formatDate(obra.dataPrevFi),
+                value: obraFormatDate(obra.dataPrevFi),
               ),
               _ObraInfoPill(
                 label: 'Fi real',
-                value: _formatDate(obra.dataFi),
+                value: obraFormatDate(obra.dataFi),
               ),
               _ObraInfoPill(
                 label: 'Pressupost',
-                value: _formatMoney(obra.pressupost),
+                value: _formatMoneyValue(obra.pressupost),
               ),
               _ObraInfoPill(
                 label: 'Responsables',
@@ -242,19 +416,7 @@ class ObraSectionContent<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      final scheme = Theme.of(context).colorScheme;
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: scheme.surfaceContainerHighest.withOpacity(0.35),
-        ),
-        child: Text(
-          emptyText,
-          style: TextStyle(color: scheme.onSurfaceVariant),
-        ),
-      );
+      return _ObraInfoMessage(message: emptyText);
     }
 
     return Column(
@@ -268,45 +430,16 @@ class ObraSectionContent<T> extends StatelessWidget {
   }
 }
 
-class ObraLocationSectionBody extends StatelessWidget {
-  final Obra obra;
-  //Constructor que rep l'obra, i mostra la ubicació resumida i el mapa si hi ha coordenades. Si no hi ha coordenades però si dades d'ubicació, mostra un missatge indicant que no es poden mostrar les coordenades. Si no hi ha dades d'ubicació, mostra un missatge indicant que no hi ha dades d'ubicació.
-  const ObraLocationSectionBody({
-    super.key,
-    required this.obra,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    if (!obra.hasLocationData) {
-      final scheme = Theme.of(context).colorScheme;
 
-      return Container(
-        width: double.infinity,
-        height: 50,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: scheme.surfaceContainerHighest.withOpacity(0.35),
-        ),
-        child: Text(
-          'No hi ha dades d’ubicació disponibles.',
-          style: TextStyle(color: scheme.onSurfaceVariant),
-        ),
-      );
-    }
-
-    return ObraMapPanel(obra: obra);
-  }
-}
-
-//Es el bloc base de cada secció, amb el titol i el cos que es pot expandir o contraure. El cos es passa com a widget, i pot ser un mapa, una llista d'incidencies, etc.
 class ObraSectionBlock extends StatelessWidget {
   final String title;
   final IconData icon;
   final int count;
   final Widget child;
   final bool initiallyExpanded;
+  final VoidCallback? onAdd;
+  final String addTooltip;
 
   const ObraSectionBlock({
     super.key,
@@ -315,6 +448,8 @@ class ObraSectionBlock extends StatelessWidget {
     required this.count,
     required this.child,
     this.initiallyExpanded = false,
+    this.onAdd,
+    this.addTooltip = 'Afegir element',
   });
 
   @override
@@ -334,42 +469,119 @@ class ObraSectionBlock extends StatelessWidget {
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           leading: Icon(icon, color: scheme.primary),
-          title: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              if (onAdd != null)
+                IconButton(
+                  tooltip: addTooltip,
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+            ],
           ),
           subtitle: Text(
             count == 1 ? '1 element' : '$count elements',
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              fontSize: 12,
-            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
           ),
-          children: [
-            child,
-          ],
+          children: [child],
         ),
       ),
     );
   }
 }
+class ObraLocationSectionBody extends StatelessWidget {
+  final Obra? obra;
+  final ObraUbicacioInfo? ubicacio;
+  final bool editable;
+  final ValueChanged<ObraUbicacioInfo?>? onChanged;
+  final String? title;
+  final String emptyMessage;
+
+  const ObraLocationSectionBody({
+    super.key,
+    required Obra this.obra,
+  })  : ubicacio = null,
+        editable = false,
+        onChanged = null,
+        title = null,
+        emptyMessage = 'No hi ha dades d’ubicació disponibles.';
+
+  const ObraLocationSectionBody.read({
+    super.key,
+    required this.ubicacio,
+    this.title,
+    this.emptyMessage = 'No hi ha dades d’ubicació disponibles.',
+  })  : obra = null,
+        editable = false,
+        onChanged = null;
+
+  const ObraLocationSectionBody.editable({
+    super.key,
+    required this.ubicacio,
+    required this.onChanged,
+    this.title,
+    this.emptyMessage =
+        'Encara no s’ha seleccionat cap ubicació. Obre el mapa per afegir-la.',
+  })  : obra = null,
+        editable = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedInfo = ubicacio ?? obra?.ubicacioInfo;
+
+    if (!_hasAnyLocationData(resolvedInfo) && !editable) {
+      return _ObraInfoMessage(message: emptyMessage);
+    }
+
+    return ObraMapPanel(
+      obra: obra,
+      ubicacio: resolvedInfo,
+      editable: editable,
+      onChanged: onChanged,
+      customTitle: title,
+      emptyMessage: emptyMessage,
+    );
+  }
+}
 
 class ObraMapPanel extends StatelessWidget {
-  final Obra obra;
+  final Obra? obra;
+  final ObraUbicacioInfo? ubicacio;
+  final bool editable;
+  final ValueChanged<ObraUbicacioInfo?>? onChanged;
+  final String? customTitle;
+  final String emptyMessage;
 
   const ObraMapPanel({
     super.key,
     required this.obra,
+    this.ubicacio,
+    this.editable = false,
+    this.onChanged,
+    this.customTitle,
+    this.emptyMessage = 'No hi ha dades d’ubicació disponibles.',
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final info = obra.ubicacioInfo;
-    final hasMap = obra.hasMapCoordinates;
+    final info = ubicacio ?? obra?.ubicacioInfo;
+    final hasMap = info?.latitud != null && info?.longitud != null;
+
+    final resolvedTitle = customTitle ??
+        obra?.locationLabel ??
+        info?.displayLabel ??
+        'Ubicació';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,18 +589,37 @@ class ObraMapPanel extends StatelessWidget {
         _ObraDataCard(
           accent: scheme.primary,
           icon: Icons.location_on_outlined,
-          title: obra.locationLabel,
-          lines: _locationLines(info),
+          title: resolvedTitle,
+          lines: _buildLocationLines(info),
         ),
-        if (hasMap) ...[
+        if (editable) ...[
+          const SizedBox(height: 20),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final selected = await mostrarSelectorUbicacio(
+                  context,
+                  ubicacioInicial: info,
+                );
+                if (selected != null) {
+                  onChanged?.call(selected);
+                }
+              },
+              icon: const Icon(Icons.map_outlined),
+              label: Text(info == null ? 'Seleccionar ubicació' : 'Editar ubicació'),
+            ),
+          ),
+        ],
+        if (hasMap && info != null) ...[
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(18),
             child: SizedBox(
-              height: 220,
+              height: 400,
               child: FlutterMap(
                 options: MapOptions(
-                  initialCenter: LatLng(info!.latitud!, info.longitud!),
+                  initialCenter: LatLng(info.latitud!, info.longitud!),
                   initialZoom: 15,
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
@@ -418,19 +649,15 @@ class ObraMapPanel extends StatelessWidget {
               ),
             ),
           ),
-        ] else if (obra.hasLocationData) ...[
+        ] else if (info != null && GeocodingService.hasAddressData(info)) ...[
           const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withOpacity(0.35),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              'No hi ha coordenades per mostrar el mapa.',
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
+          _ObraResolvedMapPreview(info: info),
+        ] else ...[
+          const SizedBox(height: 12),
+          _ObraInfoMessage(
+            message: editable
+                ? emptyMessage
+                : 'No hi ha coordenades per mostrar el mapa.',
           ),
         ],
       ],
@@ -438,12 +665,121 @@ class ObraMapPanel extends StatelessWidget {
   }
 }
 
+class _ObraResolvedMapPreview extends StatefulWidget {
+  final ObraUbicacioInfo info;
+
+  const _ObraResolvedMapPreview({
+    required this.info,
+  });
+
+  @override
+  State<_ObraResolvedMapPreview> createState() =>
+      _ObraResolvedMapPreviewState();
+}
+
+class _ObraResolvedMapPreviewState extends State<_ObraResolvedMapPreview> {
+  late final Future<LatLng?> _futurePoint;
+
+  @override
+  void initState() {
+    super.initState();
+    _futurePoint = GeocodingService.geocodeAddress(
+      GeocodingService.buildAddressQuery(widget.info),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return FutureBuilder<LatLng?>(
+      future: _futurePoint,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: scheme.surfaceContainerHighest.withOpacity(0.35),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Cercant coordenades a partir de l’adreça...'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final point = snapshot.data;
+        if (point == null) {
+          return const _ObraInfoMessage(
+            message:
+                'No s’han pogut resoldre coordenades a partir de l’adreça.',
+          );
+        }
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: SizedBox(
+            height: 220,
+            child: FlutterMap(
+              options: MapOptions(
+                initialCenter: point,
+                initialZoom: 15,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
+                ),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.front_end',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: point,
+                      width: 42,
+                      height: 42,
+                      child: Icon(
+                        Icons.location_pin,
+                        size: 42,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class ObraIncidenciaCard extends StatelessWidget {
   final Incidencia incidencia;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ObraIncidenciaCard({
     super.key,
     required this.incidencia,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -454,137 +790,300 @@ class ObraIncidenciaCard extends StatelessWidget {
             ? Colors.orange
             : Colors.green;
 
+    final open = onTap ??
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => IncidenciaProfileScreen(
+                incidenciaId: incidencia.id,
+              ),
+            ),
+          );
+        };
+
     return _ObraDataCard(
-        accent: accent,
-        icon: Icons.warning_amber_rounded,
-        title: incidencia.descripcio,
-        lines: [
-          'Estat: ${_textOrFallback(incidencia.estat)}',
-          'Inici: ${_formatDate(incidencia.dataInici)}',
-          'Fi: ${_formatDate(incidencia.dataFi)}',
-          'Criticitat: ${incidencia.criticitat}',
-          'Prioritat: ${incidencia.prioritat}',
-        ],
-        onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => IncidenciaProfileScreen(
-                      incidenciaId: incidencia.id,
-                      baseUrl: ApiConstants.baseUrl)),
-      )
+      accent: accent,
+      icon: Icons.warning_amber_rounded,
+      title: incidencia.descripcio,
+      lines: [
+        'Estat: ${_displayText(incidencia.estat)}',
+        'Inici: ${obraFormatDate(incidencia.dataInici)}',
+        'Fi: ${obraFormatDate(incidencia.dataFi)}',
+        'Criticitat: ${incidencia.criticitat}',
+        'Prioritat: ${incidencia.prioritat}',
+      ],
+      onTap: open,
+      onEdit: onEdit ?? open,
+      onDelete: onDelete,
+      editTooltip: 'Editar incidència',
+      deleteTooltip: 'Eliminar incidència',
     );
   }
 }
 
 class ObraTascaCard extends StatelessWidget {
   final Tasca tasca;
-  final String baseUrl = ApiConstants.baseUrl;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
   const ObraTascaCard({
     super.key,
     required this.tasca,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
+    final open = onTap ??
+        () {
+          Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TascaDetailScreen(
+                tascaId: tasca.id,
+              ),
+            ),
+          );
+        };
+
     return _ObraDataCard(
       accent: tasca.visibilitatTasca ? Colors.green : Colors.grey,
       icon: tasca.visibilitatTasca ? Icons.visibility : Icons.visibility_off,
       title: tasca.descripcio,
       lines: [
         'Prioritat: ${tasca.prioritat}',
-        'Inici: ${_formatDate(tasca.dataInici)}',
-        'Fi: ${_formatDate(tasca.dataFi)}',
+        'Inici: ${obraFormatDate(tasca.dataInici)}',
+        'Fi: ${obraFormatDate(tasca.dataFi)}',
         'Visible: ${tasca.visibilitatTasca ? 'Sí' : 'No'}',
       ],
-      onTap: () => Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => TascaProfileScreen(
-            tascaId: tasca.id,
-            baseUrl: baseUrl,
-          ),
-        ),
-      ),
+      onTap: open,
+      onEdit: onEdit ?? open,
+      onDelete: onDelete,
+      editTooltip: 'Editar tasca',
+      deleteTooltip: 'Eliminar tasca',
     );
   }
 }
 
 class ObraDocumentCard extends StatelessWidget {
   final DocumentObraItem document;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ObraDocumentCard({
     super.key,
     required this.document,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
+    final open = onTap ??
+        () {
+          Navigator.pushNamed(
+            context,
+            '/documentView',
+            arguments: document.id,
+          );
+        };
+
     return _ObraDataCard(
       accent: Colors.blueGrey,
       icon: Icons.description_outlined,
       title: document.nom,
       lines: [
-        'Format: ${_textOrFallback(document.format)}',
+        'Format: ${_displayText(document.format)}',
         'Mida: ${_formatFileSizeMb(document.mida)}',
-        'Tipus: ${_textOrFallback(document.tipus)}',
-        'Pujada: ${_formatDate(document.dataPujada)}',
+        'Tipus: ${_displayText(document.tipus)}',
+        'Pujada: ${obraFormatDate(document.dataPujada)}',
       ],
-      onTap: () =>
-          Navigator.pushNamed(context, '/documentView', arguments: document.id),
+      onTap: open,
+      onEdit: onEdit ?? open,
+      onDelete: onDelete,
+      editTooltip: 'Editar document',
+      deleteTooltip: 'Eliminar document',
     );
   }
 }
 
 class ObraSolRecursCard extends StatelessWidget {
   final SolRecurs item;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ObraSolRecursCard({
     super.key,
     required this.item,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
+    final open = onTap ??
+        () {
+          Navigator.pushNamed(
+            context,
+            '/recursProfile',
+            arguments: item.idRecurs,
+          );
+        };
+
     return _ObraDataCard(
       accent: Colors.deepPurple,
       icon: Icons.inventory_2_outlined,
       title: 'Quantitat: ${item.quantitat}',
       lines: [
         'Recurs ID: ${item.idRecurs}',
-        'Data necessitat: ${_formatDate(item.dataNecessitat)}',
-        'Entrega: ${_formatDate(item.dataEntrega)}',
-        'Proveïdor: ${_textOrFallback(item.proveidor)}',
+        'Data necessitat: ${obraFormatDate(item.dataNecessitat)}',
+        'Entrega: ${obraFormatDate(item.dataEntrega)}',
+        'Proveïdor: ${_displayText(item.proveidor)}',
       ],
-      onTap: () => Navigator.pushNamed(context, '/recursProfile',
-          arguments: item.idRecurs),
+      onTap: open,
+      onEdit: onEdit ?? open,
+      onDelete: onDelete,
+      editTooltip: 'Editar recurs',
+      deleteTooltip: 'Eliminar recurs',
     );
   }
 }
 
 class ObraResponsableCard extends StatelessWidget {
   final ResponsableObra responsable;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ObraResponsableCard({
     super.key,
     required this.responsable,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _ObraDataCard(
-        accent: Colors.indigo,
-        icon: Icons.badge_outlined,
-        title: 'Treballador ID: ${responsable.idTreballador}',
-        lines: [
-          'Inici: ${_formatDate(responsable.dataInici)}',
-          'Fi: ${_formatDate(responsable.dataFi)}',
-        ],
-        onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TreballadorDetailScreen(treballadorId: this.responsable.idTreballador),
+    final open = onTap ??
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TreballadorDetailScreen(
+                treballadorId: responsable.idTreballador,
               ),
             ),
+          );
+        };
+
+    return _ObraDataCard(
+      accent: Colors.indigo,
+      icon: Icons.badge_outlined,
+      title: 'Treballador ID: ${responsable.idTreballador}',
+      lines: [
+        'Inici: ${obraFormatDate(responsable.dataInici)}',
+        'Fi: ${obraFormatDate(responsable.dataFi)}',
+      ],
+      onTap: open,
+      onEdit: onEdit ?? open,
+      onDelete: onDelete,
+      editTooltip: 'Editar responsable',
+      deleteTooltip: 'Eliminar responsable',
+    );
+  }
+}
+
+class _ObraFabMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ObraFabMenuItem({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon),
+        const SizedBox(width: 12),
+        Text(label),
+      ],
+    );
+  }
+}
+
+class _ObraSummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ObraSummaryRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ObraInfoMessage extends StatelessWidget {
+  final String message;
+
+  const _ObraInfoMessage({
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: scheme.surfaceContainerHighest.withOpacity(0.35),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(color: scheme.onSurfaceVariant),
+      ),
     );
   }
 }
@@ -595,19 +1094,28 @@ class _ObraDataCard extends StatelessWidget {
   final String title;
   final List<String> lines;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final String editTooltip;
+  final String deleteTooltip;
 
   const _ObraDataCard({
-    super.key,
     required this.accent,
     required this.icon,
     required this.title,
     required this.lines,
     this.onTap,
+    this.onEdit,
+    this.onDelete,
+    this.editTooltip = 'Editar',
+    this.deleteTooltip = 'Eliminar',
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final visibleLines = lines.where((line) => line.trim().isNotEmpty).toList();
+    final hasActions = onEdit != null || onDelete != null;
 
     return Material(
       color: Colors.transparent,
@@ -627,7 +1135,7 @@ class _ObraDataCard extends StatelessWidget {
             children: [
               Container(
                 width: 6,
-                constraints: const BoxConstraints(minHeight: 108),
+                constraints: const BoxConstraints(minHeight: 116),
                 decoration: BoxDecoration(
                   color: accent,
                   borderRadius: const BorderRadius.only(
@@ -649,6 +1157,7 @@ class _ObraDataCard extends StatelessWidget {
                           color: accent.withOpacity(0.10),
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        alignment: Alignment.center,
                         child: Icon(icon, size: 20, color: accent),
                       ),
                       const SizedBox(width: 14),
@@ -658,32 +1167,103 @@ class _ObraDataCard extends StatelessWidget {
                           children: [
                             Text(
                               title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
-                            const SizedBox(height: 8),
-                            ...lines.map(
-                              (line) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  line,
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant,
-                                    height: 1.30,
+                            if (visibleLines.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              ...visibleLines.map(
+                                (line) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    line,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                          height: 1.30,
+                                        ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
+                      if (hasActions) ...[
+                        const SizedBox(width: 8),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (onEdit != null)
+                              _ObraCardActionButton(
+                                tooltip: editTooltip,
+                                icon: Icons.edit_outlined,
+                                onPressed: onEdit!,
+                              ),
+                            if (onEdit != null && onDelete != null)
+                              const SizedBox(height: 6),
+                            if (onDelete != null)
+                              _ObraCardActionButton(
+                                tooltip: deleteTooltip,
+                                icon: Icons.delete_outline,
+                                isDanger: true,
+                                onPressed: onDelete!,
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ObraCardActionButton extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool isDanger;
+
+  const _ObraCardActionButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.isDanger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = isDanger ? scheme.error : scheme.primary;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(
+              icon,
+              size: 18,
+              color: color,
+            ),
           ),
         ),
       ),
@@ -716,18 +1296,16 @@ class _ObraInfoPill extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              fontSize: 12,
-            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
           ),
         ],
       ),
@@ -766,7 +1344,7 @@ class _ObraTag extends StatelessWidget {
   }
 }
 
-List<String> _locationLines(ObraUbicacioInfo? info) {
+List<String> _buildLocationLines(ObraUbicacioInfo? info) {
   if (info == null) {
     return const ['Sense dades d’ubicació disponibles'];
   }
@@ -788,9 +1366,9 @@ List<String> _locationLines(ObraUbicacioInfo? info) {
     lines.add('Província: $provincia');
   }
 
-  final cp = _textOrNull(info.codiPostal);
-  if (cp != null) {
-    lines.add('Codi postal: $cp');
+  final codiPostal = _textOrNull(info.codiPostal);
+  if (codiPostal != null) {
+    lines.add('Codi postal: $codiPostal');
   }
 
   final pais = _textOrNull(info.pais);
@@ -804,35 +1382,56 @@ List<String> _locationLines(ObraUbicacioInfo? info) {
     );
   }
 
-  return lines.isEmpty ? const ['Sense dades d’ubicació disponibles'] : lines;
+  return lines.isEmpty
+      ? const ['Sense dades d’ubicació disponibles']
+      : lines;
 }
 
-String _textOrFallback(String? value, {String fallback = '—'}) {
-  final parsed = _textOrNull(value);
-  return parsed ?? fallback;
+bool _hasAnyLocationData(ObraUbicacioInfo? info) {
+  if (info == null) return false;
+
+  return info.latitud != null ||
+      info.longitud != null ||
+      _hasAddressData(info);
+}
+
+bool _hasAddressData(ObraUbicacioInfo? info) {
+  if (info == null) return false;
+
+  return _textOrNull(info.adreca) != null ||
+      _textOrNull(info.ciutat) != null ||
+      _textOrNull(info.provincia) != null ||
+      _textOrNull(info.codiPostal) != null ||
+      _textOrNull(info.pais) != null;
+}
+
+String _buildLocationTitle(ObraUbicacioInfo? info) {
+  if (info == null) return 'Ubicació';
+
+  final adreca = _textOrNull(info.adreca);
+  if (adreca != null) return adreca;
+
+  final ciutat = _textOrNull(info.ciutat);
+  if (ciutat != null) return ciutat;
+
+  return 'Ubicació';
+}
+
+String _displayText(String? value, {String fallback = '—'}) {
+  return _textOrNull(value) ?? fallback;
 }
 
 String? _textOrNull(String? value) {
   if (value == null) return null;
-  final text = value.trim();
-  return text.isEmpty ? null : text;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
 }
 
-String _formatDate(DateTime? value, {String fallback = '—'}) {
+String _formatMoneyValue(num? value, {String fallback = '—'}) {
   if (value == null) return fallback;
-
-  final day = value.day.toString().padLeft(2, '0');
-  final month = value.month.toString().padLeft(2, '0');
-  final year = value.year.toString();
-
-  return '$day/$month/$year';
+  return '€$value';
 }
 
-String _formatMoney(num? value, {String fallback = '—'}) {
-  if (value == null) return fallback;
-  return '€${value.toString()}';
-}
-
-String _formatFileSizeMb(double value) {
+String _formatFileSizeMb(num value) {
   return '${value.toStringAsFixed(2)} MB';
 }

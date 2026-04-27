@@ -470,6 +470,7 @@ CREATE TABLE recurs (
 -- 4B. Solicitudes de recurso por obra
 CREATE TABLE sol_recurs (
     id               SERIAL PRIMARY KEY,   -- PK autoincremental
+    id_empresa       INTEGER NOT NULL,     -- FK → empresa.id_empresa
     id_obra          INTEGER NOT NULL,     -- FK → obra.id
     id_recurs        INTEGER NOT NULL,     -- FK → recurs.id
     quantitat        INTEGER NOT NULL,     -- Cantidad solicitada
@@ -478,6 +479,9 @@ CREATE TABLE sol_recurs (
     data_entrega     DATE    NULL,         -- Entregado el…
     data_creacio     TIMESTAMP NOT NULL,   -- Creado el…
     proveidor        VARCHAR(120) NULL,    -- Proveedor asignado
+    CONSTRAINT fk_sr_empresa
+        FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
+        ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_sr_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
         ON DELETE NO ACTION ON UPDATE CASCADE,
@@ -488,6 +492,7 @@ CREATE TABLE sol_recurs (
 -- Índices para filtros habituales
 CREATE INDEX idx_sr_obra   ON sol_recurs (id_obra);
 CREATE INDEX idx_sr_recurs ON sol_recurs (id_recurs);
+CREATE INDEX idx_sr_empresa ON sol_recurs (id_empresa);
 
 /*=============================================================
 =  5.  VISTAS / ÍNDICES COMPLEMENTARIOS (opcionales)          =

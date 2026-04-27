@@ -22,6 +22,16 @@ class ResponsableObra {
       dataFi: _asDate(map['data_fi']),
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'id_obra': idObra,
+      'id_treballador': idTreballador,
+      'data_inici': dataInici,
+      'data_fi': dataFi,
+    };
+}
 }
 
 int _asInt(dynamic value) {

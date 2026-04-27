@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/screens/obra_screens/obra_profile_screen.dart';
-import 'package:front_end/screens/tasca_screens/tasca_profile_screen.dart';
+import 'package:front_end/screens/tasca_screens/tasca_detail_screen.dart';
 import 'package:front_end/services/incidencia_service.dart';
+import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/widgets/incidencia_widgets.dart';
 import 'package:front_end/services/obra_service.dart';
 
 class IncidenciaProfileScreen extends StatefulWidget {
   final int incidenciaId;
-  final String baseUrl;
+  final String baseUrl = ApiConstants.baseUrl;
 
-  const IncidenciaProfileScreen({
+  IncidenciaProfileScreen({
     super.key,
     required this.incidenciaId,
-    required this.baseUrl,
   });
 
   @override
@@ -32,7 +32,7 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _service = IncidenciaService(baseUrl: widget.baseUrl);
+    _service = IncidenciaService();
     _load();
   }
 
@@ -185,9 +185,8 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TascaProfileScreen(
+        builder: (_) => TascaDetailScreen(
           tascaId: tascaId,
-          baseUrl: widget.baseUrl,
         ),
       ),
     );

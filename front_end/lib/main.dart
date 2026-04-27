@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/base/mainScaffold.dart';
 import 'package:front_end/screens/base/log_in.dart'; // Ruta correcta si tens obra_list.dart a lib/screens
-import 'screens/base/registerE.dart'; // Ruta correcta si tens register.dart a lib/screens
+import 'screens/base/register_empresa_screen.dart'; // Ruta correcta si tens register.dart a lib/screens
 import 'screens/base/root_screen.dart'; 
-import 'screens/empresa/treballador_form.dart';
+import 'screens/treballador/treballador_form.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         '/root': (context) => const RootScreen(), // Pantalla inicial , guarda inici de sessui i escollegix les pantalles que es mostre
         //ENREGISTRAMENT D'USUARI------------------------------------------------
         '/logIn': (context) => const LoginScreen(),
-        '/register':(context) => const RegisterScreen(), // Pantalla de registre, encara no s'utilitza
+        '/register':(context) => const RegisterEmpresaScreen(), // Pantalla de registre, encara no s'utilitza
 
         //HOME SCREEN--------------------------------------------------------
         '/home': (context) => const MainScaffold(),

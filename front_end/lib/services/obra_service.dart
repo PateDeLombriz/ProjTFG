@@ -1,274 +1,311 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:front_end/models/obra_models.dart';
+import 'package:front_end/shared/services/app_api_service.dart';
 
 class ObraServiceException implements Exception {
   final String message;
   final int? statusCode;
+  final String? body;
 
-  const ObraServiceException(this.message, {this.statusCode});
+  const ObraServiceException(
+    this.message, {
+    this.statusCode,
+    this.body,
+  });
 
   @override
-  String toString() => message;
+  String toString() {
+    final buffer = StringBuffer(message);
+
+    if (statusCode != null) {
+      buffer.write(' [$statusCode]');
+    }
+
+    final cleanedBody = body?.trim();
+    if (cleanedBody != null && cleanedBody.isNotEmpty) {
+      buffer.write(' $cleanedBody');
+    }
+
+    return buffer.toString();
+  }
 }
 
-class ObraService {
-  final String baseUrl;
-  final http.Client _client;
-
-  String? _validatedToken;
-
+/// Servei del domini Obra.
+///
+/// IMPORTANT:
+/// - Aquesta classe hereta la infraestructura comuna d'AppApiService.
+/// - Aquí només queda la lògica específica del domini obra.
+/// - Qualsevol AppApiException es transforma a ObraServiceException
+///   per no rompre el codi que ja captura excepcions d'obra.
+class ObraService extends AppApiService {
   ObraService({
-    required this.baseUrl,
+    String? baseUrl,
     http.Client? client,
-  }) : _client = client ?? http.Client();
+  }) : super(
+          baseUrl: baseUrl,
+          client: client,
+          closeClientOnDispose: client == null,
+        );
 
+  /// Manté compatibilitat amb el codi existent.
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  /// Assegura que hi ha una sessió vàlida.
+  Future<void> ensureAuthenticatedSession() async {
+    try {
+      await requireAuthenticatedSession();
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
+    }
+  }
+
+  /// Retorna el perfil agregat d'una obra.
   Future<ObraProfileData> fetchObraProfile(int obraId) async {
     final raw = await fetchObraRaw(obraId);
     return ObraProfileData.fromMap(raw);
   }
 
+  /// Retorna el detall cru d'una obra.
   Future<Map<String, dynamic>> fetchObraRaw(int obraId) async {
-    final token = await _requireAuthenticatedSession();
-    print('FetchObraraw amb token: $token i obraId: $obraId');
-    final response = await _client.get(
-      Uri.parse('$baseUrl/obres/$obraId/'),
-      headers: _authHeaders(token),
-    );
-
-    if (response.statusCode != 200) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error carregant l’obra',
-        ),
-        statusCode: response.statusCode,
+    try {
+      return await getJsonMap(
+        '/obres/$obraId/',
+        fallback: 'Error carregant l’obra',
+        invalidResponseMessage: 'La resposta de l’obra no és vàlida.',
       );
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
     }
-
-    final decoded = jsonDecode(response.body);
-    print('Decoded obra raw: $decoded');
-    if (decoded is! Map<String, dynamic>) {
-      throw const ObraServiceException('La resposta de l’obra no és vàlida.');
-    }
-
-    return decoded;
   }
 
-  Future<List<Map<String, dynamic>>> fetchObresEmpresa(int idEmpresa) async {
-    final token = await _requireAuthenticatedSession();
-    final response = await _client.get(
-      Uri.parse('$baseUrl/obresEmpresa/$idEmpresa/'),
-      headers: _authHeaders(token),
-    );
-
-    if (response.statusCode != 200) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw ObraServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error carregant les obres de l’empresa',
-        ),
-        statusCode: response.statusCode,
+  /// Retorna la llista de relacions obra-empresa d'una empresa.
+  Future<List<Map<String, dynamic>>> fetchObresEmpresa(int empresaId) async {
+    try {
+      return await getJsonList(
+        '/obresEmpresa/$empresaId',
+        fallback: 'Error carregant les obres de l’empresa',
+        invalidResponseMessage: 'La resposta de les obres no és vàlida.',
       );
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
     }
-
-    final data = jsonDecode(response.body) as List<dynamic>;
-    return data.cast<Map<String, dynamic>>();
   }
 
+  /// Resol l'empresa activa des de la sessió i en retorna les obres.
   Future<List<Map<String, dynamic>>> fetchMyEmpresaObres() async {
-    final idEmpresa = await requireEmpresaId();
-    return fetchObresEmpresa(idEmpresa);
+    try {
+      final empresaId = await requireEmpresaId();
+      return await fetchObresEmpresa(empresaId);
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
+    }
   }
 
-  Future<int> requireEmpresaId() async {
-    await _requireAuthenticatedSession();
-
-    final prefs = await SharedPreferences.getInstance();
-    final rawId = prefs.getString('subject_id')?.trim();
-
-    if (rawId == null || rawId.isEmpty) {
-      throw const ObraServiceException(
-        'No s’ha trobat l’identificador de l’empresa a la sessió.',
-      );
-    }
-    final idEmpresa = int.tryParse(rawId);
-    if (idEmpresa == null) {
-      throw ObraServiceException(
-        'L’identificador de l’empresa no és vàlid: $rawId',
-      );
-    }
-
-    return idEmpresa;
-  }
-
+  /// Elimina una obra concreta.
   Future<void> deleteObra(int obraId) async {
-    final token = await _requireAuthenticatedSession();
+    try {
+      await deleteExpectNoContent(
+        '/obres/$obraId/',
+        fallback: 'Error eliminant l’obra',
+      );
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
+    }
+  }
 
-    final response = await _client.delete(
-      Uri.parse('$baseUrl/obres/$obraId/'),
-      headers: _authHeaders(token),
-    );
+  /// Carrega ubicacions conegudes per id.
+  ///
+  /// Aquest mètode es manté específic perquè fa múltiples GET manuals
+  /// i transforma cada resultat a ObraUbicacioInfo.
+  Future<List<ObraUbicacioInfo>> fetchUbicacions({
+    List<int> knownIds = const [],
+  }) async {
+    try {
+      if (knownIds.isEmpty) {
+        return const <ObraUbicacioInfo>[];
+      }
 
-    if (response.statusCode != 204) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
+      final token = await requireAuthenticatedSession();
+      final uniqueIds = <int>{...knownIds};
+      final results = <ObraUbicacioInfo>[];
+
+      for (final id in uniqueIds) {
+        final response = await client.get(
+          buildUri('/ubicacio/$id/'),
+          headers: authHeaders(token),
+        );
+
+        if (response.statusCode == 200) {
+          final json = decodeObject(
+            response.body,
+            fallbackMessage: 'La ubicació rebuda no és vàlida.',
+          );
+          results.add(ObraUbicacioInfo.fromJson(json));
+          continue;
+        }
+
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          await clearStoredSession();
+          throw ObraServiceException(
+            extractErrorMessage(
+              response,
+              fallback: 'No s’han pogut carregar les ubicacions.',
+            ),
+            statusCode: response.statusCode,
+            body: response.body,
+          );
+        }
+      }
+
+      return results;
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
+    }
+  }
+
+  /// Crea la relació mínima obra-empresa.
+  ///
+  /// ATENCIÓ:
+  /// El backend actual no crea una obra completa des d'aquest endpoint.
+  /// Només vincula una obra existent (`id_obra`) amb una empresa.
+  Future<ObraCreateResult> createMinimalObra({
+    required ObraCreateRequest request,
+    int? empresaId,
+  }) async {
+    try {
+      final resolvedEmpresaId = empresaId ?? await requireEmpresaId();
+      final obraId = _extractObraIdFromRequest(request);
+
+      if (obraId == null) {
+        throw const ObraServiceException(
+          'El backend actual no exposa cap endpoint per crear una obra completa. '
+          'Només es pot crear la relació ObraEmpresa si ja existeix un id_obra.',
+        );
+      }
+
+      final json = await postJsonMap(
+        '/obresEmpresa/$resolvedEmpresaId',
+        body: <String, dynamic>{
+          'id_obra': obraId,
+        },
+        expectedStatus: 201,
+        fallback: 'No s’ha pogut vincular l’obra a l’empresa.',
+        invalidResponseMessage: 'La resposta de creació no és vàlida.',
+      );
+
+      return ObraCreateResult.fromJson(json);
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
+    }
+  }
+
+  /// Actualitza una obra.
+  ///
+  /// Manté el contracte antic:
+  /// - 200 -> retorna Map
+  /// - 204 -> retorna null
+  Future<Map<String, dynamic>?> updateObra({
+    required int obraId,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final token = await requireAuthenticatedSession();
+
+      final response = await client.put(
+        buildUri('/obres/$obraId/'),
+        headers: authHeaders(token),
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200) {
+        return decodeObject(
+          response.body,
+          fallbackMessage:
+              'La resposta d’actualització de l’obra no és vàlida.',
+        );
+      }
+
+      if (response.statusCode == 204) {
+        return null;
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await clearStoredSession();
+      }
+
       throw ObraServiceException(
-        _extractErrorMessage(
+        extractErrorMessage(
           response,
-          fallback: 'Error eliminant l’obra',
+          fallback: 'No s’ha pogut actualitzar l’obra.',
         ),
         statusCode: response.statusCode,
+        body: response.body,
       );
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
     }
   }
 
-  Future<void> ensureAuthenticatedSession() async {
-    await _requireAuthenticatedSession();
-  }
-
-  Future<String> _requireAuthenticatedSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = _readStoredToken(prefs);
-
-      print('Token de session al requireAuthenticatedSession: $token');
-    if (token == null || token.isEmpty) {
-      throw const ObraServiceException(
-        'No hi ha sessió guardada.',
-      );
-    }
-    print('Contingut de alidatedToken abans de validar: $_validatedToken');
-    if (_validatedToken == token) {
-      return token;
-    }
-    print("Token no validat o canviat, validant token...");
-
-    final response = await _client.get(
-      Uri.parse('$baseUrl/me/'),
-      headers: _authHeaders(token),
-    );
-
-    if (response.statusCode == 200) {
-      await _storeSessionContext(prefs, token, response.body);
-      _validatedToken = token;
-      return token;
-    }
-
-    _validatedToken = null;
-
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearStoredSession();
-      throw ObraServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'La sessió ha caducat o no és vàlida. Torna a fer login.',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
-
-    throw ObraServiceException(
-      _extractErrorMessage(
-        response,
-        fallback: 'Error al carregar la sessió.',
-      ),
-      statusCode: response.statusCode,
+  /// Converteix una excepció comuna de la capa base en una excepció pròpia
+  /// del domini d'obra.
+  ObraServiceException _mapAppApiException(AppApiException e) {
+    return ObraServiceException(
+      e.message,
+      statusCode: e.statusCode,
+      body: e.body,
     );
   }
 
-  String? _readStoredToken(SharedPreferences prefs) {
-    final token = prefs.getString('token')?.trim();
-    
+  /// Intenta extreure `id` o `id_obra` del request sense forçar un contracte
+  /// massa rígid amb el model Dart.
+  ///
+  /// Això evita assumir que ObraCreateRequest tengui exactament un mètode
+  /// concret mentre manté compatibilitat amb implementacions habituals.
+  int? _extractObraIdFromRequest(ObraCreateRequest request) {
+    final dynamic rawRequest = request;
 
-    if (token != null && token.isNotEmpty) {
-      print("Token de detail obra service: $token");
-      return token;
+    dynamic rawId;
+
+    try {
+      rawId = rawRequest.id;
+    } catch (_) {}
+
+    if (rawId == null) {
+      try {
+        rawId = rawRequest.idObra;
+      } catch (_) {}
     }
 
-    final legacyToken = prefs.getString('session_token')?.trim();
-    if (legacyToken != null && legacyToken.isNotEmpty) {
-      print("Legacytoken de detail obra service: $legacyToken");
-      return legacyToken;
+    if (rawId == null) {
+      try {
+        rawId = rawRequest.id_obra;
+      } catch (_) {}
     }
-    print('Token torna buit');
+
+    if (rawId == null) {
+      try {
+        final dynamic json = rawRequest.toJson();
+        if (json is Map) {
+          rawId = json['id'] ?? json['id_obra'];
+        }
+      } catch (_) {}
+    }
+
+    if (rawId is int) {
+      return rawId;
+    }
+
+    if (rawId is String) {
+      return int.tryParse(rawId.trim());
+    }
 
     return null;
   }
-
-  Future<void> _storeSessionContext(
-    SharedPreferences prefs,
-    String token,
-    String body,
-  ) async {
-    await prefs.setString('token', token);
-
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) {
-        final subjectId = decoded['subject_id'];
-        if (subjectId != null) {
-          await prefs.setString('subject_id', subjectId.toString());
-        }
-
-        final tipus = decoded['tipus'];
-        if (tipus is String && tipus.trim().isNotEmpty) {
-          await prefs.setString('tipus', tipus);
-        }
-
-        final idEmpresa = decoded['id_empresa'];
-        if (idEmpresa != null) {
-          await prefs.setString('id_empresa', idEmpresa.toString());
-        }
-      }
-    } catch (_) {
-      // Si /me/ no es pot parsejar, mantenim com a mínim el token validat.
-    }
-  }
-
-  Map<String, String> _authHeaders(String token) {
-    return <String, String>{
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
-
-  Future<void> _handleUnauthorizedIfNeeded(int statusCode) async {
-    if (statusCode == 401 || statusCode == 403) {
-      _validatedToken = null;
-      await _clearStoredSession();
-    }
-  }
-
-  Future<void> _clearStoredSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('session_token');
-    await prefs.remove('subject_id');
-    await prefs.remove('tipus');
-    await prefs.remove('id_empresa');
-  }
-
-  String _extractErrorMessage(
-    http.Response response, {
-    required String fallback,
-  }) {
-    try {
-      final decoded = jsonDecode(response.body);
-
-      if (decoded is Map<String, dynamic>) {
-        final detail = decoded['detail'];
-        if (detail is String && detail.trim().isNotEmpty) {
-          return detail;
-        }
-      }
-    } catch (_) {
-      // Ignoram errors de parseig i usam el fallback.
-    }
-
-    return '$fallback (${response.statusCode})';
-  }
 }
+

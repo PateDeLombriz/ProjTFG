@@ -4,10 +4,10 @@
 // Es fa servir un `FutureBuilder` per esperar l’accés a les preferències compartides i mostrar un indicador de càrrega mentrestant.
 
 import 'package:flutter/material.dart';
+import 'package:front_end/screens/base/mainScaffold.dart';
 import 'package:front_end/screens/treballador/perfil_treb.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'splash_screen.dart';
-import 'package:front_end/screens/empresa/home_empresa.dart';
 
 class RootScreen extends StatelessWidget {
   const RootScreen({super.key});
@@ -45,7 +45,7 @@ class RootScreen extends StatelessWidget {
 
         switch (session['role']) {
           case 'empresa':
-            return const HomeEmpresa();
+            return const MainScaffold();
           case 'treballador':
             final subjectId = session['subjectId'] as int?;
             if (subjectId == null) {

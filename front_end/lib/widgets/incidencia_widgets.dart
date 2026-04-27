@@ -3,6 +3,673 @@ import 'package:flutter/material.dart';
 import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/screens/incidencia/incidenciaDetail_screen.dart';
+
+/* ─────────────────────── LLISTAT / FILTRES ─────────────────────── */
+
+class IncidenciaListHeaderCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final int count;
+
+  const IncidenciaListHeaderCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: scheme.outline.withOpacity(0.10)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: scheme.primary.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              Icons.warning_amber_rounded,
+              color: scheme.primary,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _IncidenciaTag(
+                      icon: Icons.list_alt_outlined,
+                      label: count == 1 ? '1 incidència' : '$count incidències',
+                    ),
+                    _IncidenciaTag(
+                      icon: Icons.business_outlined,
+                      label: 'Context empresa',
+                      accent: scheme.tertiary,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class IncidenciaSearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onClear;
+
+  const IncidenciaSearchField({
+    super.key,
+    required this.controller,
+    required this.onChanged,
+    this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Cerca per descripció, obra, estat o categoria',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: controller.text.trim().isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Neteja cerca',
+                onPressed: onClear,
+                icon: const Icon(Icons.close),
+              ),
+        filled: true,
+        fillColor: scheme.surface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: scheme.outline.withOpacity(0.10)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: scheme.primary.withOpacity(0.55)),
+        ),
+      ),
+    );
+  }
+}
+
+class IncidenciaFilterBar extends StatelessWidget {
+  final List<IncidenciaObraFilterOption> obres;
+  final int? selectedObraId;
+  final String? selectedEstat;
+  final int? selectedPrioritat;
+  final String? selectedCriticitat;
+  final String selectedSort;
+  final ValueChanged<int?> onObraChanged;
+  final ValueChanged<String?> onEstatChanged;
+  final ValueChanged<int?> onPrioritatChanged;
+  final ValueChanged<String?> onCriticitatChanged;
+  final ValueChanged<String> onSortChanged;
+  final VoidCallback? onClearFilters;
+
+  const IncidenciaFilterBar({
+    super.key,
+    required this.obres,
+    required this.selectedObraId,
+    required this.selectedEstat,
+    required this.selectedPrioritat,
+    required this.selectedCriticitat,
+    required this.selectedSort,
+    required this.onObraChanged,
+    required this.onEstatChanged,
+    required this.onPrioritatChanged,
+    required this.onCriticitatChanged,
+    required this.onSortChanged,
+    this.onClearFilters,
+  });
+
+  int get activeFiltersCount {
+    var count = 0;
+    if (selectedObraId != null) count++;
+    if (selectedEstat != null && selectedEstat!.trim().isNotEmpty) count++;
+    if (selectedPrioritat != null) count++;
+    if (selectedCriticitat != null && selectedCriticitat!.trim().isNotEmpty) {
+      count++;
+    }
+    if (selectedSort != _IncidenciaSortValues.mesRecents) count++;
+    return count;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.outline.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Filtres i ordenació',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              if (activeFiltersCount > 0)
+                _IncidenciaTag(
+                  icon: Icons.filter_alt_outlined,
+                  label: '$activeFiltersCount actius',
+                  accent: scheme.tertiary,
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _IncidenciaDropdownField<int>(
+                width: 250,
+                label: 'Obra',
+                value: selectedObraId,
+                onChanged: onObraChanged,
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('Totes les obres'),
+                  ),
+                  ...obres.map(
+                    (obra) => DropdownMenuItem<int?>(
+                      value: obra.id,
+                      child: Text(
+                        obra.nom,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              _IncidenciaDropdownField<String>(
+                width: 190,
+                label: 'Estat',
+                value: selectedEstat,
+                onChanged: onEstatChanged,
+                items: const [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Tots'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'pendent',
+                    child: Text('Pendent'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'en_curs',
+                    child: Text('En curs'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'resolta',
+                    child: Text('Resolta'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'tancada',
+                    child: Text('Tancada'),
+                  ),
+                ],
+              ),
+              _IncidenciaDropdownField<int>(
+                width: 170,
+                label: 'Prioritat',
+                value: selectedPrioritat,
+                onChanged: onPrioritatChanged,
+                items: const [
+                  DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('Totes'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: 1,
+                    child: Text('1'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: 2,
+                    child: Text('2'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: 3,
+                    child: Text('3'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: 4,
+                    child: Text('4'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: 5,
+                    child: Text('5'),
+                  ),
+                ],
+              ),
+              _IncidenciaDropdownField<String>(
+                width: 190,
+                label: 'Criticitat',
+                value: selectedCriticitat,
+                onChanged: onCriticitatChanged,
+                items: const [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Totes'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'alta',
+                    child: Text('Alta'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'mitjana',
+                    child: Text('Mitjana'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'baixa',
+                    child: Text('Baixa'),
+                  ),
+                ],
+              ),
+              _IncidenciaDropdownField<String>(
+                width: 220,
+                label: 'Ordena per',
+                value: selectedSort,
+                onChanged: (value) {
+                  if (value != null && value.trim().isNotEmpty) {
+                    onSortChanged(value);
+                  }
+                },
+                items: const [
+                  DropdownMenuItem<String?>(
+                    value: _IncidenciaSortValues.mesRecents,
+                    child: Text('Més recents'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: _IncidenciaSortValues.mesAntigues,
+                    child: Text('Més antigues'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: _IncidenciaSortValues.criticitatDesc,
+                    child: Text('Criticitat descendent'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: _IncidenciaSortValues.prioritatDesc,
+                    child: Text('Prioritat descendent'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: _IncidenciaSortValues.obraAsc,
+                    child: Text('Obra A-Z'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (activeFiltersCount > 0 && onClearFilters != null) ...[
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onClearFilters,
+                icon: const Icon(Icons.filter_alt_off_outlined),
+                label: const Text('Neteja filtres'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class IncidenciaListItemCard extends StatelessWidget {
+  final IncidenciaListItem item;
+
+  const IncidenciaListItemCard({
+    super.key,
+    required this.item,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final incidencia = item.incidencia;
+    final accent = _criticitatColor(incidencia.criticitat);
+
+    final obraNom = incidencia.obraNom ?? 'No sambem el nom de l\'obra';
+    final estatLabel = _estatLabel(incidencia.estat);
+    final categoriaLabel = _categoriaLabel(incidencia.categoria);
+
+    return InkWell(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => IncidenciaProfileScreen(incidenciaId: incidencia.id))),
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: scheme.outline.withOpacity(0.10)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.035),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: accent,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        obraNom,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Incidència #${incidencia.id}',
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              _textOrFallback(_shortText(incidencia.descripcio, 180)),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontSize: 14,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _IncidenciaTag(
+                  icon: Icons.flag_outlined,
+                  label: estatLabel,
+                ),
+                _IncidenciaTag(
+                  icon: Icons.crisis_alert_outlined,
+                  label: 'Criticitat ${incidencia.criticitat}',
+                  accent: accent,
+                ),
+                _IncidenciaTag(
+                  icon: Icons.priority_high_rounded,
+                  label: 'Prioritat ${incidencia.prioritat}',
+                  accent: scheme.secondary,
+                ),
+                _IncidenciaTag(
+                  icon: Icons.category_outlined,
+                  label: categoriaLabel,
+                  accent: scheme.tertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _IncidenciaInfoPill(
+                  label: 'Obra',
+                  value: obraNom,
+                ),
+                _IncidenciaInfoPill(
+                  label: 'Inici',
+                  value: _formatDate(incidencia.dataInici),
+                ),
+                _IncidenciaInfoPill(
+                  label: 'Fi',
+                  value: _formatDate(incidencia.dataFi),
+                ),
+                _IncidenciaInfoPill(
+                  label: 'Tasca',
+                  value: incidencia.idTasca?.toString() ?? 'Sense tasca',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class IncidenciaListEmptyState extends StatelessWidget {
+  final String title;
+  final String message;
+  final IconData icon;
+
+  const IncidenciaListEmptyState({
+    super.key,
+    required this.title,
+    required this.message,
+    this.icon = Icons.inbox_outlined,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: scheme.outline.withOpacity(0.08)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              color: scheme.primary.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              icon,
+              color: scheme.primary,
+              size: 34,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class IncidenciaListErrorState extends StatelessWidget {
+  final String message;
+  final Future<void> Function()? onRetry;
+
+  const IncidenciaListErrorState({
+    super.key,
+    required this.message,
+    this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(maxWidth: 560),
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: scheme.error.withOpacity(0.18)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                color: scheme.error,
+                size: 34,
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'No s’han pogut carregar les incidències',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.35,
+                ),
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 18),
+                ElevatedButton.icon(
+                  onPressed: () => onRetry!(),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Torna-ho a provar'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/* ─────────────────────── DETALL EXISTENT ─────────────────────── */
 
 class IncidenciaHeaderCard extends StatelessWidget {
   final Incidencia incidencia;
@@ -155,7 +822,7 @@ class IncidenciaCompactInfoPanel extends StatelessWidget {
               ),
               _IncidenciaInfoPill(
                 label: 'Categoria',
-                value: incidencia.categoria?.toString() ?? '—',
+                value: _categoriaLabel(incidencia.categoria),
               ),
             ],
           ),
@@ -432,6 +1099,58 @@ class IncidenciaSolucionsSectionBody extends StatelessWidget {
 
 /* ───────────────────────── PRIVATS ───────────────────────── */
 
+class _IncidenciaDropdownField<T> extends StatelessWidget {
+  final String label;
+  final double width;
+  final T? value;
+  final ValueChanged<T?> onChanged;
+  final List<DropdownMenuItem<T?>> items;
+
+  const _IncidenciaDropdownField({
+    required this.label,
+    required this.width,
+    required this.value,
+    required this.onChanged,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: width,
+      child: DropdownButtonFormField<T?>(
+        value: value,
+        items: items,
+        onChanged: onChanged,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: scheme.surfaceContainerHighest.withOpacity(0.22),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: scheme.outline.withOpacity(0.10),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: scheme.outline.withOpacity(0.10),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _IncidenciaRelationCard extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -639,6 +1358,14 @@ class _IncidenciaInfoPill extends StatelessWidget {
   }
 }
 
+abstract final class _IncidenciaSortValues {
+  static const String mesRecents = 'mes_recents';
+  static const String mesAntigues = 'mes_antigues';
+  static const String criticitatDesc = 'criticitat_desc';
+  static const String prioritatDesc = 'prioritat_desc';
+  static const String obraAsc = 'obra_asc';
+}
+
 Color _criticitatColor(int criticitat) {
   if (criticitat >= 7) return Colors.red;
   if (criticitat >= 4) return Colors.orange;
@@ -654,9 +1381,45 @@ String _formatDate(DateTime? value) {
 }
 
 String _estatLabel(String? estat) {
-  final text = estat?.trim();
+  final text = estat?.trim().toLowerCase();
   if (text == null || text.isEmpty) return 'Sense estat';
-  return text;
+
+  switch (text) {
+    case 'pendent':
+      return 'Pendent';
+    case 'en_curs':
+    case 'en curs':
+      return 'En curs';
+    case 'resolta':
+      return 'Resolta';
+    case 'tancada':
+      return 'Tancada';
+    default:
+      return estat!.trim();
+  }
+}
+
+String _categoriaLabel(int? categoria) {
+  switch (categoria) {
+    case 1:
+      return 'Material';
+    case 2:
+      return 'Tècnica';
+    case 3:
+      return 'Seguretat';
+    case 4:
+      return 'Planificació';
+    default:
+      return 'Sense categoria';
+  }
+}
+
+
+String _shortText(String? text, int maxLength) {
+  final value = text?.trim();
+  if (value == null || value.isEmpty) return '—';
+  if (value.length <= maxLength) return value;
+  return '${value.substring(0, maxLength - 3)}...';
 }
 
 String _textOrFallback(String? text) {

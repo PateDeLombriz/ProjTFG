@@ -1,9 +1,21 @@
+#La view s’encarrega del flux HTTP:
+#
+#rebre la request
+#passar request.data al serializer
+#decidir quin codi HTTP retorna
+#retornar la resposta JSON
+#
+#En el teu cas, la view fa de pont entre internet i la lògica de dades
+#
+
+
 from datetime import datetime
+from urllib import request
 from rest_framework.permissions import IsAdminUser
 from rest_framework import status
 from django.db.models import Q
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializer import MyTokenObtainPairSerializer
+from .serializer import EmpresaRegisterSerializer, MyTokenObtainPairSerializer
 from django.utils import timezone
 from datetime import datetime,date
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -57,6 +69,19 @@ class LoginView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
     # Detall d'una obra amb totes les seves incidències, tasques i documents
+
+class EmpresaRegisterView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request, format=None):
+        serializer = EmpresaRegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            result = serializer.save()
+            return Response(result, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 class ObraDetail(APIView):
     """
     Vista detallada d'una obra concreta. Retorna:
@@ -202,6 +227,37 @@ class ObresListEmpresa(APIView):
         deleted, _ = ObraEmpresa.objects.filter(id_empresa_id=pk).delete()
         return Response({"deleted": deleted}, status=status.HTTP_200_OK)
     
+class TreballadorEmpresaList(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk, format=None):
+        subject_id = _assert_empresa_can_access_empresa(request, pk)
+        treballadors = Treballador.objects.filter(
+            contractetreballador__id_empresa_id=pk
+        ).distinct()
+        data = []
+        for treballador in treballadors:
+            contracte = ContracteTreballador.objects.filter(
+                id_treballador=treballador,
+                id_empresa_id=pk
+            ).first()  # Agafa el primer contracte, pots ordenar si cal
+
+            carrec = contracte.carrec if contracte else None
+            foto_url = treballador.foto.url if treballador.foto else None
+
+            data.append({
+                'id': treballador.id,
+                'nom': treballador.nom,
+                'cognoms': treballador.cognoms,
+                'nickname': treballador.nickname,
+                'carrec': carrec,
+                'foto': foto_url,
+                'estat':contracte.estat,
+            })
+        
+        return Response(data, status=status.HTTP_200_OK)
+
 
 class UbicacioDetail(APIView):
     authentication_classes = [JWTAuthentication]
@@ -392,6 +448,25 @@ class TasquesDetail(APIView):
 
         return Response(tasca_data, status=status.HTTP_200_OK)
 
+
+    def put(self, request, pk):
+        tasca = get_object_or_404(Tasca, pk=pk) 
+        _assert_empresa_can_access_tasca(request, tasca)
+
+        serializer= TascaSerializer(tasca, data=request.data, partial=False)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data,status=status.HTTP_200_OK)
+        return Response(serializer.error, status =status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, id_tasca, format=None):
+        tasca = get_object_or_404(Tasca, pk=id_tasca)
+        _assert_empresa_can_access_tasca(request, tasca)
+
+        deleted, _ = TascaTreballador.objects.filter(id_tasca_id=id_tasca).delete()
+        return Response({'deleted': deleted}, status=status.HTTP_204_NO_CONTENT)
+        
+
 # -------------------- SOL_RECurs DETAIL --------------------
 class SolRecursDetail(APIView):
     authentication_classes = [JWTAuthentication]
@@ -481,6 +556,7 @@ class TreballadorDetail(APIView):
         treballador.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+#Per el perfil de l'empresa
 class EmpresaDetail(APIView):
     """
     Retorna informació completa d'una empresa:
@@ -945,7 +1021,7 @@ class TreballadorObresParticipadesView(APIView):
 
         return Response(ObraSerializer(obres, many=True).data, status=status.HTTP_200_OK)
     
-class TascaTreballadorBulkDeleteView(APIView):
+class TascaTreballadorBulkDelete(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     """
@@ -953,9 +1029,12 @@ class TascaTreballadorBulkDeleteView(APIView):
     URL: /api/tasca_treballador/<id_tasca>/bulk_delete/
     """
     def delete(self, request, id_tasca, format=None):
+        tascaT = get_object_or_404(TascaTreballador, pk=id_tasca)
+        print(f"Intentant eliminar assignacions de tasca {id_tasca} per empresa {request.auth['subject_id']}")
+        print(f'La tasxaT trobada és: {tascaT}')
         _assert_empresa_can_access_tasca_treballador(
             request,
-            get_object_or_404(Tasca, pk=id_tasca).id
+            tascaT
         )
 
         deleted, _ = TascaTreballador.objects.filter(id_tasca_id=id_tasca).delete()
@@ -1072,10 +1151,19 @@ class IncidenciaList(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
-        empresa_id = int(request.auth["subject_id"])
-        obra_ids = _empresa_accessible_obra_ids(empresa_id)
+        subject_type = request.auth["tipus"]
+        subject_id = int(request.auth["subject_id"])
 
-        qs = Incidencia.objects.filter(id_obra_id__in=obra_ids)
+        if subject_type != "empresa":
+            raise PermissionDenied("Només les empreses poden consultar incidències.")
+
+        obra_ids = _empresa_accessible_obra_ids(subject_id)
+
+        qs = (
+            Incidencia.objects
+            .filter(id_obra_id__in=obra_ids)
+            .select_related("id_obra")
+        )
 
         id_obra = request.query_params.get('id_obra')
         if id_obra:
@@ -1083,9 +1171,19 @@ class IncidenciaList(APIView):
             qs = qs.filter(id_obra_id=id_obra)
 
         serializer = IncidenciaSerializer(qs, many=True)
-        return Response(serializer.data)
+        data = serializer.data
+
+        for i, incidencia in enumerate(qs):
+            data[i]["obra_nom"] = incidencia.id_obra.nom if incidencia.id_obra else None
+
+        return Response(data)
 
     def post(self, request, format=None):
+        subject_type = request.auth["tipus"]
+
+        if subject_type != "empresa":
+            raise PermissionDenied("Només les empreses poden crear incidències.")
+
         id_obra = request.data.get('id_obra')
         if id_obra:
             _assert_query_obra_in_context(request, id_obra)
@@ -1097,6 +1195,8 @@ class IncidenciaList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+        
 class SolRecursList(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
@@ -1105,7 +1205,7 @@ class SolRecursList(APIView):
         empresa_id = int(request.auth["subject_id"])
         obra_ids = _empresa_accessible_obra_ids(empresa_id)
 
-        qs = SolRecurs.objects.filter(id_obra_id__in=obra_ids)
+        qs = SolRecurs.objects.filter(id_obra_id__in=obra_ids).select_related('id_obra', 'id_recurs')
 
         id_obra = request.query_params.get('id_obra')
         id_recurs = request.query_params.get('id_recurs')
@@ -1125,9 +1225,13 @@ class SolRecursList(APIView):
         if id_obra:
             _assert_query_obra_in_context(request, id_obra)
 
-        serializer = SolRecursSerializer(data=request.data)
+        empresa_id = int(request.auth['subject_id'])
+        final_data = request.data.copy()
+        final_data['id_empresa'] = empresa_id
+
+        serializer = SolRecursSerializer(data=final_data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(id_empresa_id=empresa_id)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -1625,42 +1729,30 @@ class VerificacioDetail(APIView):
 #            return Response(serializer.data, status=status.HTTP_201_CREATED)
 #        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #    
-#class TasquesList(APIView):
-#    authentication_classes = [JWTAuthentication]
-#    permission_classes = [permissions.IsAuthenticated]
-#
-#    def get(self, request, format=None):
-#        empresa_id = int(request.auth["subject_id"])
-#        obra_ids = _empresa_accessible_obra_ids(empresa_id)
-#
-#        qs = Tasca.objects.filter(id_obra_id__in=obra_ids)
-#
-#        id_obra = request.query_params.get('id_obra')
-#        if id_obra:
-#            _assert_query_obra_in_context(request, id_obra)
-#            qs = qs.filter(id_obra_id=id_obra)
-#
-#        return Response(TascaSerializer(qs, many=True).data)
-#
-#    def post(self, request, format=None):
-#        id_obra = request.data.get('id_obra')
-#        if id_obra:
-#            _assert_query_obra_in_context(request, id_obra)
-#
-#        serializer = TascaSerializer(data=request.data)
-#        if serializer.is_valid():
-#            serializer.save()
-#            return Response(serializer.data, status=status.HTTP_201_CREATED)
-#        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
-#    def delete(self, request, format=None):
-#        return Response(
-#            {'detail': 'No es permet esborrat massiu de tasques.'},
-#            status=status.HTTP_405_METHOD_NOT_ALLOWED
-#        )
-#
-#    def put(self, request, format=None):
-#        return Response(
-#            {'detail': 'No es permet actualització massiva de tasques.'},
-#            status=status.HTTP_405_METHOD_NOT_ALLOWED
-#        )
+class TasquesList(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        empresa_id = int(request.auth["subject_id"])
+        obra_ids = _empresa_accessible_obra_ids(empresa_id)
+
+        qs = Tasca.objects.filter(id_obra_id__in=obra_ids)
+
+        id_obra = request.query_params.get('id_obra')
+        if id_obra:
+            _assert_query_obra_in_context(request, id_obra)
+            qs = qs.filter(id_obra_id=id_obra)
+
+        return Response(TascaSerializer(qs, many=True).data)
+
+    def post(self, request, format=None):
+       id_obra = request.data.get('id_obra')
+       if id_obra:
+           _assert_query_obra_in_context(request, id_obra)
+
+       serializer = TascaSerializer(data=request.data)
+       if serializer.is_valid():
+           serializer.save()
+           return Response(serializer.data, status=status.HTTP_201_CREATED)
+       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

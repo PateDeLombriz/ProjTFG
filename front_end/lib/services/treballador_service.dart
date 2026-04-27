@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:front_end/models/treballador_models.dart';
+import 'package:front_end/shared/services/app_api_service.dart';
 
 class TreballadorServiceException implements Exception {
   final String message;
@@ -15,321 +15,347 @@ class TreballadorServiceException implements Exception {
   String toString() => message;
 }
 
-class TreballadorService {
-  final String baseUrl;
-  final http.Client _client;
-
-  String? _validatedToken;
-
+class TreballadorService extends AppApiService {
   TreballadorService({
-    required this.baseUrl,
+    String? baseUrl,
     http.Client? client,
-  }) : _client = client ?? http.Client();
+  }) : super(
+         baseUrl: baseUrl,
+         client: client,
+       );
+
+  Future<T> _runMapped<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on AppApiException catch (e) {
+      throw TreballadorServiceException(
+        e.message,
+        statusCode: e.statusCode,
+      );
+    }
+  }
+
+  // =========================
+  // PERFIL TREBALLADOR
+  // =========================
 
   /// Perfil propi del treballador autenticat.
   /// Resol l'id des de la sessió i crida /treballadors/profile/<id>/
   Future<TreballadorProfileData> fetchMyProfile() async {
-    final treballadorId = await requireTreballadorId();
+    final treballadorId = await _runMapped(() => requireTreballadorId());
     return fetchTreballadorProfile(treballadorId);
   }
 
-/// Retorna el perfil resumit d'un treballador per a ús visual.
-/// A diferència de fetchTreballadorDetail(), aquest mètode està orientat
-/// a capçalera, resum i mètriques, no a informació administrativa completa.
-  Future<TreballadorProfileData> fetchTreballadorProfile(int treballadorId) async {
+  /// Retorna el perfil resumit d'un treballador per a ús visual.
+  /// A diferència de fetchTreballadorDetail(), aquest mètode està orientat
+  /// a capçalera, resum i mètriques, no a informació administrativa completa.
+  Future<TreballadorProfileData> fetchTreballadorProfile(
+    int treballadorId,
+  ) async {
     final raw = await fetchTreballadorProfileRaw(treballadorId);
     return TreballadorProfileData.fromMap(raw);
   }
 
-  Future<Map<String, dynamic>> fetchTreballadorProfileRaw(int treballadorId) async {
-    final token = await _requireAuthenticatedSession();
-
-    final response = await _client.get(
-      Uri.parse('$baseUrl/treballadors/profile/$treballadorId/'),
-      headers: _authHeaders(token),
+  Future<Map<String, dynamic>> fetchTreballadorProfileRaw(
+    int treballadorId,
+  ) {
+    return _runMapped(
+      () => getJsonMap(
+        '/treballadors/profile/$treballadorId/',
+        fallback: 'Error carregant el perfil del treballador',
+        invalidResponseMessage:
+            'La resposta del perfil del treballador no és vàlida.',
+      ),
     );
-
-    if (response.statusCode != 200) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw TreballadorServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error carregant el perfil del treballador',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw const TreballadorServiceException(
-        'La resposta del perfil del treballador no és vàlida.',
-      );
-    }
-
-    return decoded;
   }
-/// Retorna el detall d'un treballador concret, perque l'empresa pugui veure informació interna.Que el treballador no ha de sebre.
-/// A diferència de fetchTreballadorProfile(), aquest mètode prioritza dades
-/// com contractes i informació interna, no el resum visual del perfil.
-  Future<Map<String, dynamic>> fetchTreballadorDetail(int treballadorId) async {
-  final token = await _requireAuthenticatedSession();
 
-  final response = await _client.get(
-    Uri.parse('$baseUrl/treballadors/$treballadorId/'),
-    headers: _authHeaders(token),
-  );
-
-  if (response.statusCode != 200) {
-    await _handleUnauthorizedIfNeeded(response.statusCode);
-    throw TreballadorServiceException(
-      _extractErrorMessage(
-        response,
+  /// Retorna el detall d'un treballador concret, perquè l'empresa pugui veure
+  /// informació interna que el treballador no ha de saber.
+  /// A diferència de fetchTreballadorProfile(), aquest mètode prioritza dades
+  /// com contractes i informació interna, no el resum visual del perfil.
+  Future<Map<String, dynamic>> fetchTreballadorDetail(int treballadorId) {
+    return _runMapped(
+      () => getJsonMap(
+        '/treballadors/$treballadorId/',
         fallback: 'Error carregant el detall del treballador',
+        invalidResponseMessage:
+            'La resposta del detall del treballador no és vàlida.',
       ),
-      statusCode: response.statusCode,
     );
   }
 
-  final decoded = jsonDecode(response.body);
-  if (decoded is! Map<String, dynamic>) {
-    throw const TreballadorServiceException(
-      'La resposta del detall del treballador no és vàlida.',
-    );
-  }
-
-  return decoded;
-}
-
-/// Retorna les tasques detallades assignades a un treballador.
-/// A diferència d'un llistat d'assignacions com tasca_treballador,
-/// aquí cada element ja ve enriquit amb dades de tasca, obra i relacions.
-Future<List<Map<String, dynamic>>> fetchTreballadorTasques(
-  int treballadorId,
-) async {
-  final token = await _requireAuthenticatedSession();
-
-  final response = await _client.get(
-    Uri.parse('$baseUrl/treballadors/$treballadorId/tasques/'),
-    headers: _authHeaders(token),
-  );
-
-  if (response.statusCode != 200) {
-    await _handleUnauthorizedIfNeeded(response.statusCode);
-    throw TreballadorServiceException(
-      _extractErrorMessage(
-        response,
+  /// Retorna les tasques detallades assignades a un treballador.
+  /// A diferència d'un llistat d'assignacions com tasca_treballador,
+  /// aquí cada element ja ve enriquit amb dades de tasca, obra i relacions.
+  Future<List<Map<String, dynamic>>> fetchTreballadorTasques(
+    int treballadorId,
+  ) {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/$treballadorId/tasques/',
         fallback: 'Error carregant les tasques del treballador',
+        invalidResponseMessage:
+            'La resposta de les tasques del treballador no és vàlida.',
       ),
-      statusCode: response.statusCode,
     );
   }
-
-  final decoded = jsonDecode(response.body);
-  if (decoded is! List) {
-    throw const TreballadorServiceException(
-      'La resposta de les tasques del treballador no és vàlida.',
-    );
-  }
-
-  return decoded.map((item) {
-    if (item is Map<String, dynamic>) {
-      return item;
-    }
-    return Map<String, dynamic>.from(item as Map);
-  }).toList();
-}
 
   /// Retorna les obres on el treballador ha participat.
-/// A diferència de fetchTreballadorTasques(), aquest mètode agrupa per obra
-/// i dona una visió resumida de participació, no el detall de cada tasca.
-Future<List<Map<String, dynamic>>> fetchTreballadorObresParticipades(
-  int treballadorId,
-) async {
-  final token = await _requireAuthenticatedSession();
-
-  final response = await _client.get(
-    Uri.parse('$baseUrl/treballadors/$treballadorId/obres_participades/'),
-    headers: _authHeaders(token),
-  );
-
-  if (response.statusCode != 200) {
-    await _handleUnauthorizedIfNeeded(response.statusCode);
-    throw TreballadorServiceException(
-      _extractErrorMessage(
-        response,
+  /// A diferència de fetchTreballadorTasques(), aquest mètode agrupa per obra
+  /// i dona una visió resumida de participació, no el detall de cada tasca.
+  Future<List<Map<String, dynamic>>> fetchTreballadorObresParticipades(
+    int treballadorId,
+  ) {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/$treballadorId/obres_participades/',
         fallback: 'Error carregant les obres participades del treballador',
+        invalidResponseMessage:
+            'La resposta de les obres participades no és vàlida.',
       ),
-      statusCode: response.statusCode,
     );
   }
 
-  final decoded = jsonDecode(response.body);
-  if (decoded is! List) {
-    throw const TreballadorServiceException(
-      'La resposta de les obres participades no és vàlida.',
-    );
+  // =========================
+  // TREBALLADORS EMPRESA
+  // =========================
+
+  Future<TreballadorListData> fetchTreballadorsEmpresaData(
+    int empresaId,
+  ) async {
+    final raw = await fetchTreballadorsEmpresaRaw(empresaId);
+    return TreballadorListData.fromEmpresaDetailMap(raw);
   }
 
-  return decoded.map((item) {
-    if (item is Map<String, dynamic>) {
-      return item;
-    }
-    return Map<String, dynamic>.from(item as Map);
-  }).toList();
-}
-
-  Future<void> ensureAuthenticatedSession() async {
-    await _requireAuthenticatedSession();
+  Future<List<TreballadorListItem>> fetchTreballadorsEmpresa(
+    int empresaId,
+  ) async {
+    final data = await fetchTreballadorsEmpresaData(empresaId);
+    return data.treballadors;
   }
 
-  Future<int> requireTreballadorId() async {
-    await _requireAuthenticatedSession();
-
-    final prefs = await SharedPreferences.getInstance();
-
-    final rawString = prefs.getString('subject_id')?.trim();
-    if (rawString != null && rawString.isNotEmpty) {
-      final parsed = int.tryParse(rawString);
-      if (parsed != null) return parsed;
-    }
-
-    final rawInt = prefs.getInt('subject_id');
-    if (rawInt != null) return rawInt;
-
-    throw const TreballadorServiceException(
-      'No s’ha trobat l’identificador del treballador a la sessió.',
-    );
+  Future<TreballadorListData> fetchMyEmpresaTreballadorsData() async {
+    final empresaId = await _runMapped(() => requireEmpresaId());
+    return fetchTreballadorsEmpresaData(empresaId);
   }
 
-  Future<String> _requireAuthenticatedSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = _readStoredToken(prefs);
+  /// Obtiene los treballadors de la empresa.
+  /// Aquest mètode es manté propi perquè la resposta es normalitza tant si
+  /// el backend torna un Map com si torna directament una List.
+  Future<Map<String, dynamic>> fetchTreballadorsEmpresaRaw(
+    int empresaId,
+  ) async {
+    try {
+      final token = await requireAuthenticatedSession();
 
-    if (token == null || token.isEmpty) {
-      throw const TreballadorServiceException('No hi ha sessió guardada.');
-    }
+      final primaryResponse = await client.get(
+        buildUri('/treballadors/empresa/$empresaId/'),
+        headers: authHeaders(token),
+      );
 
-    if (_validatedToken == token) {
-      return token;
-    }
+      if (primaryResponse.statusCode == 200) {
+        return _decodeTreballadorsEmpresaResponse(
+          primaryResponse.body,
+          empresaId: empresaId,
+        );
+      }
 
-    final response = await _client.get(
-      Uri.parse('$baseUrl/me/'),
-      headers: _authHeaders(token),
-    );
+      if (primaryResponse.statusCode == 401 ||
+          primaryResponse.statusCode == 403) {
+        await clearStoredSession();
+        throw TreballadorServiceException(
+          extractErrorMessage(
+            primaryResponse,
+            fallback: 'No tens permís per carregar els treballadors de l’empresa',
+          ),
+          statusCode: primaryResponse.statusCode,
+        );
+      }
 
-    if (response.statusCode == 200) {
-      await _storeSessionContext(prefs, token, response.body);
-      _validatedToken = token;
-      return token;
-    }
-
-    _validatedToken = null;
-
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearStoredSession();
       throw TreballadorServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'La sessió ha caducat o no és vàlida. Torna a fer login.',
+        extractErrorMessage(
+          primaryResponse,
+          fallback: 'Error carregant els treballadors de l\'empresa',
         ),
-        statusCode: response.statusCode,
+        statusCode: primaryResponse.statusCode,
+      );
+    } on AppApiException catch (e) {
+      throw TreballadorServiceException(
+        e.message,
+        statusCode: e.statusCode,
       );
     }
+  }
 
-    throw TreballadorServiceException(
-      _extractErrorMessage(
-        response,
-        fallback: 'Error al carregar la sessió.',
-      ),
-      statusCode: response.statusCode,
+  Map<String, dynamic> _decodeTreballadorsEmpresaResponse(
+    String body, {
+    required int empresaId,
+  }) {
+    final decoded = jsonDecode(body);
+
+    if (decoded is Map<String, dynamic>) {
+      final treballadors = _extractTreballadorsList(decoded['treballadors']);
+      final normalizedTreballadors = treballadors
+          .map(_normalizeTreballadorEmpresaItem)
+          .toList();
+
+      final result = Map<String, dynamic>.from(decoded);
+      result['id'] = result['id'] ?? empresaId;
+      result['treballadors'] = normalizedTreballadors;
+      return result;
+    }
+
+    if (decoded is List) {
+      final normalizedTreballadors = decoded
+          .whereType<Object?>()
+          .map(
+            (item) => item is Map
+                ? _normalizeTreballadorEmpresaItem(
+                    Map<String, dynamic>.from(item),
+                  )
+                : <String, dynamic>{},
+          )
+          .toList();
+
+      return <String, dynamic>{
+        'id': empresaId,
+        'nom_empresa': null,
+        'treballadors': normalizedTreballadors,
+      };
+    }
+
+    throw const TreballadorServiceException(
+      'La resposta de treballadors no és vàlida.',
     );
   }
 
-  String? _readStoredToken(SharedPreferences prefs) {
-    final token = prefs.getString('token')?.trim();
-    if (token != null && token.isNotEmpty) return token;
+  // =========================
+  // NORMALITZACIÓ TREBALLADORS EMPRESA
+  // =========================
 
-    final legacyToken = prefs.getString('session_token')?.trim();
-    if (legacyToken != null && legacyToken.isNotEmpty) return legacyToken;
+  List<Map<String, dynamic>> _extractTreballadorsList(dynamic value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+
+    return value
+        .map(
+          (item) => item is Map
+              ? Map<String, dynamic>.from(item)
+              : <String, dynamic>{},
+        )
+        .toList();
+  }
+
+  Map<String, dynamic> _normalizeTreballadorEmpresaItem(
+    Map<String, dynamic> raw,
+  ) {
+    final normalized = Map<String, dynamic>.from(raw);
+
+    normalized['id'] =
+        _asIntOrNull(normalized['id'] ?? normalized['id_treballador']) ?? 0;
+    normalized['nom'] = _asString(normalized['nom']) ?? 'Treballador';
+    normalized['cognoms'] = _asNullableString(normalized['cognoms']);
+    normalized['nickname'] = _asNullableString(normalized['nickname']);
+    normalized['email'] = _asNullableString(normalized['email']);
+    normalized['telefon'] = _asNullableString(normalized['telefon']);
+    normalized['comentaris'] = _asNullableString(normalized['comentaris']);
+
+    final contractes = _normalizeContractes(normalized['contractes']);
+    normalized['contractes'] = contractes;
+
+    normalized['carrec'] =
+        _asNullableString(normalized['carrec']) ??
+        _extractCarrecFromContractes(contractes);
+
+    normalized['estat'] =
+        _asNullableString(normalized['estat']) ??
+        _extractEstatFromContractes(contractes);
+
+    final fotoRaw = _asNullableString(
+      normalized['foto_url'] ?? normalized['foto'],
+    );
+    normalized['foto'] = fotoRaw;
+    normalized['foto_url'] = _buildAbsoluteUrlIfNeeded(fotoRaw);
+
+    return normalized;
+  }
+
+  List<Map<String, dynamic>> _normalizeContractes(dynamic value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+
+    return value
+        .map(
+          (item) => item is Map
+              ? Map<String, dynamic>.from(item).map(
+                  (key, val) => MapEntry(key.toString(), val),
+                )
+              : <String, dynamic>{},
+        )
+        .toList();
+  }
+
+  String? _extractCarrecFromContractes(List<Map<String, dynamic>> contractes) {
+    if (contractes.isEmpty) return null;
+
+    for (final contracte in contractes) {
+      final estat = _asNullableString(contracte['estat'])?.toLowerCase();
+      final carrec = _asNullableString(contracte['carrec']);
+
+      if (estat == 'actiu' && carrec != null && carrec.isNotEmpty) {
+        return carrec;
+      }
+    }
+
+    return _asNullableString(contractes.first['carrec']);
+  }
+
+  String? _extractEstatFromContractes(List<Map<String, dynamic>> contractes) {
+    if (contractes.isEmpty) return null;
+
+    for (final contracte in contractes) {
+      final estat = _asNullableString(contracte['estat']);
+      if (estat != null && estat.isNotEmpty) {
+        return estat;
+      }
+    }
 
     return null;
   }
 
-  Future<void> _storeSessionContext(
-    SharedPreferences prefs,
-    String token,
-    String body,
-  ) async {
-    await prefs.setString('token', token);
+  String? _buildAbsoluteUrlIfNeeded(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+
+    final value = raw.trim();
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
 
     try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) {
-        final subjectId = decoded['subject_id'];
-        if (subjectId != null) {
-          await prefs.setString('subject_id', subjectId.toString());
-        }
+      final uri = Uri.parse(baseUrl);
+      final baseOrigin =
+          '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
 
-        final tipus = decoded['tipus'];
-        if (tipus is String && tipus.trim().isNotEmpty) {
-          await prefs.setString('tipus', tipus);
-        }
-
-        final idEmpresa = decoded['id_empresa'];
-        if (idEmpresa != null) {
-          await prefs.setString('id_empresa', idEmpresa.toString());
-        }
+      if (value.startsWith('/')) {
+        return '$baseOrigin$value';
       }
-    } catch (_) {}
-  }
 
-  Map<String, String> _authHeaders(String token) {
-    return <String, String>{
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
-
-  Future<void> _handleUnauthorizedIfNeeded(int statusCode) async {
-    if (statusCode == 401 || statusCode == 403) {
-      _validatedToken = null;
-      await _clearStoredSession();
+      return '$baseOrigin/$value';
+    } catch (_) {
+      return value;
     }
   }
 
-
-
-  Future<void> _clearStoredSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('session_token');
-    await prefs.remove('subject_id');
-    await prefs.remove('tipus');
-    await prefs.remove('id_empresa');
+  String? _asString(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
   }
 
-  String _extractErrorMessage(
-    http.Response response, {
-    required String fallback,
-  }) {
-    try {
-      final decoded = jsonDecode(response.body);
+  String? _asNullableString(dynamic value) => _asString(value);
 
-      if (decoded is Map<String, dynamic>) {
-        final detail = decoded['detail'];
-        if (detail is String && detail.trim().isNotEmpty) {
-          return detail;
-        }
-
-        final message = decoded['message'];
-        if (message is String && message.trim().isNotEmpty) {
-          return message;
-        }
-      }
-    } catch (_) {}
-
-    return '$fallback (${response.statusCode})';
+  int? _asIntOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString().trim());
   }
 }

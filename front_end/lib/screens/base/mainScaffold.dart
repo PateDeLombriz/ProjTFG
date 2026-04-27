@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/empresa/home_empresa.dart';
 import 'package:front_end/screens/obra_screens/obra_form.dart';
-import 'package:front_end/screens/tasca_screens/tasquesList_screen.dart';
-import 'package:front_end/screens/empresa/recursosList_screen.dart';
+import 'package:front_end/screens/recursos/sol_recurs_list_screen.dart';
 import 'package:front_end/screens/tasca_screens/tasca_form.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
-import 'package:front_end/screens/empresa/solicRec_form.dart';
+import 'package:front_end/screens/recursos/solicRec_form.dart';
 import 'package:front_end/screens/empresa/doc_form.dart';
-import 'package:front_end/screens/empresa/treballador_form.dart';
+import 'package:front_end/screens/treballador/treballador_form.dart';
+import 'package:front_end/screens/treballador/treballadors_empresa_list_screen.dart';
+import 'package:front_end/screens/incidencia/incidencia_list_screen.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -21,15 +22,16 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   final List<Widget> _pages = const [
     HomeEmpresa(),
-    TasquesScreen(),
-    RecursosScreen(),
+    TreballadorsListScreen(),
+    SolRecursListScreen(),
+    IncidenciesListScreen(),
   ];
 
   final List<BottomNavigationBarItem> _navItems = const [
     BottomNavigationBarItem(icon: Icon(Icons.business), label: 'Obres'),
-    BottomNavigationBarItem(icon: Icon(Icons.task_alt_outlined), label: 'Tasques'),
-    BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Sol Recursos'),
-
+    BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Personal'),
+    BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Solicituds Recursos'),
+    BottomNavigationBarItem(icon: Icon(Icons.report_problem_outlined), label: 'Incidencies'), 
   ];
 
   @override
@@ -87,7 +89,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   void _handleFabAction(_FabItem item) {
     switch (item) {
       case _FabItem.obra:
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ObraForm()));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ObraCreateScreen()));
         break;
       case _FabItem.tasca:
         Navigator.push(context, MaterialPageRoute(builder: (_) => const TascaFormScreen()));

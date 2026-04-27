@@ -23,7 +23,7 @@ class RecursosScreen extends StatefulWidget {
 }
 
 class _RecursosScreenState extends State<RecursosScreen> {
-  static const _baseUrl = ApiConstants.baseUrl;
+  static final _baseUrl = ApiConstants.baseUrl;
 
   final List<Map<String, dynamic>> _recursos = [];
   bool _loading = true;

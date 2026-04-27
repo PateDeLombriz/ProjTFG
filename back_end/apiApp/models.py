@@ -249,7 +249,7 @@ class Configuracio(models.Model):
         ]
 
 class Contrasenya(models.Model):
-    id = models.AutoField(primary_key=True)
+    id = models.AutoField(db_column='id', primary_key=True)
     id_treballador = models.ForeignKey(Treballador, models.CASCADE, db_column='id_treballador', blank=True, null=True)
     id_empresa = models.ForeignKey(Empresa, models.CASCADE, db_column='id_empresa', blank=True, null=True)
     clau = models.CharField(max_length=255)
@@ -383,7 +383,13 @@ class ResponsableObra(models.Model):
 
 #Solicitud de recurs per a una obra, pot ser per a una tasca concreta o no, i pot ser per a una incidencia concreta o no. Pot tenir un comentari i una data de necessitat, i opcionalment una data d'entrega i un proveïdor associat.
 class SolRecurs(models.Model):
-    id = models.AutoField(primary_key=True) 
+    id = models.AutoField(primary_key=True)
+    id_empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        db_column='id_empresa',
+        related_name='sol_necessitats',
+    )
     id_obra = models.ForeignKey(Obra, models.DO_NOTHING, db_column='id_obra')
     id_recurs = models.ForeignKey(Recurs, models.DO_NOTHING, db_column='id_recurs')
     quantitat = models.IntegerField()

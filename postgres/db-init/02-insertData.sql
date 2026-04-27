@@ -438,6 +438,8 @@ INSERT INTO contrasenya
   (37, 31,  NULL, 'tall3131',           '2024-06-26 08:55:00', NULL),
   (38, 32,  NULL, 'metal3232',          '2024-06-27 09:05:00', NULL),
   (39, 33,  NULL, 'peo3333',            '2024-06-27 09:20:00', NULL);
+
+  SELECT setval('contrasenya_id_seq', (SELECT MAX(id) FROM contrasenya));
 /* ───────────────────────────
    DOCUMENT_OBRA (coherent ara)
    ─────────────────────────── */
@@ -472,6 +474,7 @@ INSERT INTO incidencia (id_obra, id_tasca, descripcio, data_inici, data_fi, crit
   (12, 46, 'Algunes peces d’enrajolat han arribat trencades',               '2024-08-07', NULL,         2, 2, 1, 'OBERTA'),
   (13, 49, 'Rasa de reg afecta una conducció existent no planificada',      '2024-06-02', '2024-06-05', 5, 1, 2, 'TANCADA'),
   (14, 53, 'Entrada d’aigua per coberta abans de finalitzar el segellat',   '2024-07-10', NULL,         5, 1, 2, 'OBERTA');
+
 INSERT INTO log_de_sessio
 (id, id_treballador, id_empresa, data_inici, hora_inici) VALUES
   (1, NULL, 1, '2024-07-01', '08:30:00'),  -- Construccions Alzina
@@ -632,46 +635,47 @@ INSERT INTO responsable_obra (id_obra, id_treballador, data_inici, data_fi) VALU
 /* ────────────────
    SOL_RECURS (igual)
    ──────────────── */
-INSERT INTO sol_recurs (id_obra, id_recurs, quantitat, data_necessitat, comentari, data_entrega, data_creacio, proveidor) VALUES
-  (1, 1,  15,   '2024-07-02', 'Necessari per fonaments', NULL,         '2024-06-25 08:00:00', 'Formigons Balears'),
-  (2, 2,   1,   '2024-06-10', 'Per començar estructura', '2024-06-12', '2024-06-01 10:00:00', 'Maquinària Mallorquina'),
-  (3, 3, 5000,  '2024-04-15', 'Primera fase obra',       '2024-04-16', '2024-04-10 09:00:00', 'Totxos SA'),  (1, 4,   1200, '2024-07-06', 'Acer per reforç estructural interior',         '2024-07-05', '2024-07-01 08:15:00', 'Aceros Mallorca'),
-  (1, 6,     80, '2024-07-07', 'Morter per envans i reparacions',               NULL,         '2024-07-02 09:00:00', 'Materials Serra'),
+INSERT INTO sol_recurs (id_obra, id_empresa, id_recurs, quantitat, data_necessitat, comentari, data_entrega, data_creacio, proveidor) VALUES
+  (1, 1, 1,  15,   '2024-07-02', 'Necessari per fonaments', NULL,         '2024-06-25 08:00:00', 'Formigons Balears'),
+  (2, 2, 2,   1,   '2024-06-10', 'Per començar estructura', '2024-06-12', '2024-06-01 10:00:00', 'Maquinària Mallorquina'),
+  (3, 1, 3, 5000,  '2024-04-15', 'Primera fase obra',       '2024-04-16', '2024-04-10 09:00:00', 'Totxos SA'),
+  (1, 1, 4, 1200, '2024-07-06', 'Acer per reforç estructural interior',         '2024-07-05', '2024-07-01 08:15:00', 'Aceros Mallorca'),
+  (1, 1, 6,   80, '2024-07-07', 'Morter per envans i reparacions',               NULL,         '2024-07-02 09:00:00', 'Materials Serra'),
 
-  (4, 8,     60, '2024-06-22', 'Plaques per divisòries noves',                  '2024-06-21', '2024-06-18 10:20:00', 'Pladur Illes'),
-  (4, 24,    20, '2024-06-25', 'Interruptors per banys reformats',              NULL,         '2024-06-19 11:10:00', 'Electricitat Balear'),
+  (4, 1, 8,   60, '2024-06-22', 'Plaques per divisòries noves',                  '2024-06-21', '2024-06-18 10:20:00', 'Pladur Illes'),
+  (4, 1, 24,  20, '2024-06-25', 'Interruptors per banys reformats',              NULL,         '2024-06-19 11:10:00', 'Electricitat Balear'),
 
-  (5, 8,    140, '2024-07-11', 'Plaques per sostres i divisions interiors',     '2024-07-10', '2024-07-04 08:30:00', 'Pladur Illes'),
-  (5, 23,    35, '2024-07-08', 'Caixes d’empalme per aules noves',              '2024-07-07', '2024-07-03 09:15:00', 'Subministres Tècnics'),
+  (5, 2, 8,  140, '2024-07-11', 'Plaques per sostres i divisions interiors',     '2024-07-10', '2024-07-04 08:30:00', 'Pladur Illes'),
+  (5, 2, 23,  35, '2024-07-08', 'Caixes d’empalme per aules noves',              '2024-07-07', '2024-07-03 09:15:00', 'Subministres Tècnics'),
 
-  (6, 14,   110, '2024-05-20', 'Pintura exterior per façana principal',         '2024-05-19', '2024-05-15 08:45:00', 'Pintures Mediterrània'),
-  (6, 31,   120, '2024-05-12', 'Bastida per rehabilitació de façana',           '2024-05-11', '2024-05-08 12:00:00', 'Lloguers Bastida'),
+  (6, 3, 14, 110, '2024-05-20', 'Pintura exterior per façana principal',         '2024-05-19', '2024-05-15 08:45:00', 'Pintures Mediterrània'),
+  (6, 3, 31, 120, '2024-05-12', 'Bastida per rehabilitació de façana',           '2024-05-11', '2024-05-08 12:00:00', 'Lloguers Bastida'),
 
-  (7, 1,     90, '2024-09-08', 'Formigó per sabates i fonamentació',            NULL,         '2024-09-02 08:00:00', 'Formigons Balears'),
-  (7, 4,   2200, '2024-09-07', 'Ferralla per estructura de fonament',           '2024-09-06', '2024-09-03 09:40:00', 'Aceros Mallorca'),
+  (7, 1, 1,  90, '2024-09-08', 'Formigó per sabates i fonamentació',            NULL,         '2024-09-02 08:00:00', 'Formigons Balears'),
+  (7, 1, 4,2200, '2024-09-07', 'Ferralla per estructura de fonament',           '2024-09-06', '2024-09-03 09:40:00', 'Aceros Mallorca'),
 
-  (8, 20,   300, '2024-06-08', 'Tub PVC per drenatge principal',                '2024-06-07', '2024-06-05 08:20:00', 'Canalitzacions Maó'),
-  (8, 33,     1, '2024-06-06', 'Excavadora per rasa principal',                 '2024-06-06', '2024-06-02 10:00:00', 'Maquinària Mallorquina'),
+  (8, 4, 20, 300, '2024-06-08', 'Tub PVC per drenatge principal',                '2024-06-07', '2024-06-05 08:20:00', 'Canalitzacions Maó'),
+  (8, 4, 33,   1, '2024-06-06', 'Excavadora per rasa principal',                 '2024-06-06', '2024-06-02 10:00:00', 'Maquinària Mallorquina'),
 
-  (9, 13,   180, '2024-06-10', 'Pintura blanca per apartaments',                '2024-06-09', '2024-06-01 09:00:00', 'Pintures Mediterrània'),
-  (9, 28,    12, '2024-05-02', 'Portes interiors per habitatges reformats',     NULL,         '2024-04-27 08:50:00', 'Fusteria Levante'),
+  (9, 4, 13, 180, '2024-06-10', 'Pintura blanca per apartaments',                '2024-06-09', '2024-06-01 09:00:00', 'Pintures Mediterrània'),
+  (9, 4, 28,  12, '2024-05-02', 'Portes interiors per habitatges reformats',     NULL,         '2024-04-27 08:50:00', 'Fusteria Levante'),
 
-  (10, 40,    1, '2024-08-23', 'Soldadora per estructura metàl·lica',           '2024-08-22', '2024-08-18 11:30:00', 'Industrial Solda'),
-  (10, 35,    1, '2024-08-20', 'Camió bolquet per retirada de terres',          '2024-08-20', '2024-08-14 07:45:00', 'Transports Illes'),
+  (10, 3, 40,  1, '2024-08-23', 'Soldadora per estructura metàl·lica',           '2024-08-22', '2024-08-18 11:30:00', 'Industrial Solda'),
+  (10, 3, 35,  1, '2024-08-20', 'Camió bolquet per retirada de terres',          '2024-08-20', '2024-08-14 07:45:00', 'Transports Illes'),
 
-  (11, 3,     35, '2024-04-01', 'Grava per millora del ferm del camí',          '2024-03-30', '2024-03-25 10:10:00', 'Àrids Tramuntana'),
-  (11, 49,     6, '2024-03-19', 'Carretons per suport a brigada',               '2024-03-18', '2024-03-16 08:00:00', 'Eines i Obra SL'),
+  (11, 2, 3,  35, '2024-04-01', 'Grava per millora del ferm del camí',          '2024-03-30', '2024-03-25 10:10:00', 'Àrids Tramuntana'),
+  (11, 2, 49,  6, '2024-03-19', 'Carretons per suport a brigada',               '2024-03-18', '2024-03-16 08:00:00', 'Eines i Obra SL'),
 
-  (12, 11,   140, '2024-08-05', 'Rajoles per local comercial',                  NULL,         '2024-07-28 09:35:00', 'Ceràmiques Palma'),
-  (12, 16,    25, '2024-07-30', 'Silicona de remat i juntes',                   '2024-07-29', '2024-07-24 08:25:00', 'Materials Serra'),
+  (12, 1, 11, 140, '2024-08-05', 'Rajoles per local comercial',                  NULL,         '2024-07-28 09:35:00', 'Ceràmiques Palma'),
+  (12, 1, 16,  25, '2024-07-30', 'Silicona de remat i juntes',                   '2024-07-29', '2024-07-24 08:25:00', 'Materials Serra'),
 
-  (13, 50,    10, '2024-08-10', 'Escales per muntatge de mobiliari urbà',       '2024-08-09', '2024-08-02 09:20:00', 'Eines i Obra SL'),
-  (13, 9,    300, '2024-06-01', 'Aïllament per elements de jardineria tècnica', NULL,         '2024-05-29 10:00:00', 'Aïllaments Balears'),
+  (13, 5, 50,  10, '2024-08-10', 'Escales per muntatge de mobiliari urbà',       '2024-08-09', '2024-08-02 09:20:00', 'Eines i Obra SL'),
+  (13, 5, 9,  300, '2024-06-01', 'Aïllament per elements de jardineria tècnica', NULL,         '2024-05-29 10:00:00', 'Aïllaments Balears'),
 
-  (14, 18,    20, '2024-06-05', 'Bigues de fusta per reforç interior',          '2024-06-04', '2024-06-01 08:40:00', 'Fustes Sóller'),
-  (14, 29,     8, '2024-07-03', 'Finestres d’alumini per rehabilitació',        NULL,         '2024-06-25 11:15:00', 'Aluminis Costa'),
+  (14, 6, 18,  20, '2024-06-05', 'Bigues de fusta per reforç interior',          '2024-06-04', '2024-06-01 08:40:00', 'Fustes Sóller'),
+  (14, 6, 29,   8, '2024-07-03', 'Finestres d’alumini per rehabilitació',        NULL,         '2024-06-25 11:15:00', 'Aluminis Costa'),
 
-  (15, 12,   260, '2024-10-02', 'Paviment porcelànic per aparcament',           NULL,         '2024-09-24 09:05:00', 'Paviments Balears');
+  (15, 5, 12, 260, '2024-10-02', 'Paviment porcelànic per aparcament',           NULL,         '2024-09-24 09:05:00', 'Paviments Balears');
 /* ────────────────
    SOLUCIO (igual)
    ──────────────── */
@@ -695,7 +699,7 @@ INSERT INTO solucio (id_incidencia, id_tasca, descripcio, cost_monetari, eficaci
    VERIFICACIO (abans id_usuari)
    ───────────────────────── */
 INSERT INTO verificacio
-(id, id_empresa, estat_ver, data_ver, token_verificacio, data_token) VALUES
+(id_empresa, estat_ver, data_ver, token_verificacio, data_token) VALUES
   (1, 1, 'OK',      '2024-06-02', 'token_alzina_123',        '2024-06-01 10:00:00'),
   (2, 2, 'PENDENT', NULL,         'token_servint_456',       '2024-06-03 11:00:00'),
   (3, 3, 'OK',      '2024-06-06', 'token_mallorcaobres_789', '2024-06-05 09:30:00'),

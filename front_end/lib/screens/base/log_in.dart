@@ -1,11 +1,8 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../../shared/Constants/api_constants.dart';
 import '../base/mainScaffold.dart';
 import '../treballador/perfil_treb.dart';
 
@@ -22,19 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identController = TextEditingController();
   final _passController = TextEditingController();
-
-  // IMPORTANT:
-  // - Flutter Web al mateix PC: localhost
-  // - Android emulator: 10.0.2.2
-  // - dispositiu físic: IP LAN del PC
-  static String get _apiBase {
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api/';
-    }
-    return 'http://localhost:8000/api/';
-  }
-
-  static String get _apiLogin => '${_apiBase}login/';
 
   bool _loading = false;
   String? _error;
@@ -58,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse(_apiLogin),
+        Uri.parse(ApiConstants.login),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({
           'loginField': _identController.text.trim(),

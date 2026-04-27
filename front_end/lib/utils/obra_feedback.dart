@@ -33,3 +33,19 @@ void showAppSnack(
     ),
   );
 }
+
+
+String obraFormatDate(DateTime? value) {
+  if (value == null) return 'Selecciona una data';
+  final day = value.day.toString().padLeft(2, '0');
+  final month = value.month.toString().padLeft(2, '0');
+  return '$day/$month/${value.year}';
+}
+
+String obraFormatMoneyPreview(String value) {
+  final normalized = value.trim().replaceAll('.', '').replaceAll(',', '');
+  if (normalized.isEmpty) return '—';
+  final parsed = int.tryParse(normalized);
+  if (parsed == null) return '—';
+  return '$parsed €';
+}

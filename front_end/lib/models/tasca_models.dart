@@ -22,15 +22,27 @@ class Tasca {
   factory Tasca.fromMap(Map<String, dynamic> map) {
     return Tasca(
       id: _asInt(map['id']) ?? 0,
-      obraId: _asInt(map['id_obra']) ?? 0,
-      tascaPareId: _asInt(map['id_tasca_pare']),
+      obraId: _asInt(map['id_obra'] ?? map['obraId']) ?? 0,
+      tascaPareId: _asInt(map['id_tasca_pare'] ?? map['tascaPareId']),
       descripcio: _asString(map['descripcio']) ?? '',
-      dataInici: _asDate(map['data_inici']),
-      dataFi: _asDate(map['data_fi']),
+      dataInici: _asDate(map['data_inici'] ?? map['dataInici']),
+      dataFi: _asDate(map['data_fi'] ?? map['dataFi']),
       prioritat: _asInt(map['prioritat']),
-      visibilitatTasca: _asBool(map['visibilitat_tasca']) ?? true,
+      visibilitatTasca:
+          _asBool(map['visibilitat_tasca'] ?? map['visibilitatTasca']) ?? true,
     );
   }
+
+  factory Tasca.fromJson(Map<String, dynamic> json) => Tasca.fromMap(json);
+
+  /// Compatibilitat amb pantalles antigues que feien servir `idObra`.
+  int get idObra => obraId;
+
+  /// Compatibilitat amb pantalles antigues que feien servir `idTascaPare`.
+  int? get idTascaPare => tascaPareId;
+
+  /// Compatibilitat amb pantalles antigues que feien servir `visibilitat`.
+  bool get visibilitat => visibilitatTasca;
 
   String get descripcioCurta {
     final text = descripcio.trim();
@@ -40,6 +52,159 @@ class Tasca {
   }
 
   String get etiqueta => 'Tasca #$id';
+
+  Map<String, dynamic> toMap() {
+    return <String, dynamic>{
+      'id': id,
+      'id_obra': obraId,
+      'id_tasca_pare': tascaPareId,
+      'descripcio': descripcio,
+      'data_inici': _formatDate(dataInici),
+      'data_fi': _formatDate(dataFi),
+      'prioritat': prioritat,
+      'visibilitat_tasca': visibilitatTasca,
+    };
+  }
+
+  Map<String, dynamic> toJson() => toMap();
+
+  /// Payload per enviar a l'API de tasques.
+  Map<String, dynamic> toTascaMap() => toMap();
+
+  TascaDTO toDTO({int defaultPrioritat = 3}) {
+    return TascaDTO(
+      id: id,
+      idObra: obraId,
+      descripcio: descripcio,
+      dataInici: dataInici ?? DateTime.now(),
+      dataFi: dataFi,
+      prioritat: prioritat ?? defaultPrioritat,
+      visibilitat: visibilitatTasca,
+      idTascaPare: tascaPareId,
+    );
+  }
+}
+
+/// DTO usat pel formulari de creació/edició.
+///
+/// Es manté separat de [Tasca] perquè el formulari exigeix `dataInici` i
+/// `prioritat` no nul·les, mentre que el perfil/listat pot rebre aquests camps
+/// buits del backend.
+class TascaDTO {
+  final int id;
+  final int idObra;
+  final String descripcio;
+  final DateTime dataInici;
+  final DateTime? dataFi;
+  final int prioritat;
+  final bool visibilitat;
+  final int? idTascaPare;
+
+  const TascaDTO({
+    required this.id,
+    required this.idObra,
+    required this.descripcio,
+    required this.dataInici,
+    this.dataFi,
+    required this.prioritat,
+    required this.visibilitat,
+    this.idTascaPare,
+  });
+
+  factory TascaDTO.fromMap(Map<String, dynamic> map) {
+    return TascaDTO(
+      id: _asInt(map['id']) ?? 0,
+      idObra: _asInt(map['id_obra'] ?? map['idObra']) ?? 0,
+      descripcio: _asString(map['descripcio']) ?? '',
+      dataInici: _asDate(map['data_inici'] ?? map['dataInici']) ?? DateTime.now(),
+      dataFi: _asDate(map['data_fi'] ?? map['dataFi']),
+      prioritat: _asInt(map['prioritat']) ?? 3,
+      visibilitat: _asBool(map['visibilitat_tasca'] ?? map['visibilitat']) ?? true,
+      idTascaPare: _asInt(map['id_tasca_pare'] ?? map['idTascaPare']),
+    );
+  }
+
+  factory TascaDTO.fromJson(Map<String, dynamic> json) => TascaDTO.fromMap(json);
+
+  factory TascaDTO.fromTasca(Tasca tasca, {int defaultPrioritat = 3}) {
+    return tasca.toDTO(defaultPrioritat: defaultPrioritat);
+  }
+
+  Map<String, dynamic> toMap() {
+    return <String, dynamic>{
+      'id': id,
+      'id_obra': idObra,
+      'id_tasca_pare': idTascaPare,
+      'descripcio': descripcio,
+      'data_inici': _formatDate(dataInici),
+      'data_fi': _formatDate(dataFi),
+      'prioritat': prioritat,
+      'visibilitat_tasca': visibilitat,
+    };
+  }
+
+  Map<String, dynamic> toJson() => toMap();
+
+  Map<String, dynamic> toTascaMap() => toMap();
+}
+
+class ObraOption {
+  final int id;
+  final String nom;
+
+  const ObraOption({required this.id, required this.nom});
+
+  factory ObraOption.fromMap(Map<String, dynamic> map) {
+    return ObraOption(
+      id: _asInt(map['id']) ?? 0,
+      nom: _asString(map['nom']) ?? '—',
+    );
+  }
+
+  factory ObraOption.fromJson(Map<String, dynamic> json) => ObraOption.fromMap(json);
+}
+
+class TascaOption {
+  final int id;
+  final String desc;
+
+  const TascaOption({required this.id, required this.desc});
+
+  factory TascaOption.fromMap(Map<String, dynamic> map) {
+    return TascaOption(
+      id: _asInt(map['id']) ?? 0,
+      desc: _asString(map['descripcio'] ?? map['desc']) ?? '',
+    );
+  }
+
+  factory TascaOption.fromJson(Map<String, dynamic> json) => TascaOption.fromMap(json);
+}
+
+class UsuariOption {
+  final int id;
+  final String nom;
+  final String cognoms;
+
+  const UsuariOption({
+    required this.id,
+    required this.nom,
+    required this.cognoms,
+  });
+
+  factory UsuariOption.fromMap(Map<String, dynamic> map) {
+    return UsuariOption(
+      id: _asInt(map['id'] ?? map['id_treballador']) ?? 0,
+      nom: _asString(map['nom'] ?? map['username'] ?? map['treballador_nom']) ?? '—',
+      cognoms: _asString(map['cognoms'] ?? map['treballador_cognoms']) ?? '',
+    );
+  }
+
+  factory UsuariOption.fromJson(Map<String, dynamic> json) => UsuariOption.fromMap(json);
+
+  String get nomComplet {
+    final value = '$nom $cognoms'.trim();
+    return value.isEmpty ? 'Treballador' : value;
+  }
 }
 
 class TascaObraInfo {
@@ -71,27 +236,29 @@ class TascaObraInfo {
       nom: _asString(map['nom']) ?? 'Obra sense nom',
       descripcio: _asString(map['descripcio']),
       estat: _asString(map['estat']),
-      ubicacioId: _asInt(map['ubicacio']),
-      dataInici: _asDate(map['data_inici']),
-      dataPrevFi: _asDate(map['data_prev_fi']),
-      dataFi: _asDate(map['data_fi']),
+      ubicacioId: _asInt(map['ubicacio'] ?? map['ubicacioId']),
+      dataInici: _asDate(map['data_inici'] ?? map['dataInici']),
+      dataPrevFi: _asDate(map['data_prev_fi'] ?? map['dataPrevFi']),
+      dataFi: _asDate(map['data_fi'] ?? map['dataFi']),
       pressupost: _asInt(map['pressupost']),
     );
   }
 
+  factory TascaObraInfo.fromJson(Map<String, dynamic> json) => TascaObraInfo.fromMap(json);
+
   Map<String, dynamic> toObraMap() {
-  return <String, dynamic>{
-    'id': id,
-    'nom': nom,
-    'descripcio': descripcio,
-    'estat': estat,
-    'ubicacio': ubicacioId,
-    'data_inici': dataInici,
-    'data_prev_fi': dataPrevFi,
-    'data_fi': dataFi,
-    'pressupost': pressupost,
-  };
-}
+    return <String, dynamic>{
+      'id': id,
+      'nom': nom,
+      'descripcio': descripcio,
+      'estat': estat,
+      'ubicacio': ubicacioId,
+      'data_inici': _formatDate(dataInici),
+      'data_prev_fi': _formatDate(dataPrevFi),
+      'data_fi': _formatDate(dataFi),
+      'pressupost': pressupost,
+    };
+  }
 }
 
 class TascaIncidenciaItem {
@@ -122,17 +289,20 @@ class TascaIncidenciaItem {
   factory TascaIncidenciaItem.fromMap(Map<String, dynamic> map) {
     return TascaIncidenciaItem(
       id: _asInt(map['id']) ?? 0,
-      obraId: _asInt(map['id_obra']),
-      tascaId: _asInt(map['id_tasca']),
+      obraId: _asInt(map['id_obra'] ?? map['obraId']),
+      tascaId: _asInt(map['id_tasca'] ?? map['tascaId']),
       descripcio: _asString(map['descripcio']) ?? '',
-      dataInici: _asDate(map['data_inici']),
-      dataFi: _asDate(map['data_fi']),
+      dataInici: _asDate(map['data_inici'] ?? map['dataInici']),
+      dataFi: _asDate(map['data_fi'] ?? map['dataFi']),
       criticitat: _asInt(map['criticitat']),
       prioritat: _asInt(map['prioritat']),
       categoria: _asInt(map['categoria']),
       estat: _asString(map['estat']),
     );
   }
+
+  factory TascaIncidenciaItem.fromJson(Map<String, dynamic> json) =>
+      TascaIncidenciaItem.fromMap(json);
 
   String get descripcioCurta {
     final text = descripcio.trim();
@@ -166,15 +336,18 @@ class TascaSolucioItem {
   factory TascaSolucioItem.fromMap(Map<String, dynamic> map) {
     return TascaSolucioItem(
       id: _asInt(map['id']) ?? 0,
-      incidenciaId: _asInt(map['id_incidencia']),
-      tascaId: _asInt(map['id_tasca']),
+      incidenciaId: _asInt(map['id_incidencia'] ?? map['incidenciaId']),
+      tascaId: _asInt(map['id_tasca'] ?? map['tascaId']),
       descripcio: _asString(map['descripcio']) ?? '',
-      costMonetari: _asInt(map['cost_monetari']),
+      costMonetari: _asInt(map['cost_monetari'] ?? map['costMonetari']),
       eficacia: _asInt(map['eficacia']),
-      costTemporal: _asInt(map['cost_temporal']),
+      costTemporal: _asInt(map['cost_temporal'] ?? map['costTemporal']),
       impacte: _asInt(map['impacte']),
     );
   }
+
+  factory TascaSolucioItem.fromJson(Map<String, dynamic> json) =>
+      TascaSolucioItem.fromMap(json);
 
   String get descripcioCurta {
     final text = descripcio.trim();
@@ -203,14 +376,17 @@ class TascaTreballadorInfo {
 
   factory TascaTreballadorInfo.fromMap(Map<String, dynamic> map) {
     return TascaTreballadorInfo(
-      id: _asInt(map['id']),
-      nom: _asString(map['nom']) ?? 'Treballador',
-      cognoms: _asString(map['cognoms']),
-      nickname: _asString(map['nickname']),
+      id: _asInt(map['id'] ?? map['id_treballador']),
+      nom: _asString(map['nom'] ?? map['treballador_nom']) ?? 'Treballador',
+      cognoms: _asString(map['cognoms'] ?? map['treballador_cognoms']),
+      nickname: _asString(map['nickname'] ?? map['username']),
       telefon: _asString(map['telefon']),
       email: _asString(map['email']),
     );
   }
+
+  factory TascaTreballadorInfo.fromJson(Map<String, dynamic> json) =>
+      TascaTreballadorInfo.fromMap(json);
 
   String get nomComplet {
     final parts = <String>[
@@ -232,12 +408,18 @@ class TascaAssignacio {
   });
 
   factory TascaAssignacio.fromMap(Map<String, dynamic> map) {
-    final usuariMap = _asMap(map['usuari']) ?? const <String, dynamic>{};
+    final usuariMap = _asMap(map['usuari']) ??
+        _asMap(map['treballador']) ??
+        _asMap(map['user']) ??
+        map;
+
     return TascaAssignacio(
       usuari: TascaTreballadorInfo.fromMap(usuariMap),
       comentari: _asString(map['comentari']),
     );
   }
+
+  factory TascaAssignacio.fromJson(Map<String, dynamic> json) => TascaAssignacio.fromMap(json);
 }
 
 class TascaProfileData {
@@ -277,6 +459,9 @@ class TascaProfileData {
           : null,
     );
   }
+
+  factory TascaProfileData.fromJson(Map<String, dynamic> json) =>
+      TascaProfileData.fromMap(json);
 }
 
 int? _asInt(dynamic value) {
@@ -306,18 +491,23 @@ String? _asString(dynamic value) {
 }
 
 DateTime? _asDate(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
   final text = _asString(value);
   if (text == null) return null;
   return DateTime.tryParse(text);
+}
+
+String? _formatDate(DateTime? value) {
+  if (value == null) return null;
+  return value.toIso8601String().split('T').first;
 }
 
 Map<String, dynamic>? _asMap(dynamic value) {
   if (value == null) return null;
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {
-    return value.map(
-      (key, val) => MapEntry(key.toString(), val),
-    );
+    return value.map((key, val) => MapEntry(key.toString(), val));
   }
   return null;
 }

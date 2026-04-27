@@ -1,10 +1,12 @@
 //FET
 
 import 'package:flutter/material.dart';
-import 'package:front_end/screens/treballador/perfil_treb.dart';
+import 'package:front_end/dialogs/notifications_dropdown.dart';
 import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/screens/obra_screens/obra_profile_screen.dart';
 import 'package:front_end/services/obra_service.dart';
+import 'package:front_end/widgets/empresa_widgets.dart';
+import 'package:front_end/dialogs/notifications_modal.dart';
 
 /// Pantalla principal per a empreses amb llistat d'obres, estadístiques i filtres.
 /// Estètica i UX alineades amb la resta de pantalles (bordes arrodonits, colors de tema,
@@ -17,15 +19,54 @@ class HomeEmpresa extends StatefulWidget {
 }
 
 class _HomeEmpresaState extends State<HomeEmpresa> {
-  static const _baseUrl = ApiConstants.baseUrl;
+  static final _baseUrl = ApiConstants.baseUrl;
   static List<Map<String, dynamic>> _obres = [];
   bool _loading = true;
   String _statusFilter = 'Totes';
   final ObraService _obraService = ObraService(baseUrl: _baseUrl);
+  
+  // Notificaciones de ejemplo
+  late List<NotificationItem> _notifications;
   @override
   void initState() {
     super.initState();
     _loadObres();
+    _initializeNotifications();
+  }
+  
+  void _initializeNotifications() {
+    _notifications = [
+      NotificationItem(
+        id: 1,
+        title: 'Incidència prioritària',
+        message: 'Nova incidència crítica a l\'obra Edifici Centre',
+        timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
+        type: NotificationType.incidencia,
+      ),
+      NotificationItem(
+        id: 2,
+        title: 'Tasca assignada',
+        message: 'Se t\'ha assignat la tasca: Revisió de seguretat',
+        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+        type: NotificationType.tasca,
+      ),
+      NotificationItem(
+        id: 3,
+        title: 'Obra finalitzada',
+        message: 'L\'obra Centre Comercial ha estat finalitzada',
+        timestamp: DateTime.now().subtract(const Duration(days: 1)),
+        type: NotificationType.obra,
+        isRead: true,
+      ),
+      NotificationItem(
+        id: 4,
+        title: 'Nou treballador',
+        message: 'Joan García s\'ha afegit al teu equip',
+        timestamp: DateTime.now().subtract(const Duration(days: 2)),
+        type: NotificationType.treballador,
+        isRead: true,
+      ),
+    ];
   }
   
 Future<void> _loadObres() async {
@@ -60,18 +101,39 @@ Future<void> _loadObres() async {
       appBar: AppBar(
         title: const Text('Gestió d\'Obres'),
         actions: [
-          IconButton(
-              icon: const Icon(Icons.notifications_none), onPressed: () {}),
-          const SizedBox(width: 4),
-          IconButton(
-              color: scheme.primaryContainer,
-              icon: const Icon(Icons.person),
-              onPressed: () { Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const HomeEmpresa(),
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none),
+                onPressed: () => _showNotificationsDropdown(),
               ),
-            );}),
+              // Badge de notificaciones no leídas
+              if (_notifications.any((n) => !n.isRead))
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Text(
+                      _notifications.where((n) => !n.isRead).length.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 4),
+          const EmpresaProfileDropdown(),
           const SizedBox(width: 12),
         ],
       ),
@@ -160,6 +222,21 @@ Future<void> _loadObres() async {
 
   void _snack(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+  void _showNotificationsDropdown() {
+    showNotificationsDropdown(
+      context,
+      notifications: _notifications,
+      onMarkAllAsRead: () {
+        setState(() {
+          for (var notification in _notifications) {
+            notification.isRead = true;
+          }
+        });
+        _snack('Totes les notificacions marcades com a llegides');
+      },
+    );
+  }
 }
 
 //──────────────────────── ESTADÍSTIQUES ────────────────────────

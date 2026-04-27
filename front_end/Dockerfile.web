@@ -1,41 +1,76 @@
+#FROM ubuntu:22.04
+#
+## Dependencias mínimas para Flutter Web
+#RUN apt update && apt install -y \
+#    curl \
+#    git \
+#    unzip \
+#    xz-utils \
+#    zip \
+#    libglu1-mesa \
+#    wget \
+#    gnupg \
+#    ca-certificates \
+#    sudo \
+#    && rm -rf /var/lib/apt/lists/*
+#
+## Crear usuario de desarrollo
+#RUN useradd -u 1000 -ms /bin/bash developer && adduser developer sudo
+#
+## Instalar Flutter
+#USER developer
+#WORKDIR /home/developer
+#RUN git clone https://github.com/flutter/flutter.git --branch stable
+#ENV PATH="$PATH:/home/developer/flutter/bin"
+#
+## Instalar Google Chrome para Flutter Web
+#USER root
+#RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux.gpg && \
+#    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+#    apt update && apt install -y google-chrome-stable && \
+#    rm -rf /var/lib/apt/lists/*
+#
+#ENV CHROME_EXECUTABLE=/usr/bin/google-chrome
+#
+## Preparar directorios de trabajo y caché
+#RUN mkdir -p /home/developer/.pub-cache /home/developer/app && \
+#    chown -R developer:developer /home/developer
+#
+## Volver al usuario de trabajo
+#USER developer
+#WORKDIR /home/developer/app
+
+
 FROM ubuntu:22.04
 
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PUB_CACHE=/home/developer/.pub-cache
+ENV PATH="/home/developer/flutter/bin:${PATH}"
+
 # Dependencias mínimas para Flutter Web
-RUN apt update && apt install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
     git \
     unzip \
     xz-utils \
     zip \
     libglu1-mesa \
-    wget \
-    gnupg \
-    ca-certificates \
-    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Crear usuario de desarrollo
-RUN useradd -u 1000 -ms /bin/bash developer && adduser developer sudo
+RUN useradd -u 1000 -ms /bin/bash developer
 
 # Instalar Flutter
 USER developer
 WORKDIR /home/developer
-RUN git clone https://github.com/flutter/flutter.git --branch stable
-ENV PATH="$PATH:/home/developer/flutter/bin"
+RUN git clone https://github.com/flutter/flutter.git --branch stable --depth 1
 
-# Instalar Google Chrome para Flutter Web
-USER root
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt update && apt install -y google-chrome-stable && \
-    rm -rf /var/lib/apt/lists/*
-
-ENV CHROME_EXECUTABLE=/usr/bin/google-chrome
+# Preparar Flutter Web y caché
+RUN flutter config --enable-web && flutter precache --web
 
 # Preparar directorios de trabajo y caché
-RUN mkdir -p /home/developer/.pub-cache /home/developer/app && \
-    chown -R developer:developer /home/developer
+RUN mkdir -p /home/developer/.pub-cache /home/developer/app
 
 # Volver al usuario de trabajo
-USER developer
 WORKDIR /home/developer/app

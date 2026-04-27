@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
-
+import 'package:front_end/models/document_models.dart';
+import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/obra_models.dart';
+import 'package:front_end/models/responsable_models.dart';
+import 'package:front_end/models/sol_recurs_models.dart';
+import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/screens/empresa/doc_form.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
-import 'package:front_end/screens/empresa/solicRec_form.dart';
-import 'package:front_end/screens/tasca_screens/tasca_form.dart';
+import 'package:front_end/screens/recursos/solicRec_form.dart';
+import 'package:front_end/screens/incidencia/incidenciaDetail_screen.dart';
 import 'package:front_end/screens/obra_screens/obra_edit_screen.dart';
+import 'package:front_end/screens/tasca_screens/tasca_detail_screen.dart';
+import 'package:front_end/screens/tasca_screens/tasca_form.dart';
 import 'package:front_end/services/obra_service.dart';
-import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/widgets/obra_widgets.dart';
 
 class ObraProfileScreen extends StatefulWidget {
   final int obraId;
   final String baseUrl;
+
   const ObraProfileScreen({
     super.key,
     required this.baseUrl,
@@ -24,8 +30,6 @@ class ObraProfileScreen extends StatefulWidget {
 }
 
 class _ObraProfileScreenState extends State<ObraProfileScreen> {
-  static const String _baseUrl = ApiConstants.baseUrl;
-
   late final ObraService _obraService;
 
   ObraProfileData? _profileData;
@@ -35,7 +39,6 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
 
   int get _obraId {
     final rawId = _obraRaw['id_obra'] ?? widget.obraId;
-    print('Get obraId: rawId = $rawId');
     if (rawId is int) return rawId;
     if (rawId is num) return rawId.toInt();
     return int.tryParse(rawId?.toString() ?? '') ?? 0;
@@ -50,7 +53,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _obraService = ObraService(baseUrl: _baseUrl);
+    _obraService = ObraService(baseUrl: widget.baseUrl);
     _fetchDetails();
   }
 
@@ -71,13 +74,13 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
     });
 
     try {
-      final raw = await _obraService.fetchObraRaw(obraId);//Aqui dins athentica i agafa les dades
+      final raw = await _obraService.fetchObraRaw(obraId);
       final parsed = ObraProfileData.fromMap(raw);
 
       if (!mounted) return;
       setState(() {
         _obraRaw = raw;
-        _profileData = parsed; //Aqui se li passa a la varaible que consumiran les seccions
+        _profileData = parsed;
         _loading = false;
       });
     } on ObraServiceException catch (e) {
@@ -103,7 +106,9 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Eliminar obra'),
-          content: const Text('Aquesta acció és irreversible. Vols continuar?'),
+          content: const Text(
+            'Aquesta acció és irreversible. Vols continuar?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -133,33 +138,170 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
   }
 
   Future<void> _handleFabAction(String value) async {
-    if (value == 'inc') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const IncidenciaFormScreen()),
-      );
-    } else if (value == 'tasca') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const TascaFormScreen()),
-      );
-    } else if (value == 'doc') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => DocumentObraScreen(obraId: _obraId),
-        ),
-      );
-    } else if (value == 'rec') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SolRecursFormScreen(obraId: _obraId),
-        ),
-      );
+    switch (value) {
+      case 'inc':
+        await _openAddIncidencia();
+        break;
+      case 'tasca':
+        await _openAddTasca();
+        break;
+      case 'doc':
+        await _openAddDocument();
+        break;
+      case 'rec':
+        await _openAddRecurs();
+        break;
     }
 
     await _fetchDetails();
+  }
+
+  Future<void> _openAddIncidencia() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const IncidenciaFormScreen()),
+    );
+  }
+
+  Future<void> _openAddTasca() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => TascaFormScreen(obraId: widget.obraId)),
+    );
+  }
+
+  Future<void> _openAddDocument() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DocumentObraScreen(obraId: _obraId),
+      ),
+    );
+  }
+
+  Future<void> _openAddRecurs() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SolRecursFormScreen(obraId: _obraId),
+      ),
+    );
+  }
+
+  Future<void> _openAddResponsable() async {
+    _showSnack(
+      'Flux d’alta de responsables preparat per a la UI. Falta connectar la pantalla específica.',
+    );
+  }
+
+  Future<void> _openEditIncidencia(Incidencia item) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IncidenciaProfileScreen(
+          incidenciaId: item.id,
+        ),
+      ),
+    );
+    await _fetchDetails();
+  }
+
+  Future<void> _openEditTasca(Tasca item) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TascaDetailScreen(
+          tascaId: item.id
+        ),
+      ),
+    );
+    await _fetchDetails();
+  }
+
+  Future<void> _openEditDocument(DocumentObraItem item) async {
+    _showSnack(
+      'Acció d’editar document preparada. Falta connectar la pantalla específica del document ${item.id}.',
+    );
+  }
+
+  Future<void> _openEditRecurs(SolRecurs item) async {
+    _showSnack(
+      'Acció d’editar recurs preparada. Falta connectar la pantalla específica del recurs ${item.idRecurs}.',
+    );
+  }
+
+  Future<void> _openEditResponsable(ResponsableObra item) async {
+    _showSnack(
+      'Acció d’editar responsable preparada. Falta connectar el flux específic del treballador ${item.idTreballador}.',
+    );
+  }
+
+  Future<void> _confirmDeleteItem({
+    required String subjectLabel,
+    required String itemLabel,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Eliminar $subjectLabel'),
+          content: Text(
+            'Vols eliminar "$itemLabel"? Aquesta acció quedarà connectada quan el backend estigui disponible.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel·la'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirma'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true || !mounted) return;
+
+    _showSnack(
+      'Delete de $subjectLabel preparat a la UI. El backend es connectarà més endavant.',
+    );
+  }
+
+  Future<void> _deleteIncidencia(Incidencia item) {
+    return _confirmDeleteItem(
+      subjectLabel: 'incidència',
+      itemLabel: item.descripcio,
+    );
+  }
+
+  Future<void> _deleteTasca(Tasca item) {
+    return _confirmDeleteItem(
+      subjectLabel: 'tasca',
+      itemLabel: item.descripcio,
+    );
+  }
+
+  Future<void> _deleteDocument(DocumentObraItem item) {
+    return _confirmDeleteItem(
+      subjectLabel: 'document',
+      itemLabel: item.nom,
+    );
+  }
+
+  Future<void> _deleteRecurs(SolRecurs item) {
+    return _confirmDeleteItem(
+      subjectLabel: 'recurs',
+      itemLabel: 'Recurs ${item.idRecurs}',
+    );
+  }
+
+  Future<void> _deleteResponsable(ResponsableObra item) {
+    return _confirmDeleteItem(
+      subjectLabel: 'responsable',
+      itemLabel: 'Treballador ${item.idTreballador}',
+    );
   }
 
   @override
@@ -177,7 +319,9 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => ObraEditScreen(
-                    obra:  _obraRaw,
+                    obra: _obraRaw.isEmpty
+                        ? <String, dynamic>{'id': widget.obraId}
+                        : _obraRaw,
                   ),
                 ),
               );
@@ -204,7 +348,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
-      //cas d'error
+
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -243,14 +387,12 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
         children: [
-          // Header amb nom, ubicació resumida, dates i pressupost
           ObraHeaderCard(obra: obra),
           const SizedBox(height: 12),
           ObraCompactInfoPanel(
             obra: obra,
             responsablesCount: data.responsables.length,
           ),
-          //A partir d'aqui son les diferents seccions, cada una dins d'un ObraSectionBlock
           const SizedBox(height: 16),
           ObraSectionBlock(
             title: 'Ubicació',
@@ -264,10 +406,16 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
             title: 'Incidències',
             icon: Icons.warning_amber_rounded,
             count: data.incidencies.length,
-            child: ObraSectionContent(
+            onAdd: _openAddIncidencia,
+            addTooltip: 'Afegir incidència',
+            child: ObraSectionContent<Incidencia>(
               items: data.incidencies,
               emptyText: 'No hi ha incidències registrades.',
-              itemBuilder: (item) => ObraIncidenciaCard(incidencia: item),
+              itemBuilder: (item) => ObraIncidenciaCard(
+                incidencia: item,
+                onEdit: () => _openEditIncidencia(item),
+                onDelete: () => _deleteIncidencia(item),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -275,10 +423,16 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
             title: 'Documents',
             icon: Icons.description_outlined,
             count: data.documents.length,
-            child: ObraSectionContent(
+            onAdd: _openAddDocument,
+            addTooltip: 'Afegir document',
+            child: ObraSectionContent<DocumentObraItem>(
               items: data.documents,
               emptyText: 'No hi ha documents disponibles.',
-              itemBuilder: (item) => ObraDocumentCard(document: item),
+              itemBuilder: (item) => ObraDocumentCard(
+                document: item,
+                onEdit: () => _openEditDocument(item),
+                onDelete: () => _deleteDocument(item),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -286,10 +440,16 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
             title: 'Tasques',
             icon: Icons.task_alt,
             count: data.tasques.length,
-            child: ObraSectionContent(
+            onAdd: _openAddTasca,
+            addTooltip: 'Afegir tasca',
+            child: ObraSectionContent<Tasca>(
               items: data.tasques,
               emptyText: 'No hi ha tasques assignades.',
-              itemBuilder: (item) => ObraTascaCard(tasca: item),
+              itemBuilder: (item) => ObraTascaCard(
+                tasca: item,
+                onEdit: () => _openEditTasca(item),
+                onDelete: () => _deleteTasca(item),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -297,10 +457,16 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
             title: 'Recursos',
             icon: Icons.inventory_2_outlined,
             count: data.solRecursos.length,
-            child: ObraSectionContent(
+            onAdd: _openAddRecurs,
+            addTooltip: 'Afegir recurs',
+            child: ObraSectionContent<SolRecurs>(
               items: data.solRecursos,
               emptyText: 'No hi ha sol·licituds de recursos.',
-              itemBuilder: (item) => ObraSolRecursCard(item: item),
+              itemBuilder: (item) => ObraSolRecursCard(
+                item: item,
+                onEdit: () => _openEditRecurs(item),
+                onDelete: () => _deleteRecurs(item),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -308,10 +474,16 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
             title: 'Responsables',
             icon: Icons.badge_outlined,
             count: data.responsables.length,
-            child: ObraSectionContent(
+            onAdd: _openAddResponsable,
+            addTooltip: 'Afegir responsable',
+            child: ObraSectionContent<ResponsableObra>(
               items: data.responsables,
               emptyText: 'No hi ha responsables assignats.',
-              itemBuilder: (item) => ObraResponsableCard(responsable: item),
+              itemBuilder: (item) => ObraResponsableCard(
+                responsable: item,
+                onEdit: () => _openEditResponsable(item),
+                onDelete: () => _deleteResponsable(item),
+              ),
             ),
           ),
         ],

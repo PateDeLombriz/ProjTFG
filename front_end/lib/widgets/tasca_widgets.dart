@@ -678,3 +678,318 @@ String formatMoney(int? value) {
   if (value == null) return '—';
   return '$value €';
 }
+
+class SelectTreballadorsDialog extends StatefulWidget {
+  final List<UsuariOption> tots;
+  final List<UsuariOption> seleccionats;
+
+  const SelectTreballadorsDialog({
+    super.key,
+    required this.tots,
+    required this.seleccionats,
+  });
+
+  @override
+  State<SelectTreballadorsDialog> createState() =>
+      _SelectTreballadorsDialogState();
+}
+
+class _SelectTreballadorsDialogState
+    extends State<SelectTreballadorsDialog> {
+  late List<UsuariOption> _temp;
+  String _filter = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _temp = List.of(widget.seleccionats);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    final filtrats = widget.tots.where((u) {
+      return u.nomComplet
+          .toLowerCase()
+          .contains(_filter.toLowerCase());
+    }).toList();
+
+    return AlertDialog(
+      title: const Text('Selecciona treballadors'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 420,
+        child: Column(
+          children: [
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Cerca treballador...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: scheme.surfaceContainerHighest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _filter = value;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: filtrats.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No s’han trobat treballadors',
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filtrats.length,
+                      itemBuilder: (context, index) {
+                        final usuari = filtrats[index];
+
+                        final selected = _temp.any(
+                          (s) => s.id == usuari.id,
+                        );
+
+                        return CheckboxListTile(
+                          value: selected,
+                          title: Text(usuari.nomComplet),
+                          controlAffinity:
+                              ListTileControlAffinity.leading,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                if (!_temp.any(
+                                  (e) => e.id == usuari.id,
+                                )) {
+                                  _temp.add(usuari);
+                                }
+                              } else {
+                                _temp.removeWhere(
+                                  (e) => e.id == usuari.id,
+                                );
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text('Cancel·la'),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.pop(context, _temp);
+          },
+          child: const Text('Aplica'),
+        ),
+      ],
+    );
+  }
+}
+
+class TascaStatsHeader extends StatelessWidget {
+  final List<Map<String, dynamic>> tasques;
+
+  const TascaStatsHeader({
+    super.key,
+    required this.tasques,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    final totals = tasques.length;
+    final visibles = tasques.where((t) {
+      return t['visibilitat_tasca'] == true;
+    }).length;
+
+    final prioritatAlta = tasques.where((t) {
+      final prioritat = int.tryParse('${t['prioritat'] ?? ''}') ?? 99;
+      return prioritat <= 2;
+    }).length;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _TascaStatCard(
+            label: 'Totals',
+            value: totals,
+            icon: Icons.list_alt,
+            color: scheme.primary,
+          ),
+          const SizedBox(width: 8),
+          _TascaStatCard(
+            label: 'Visibles',
+            value: visibles,
+            icon: Icons.visibility,
+            color: Colors.teal,
+          ),
+          const SizedBox(width: 8),
+          _TascaStatCard(
+            label: 'Alta Prio.',
+            value: prioritatAlta,
+            icon: Icons.priority_high,
+            color: Colors.orange,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TascaStatCard extends StatelessWidget {
+  final String label;
+  final int value;
+  final IconData icon;
+  final Color color;
+
+  const _TascaStatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Card(
+      color: color,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SizedBox(
+        width: 100,
+        height: 90,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: scheme.onPrimary),
+            const SizedBox(height: 6),
+            Text(
+              value.toString(),
+              style: TextStyle(
+                color: scheme.onPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: scheme.onPrimary.withOpacity(0.8),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TascaCard extends StatelessWidget {
+  final Map<String, dynamic> tasca;
+  final ValueChanged<int>? onOpen;
+  final ValueChanged<Map<String, dynamic>>? onEdit;
+  final ValueChanged<int>? onDelete;
+
+  const TascaCard({
+    super.key,
+    required this.tasca,
+    this.onOpen,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    final id = int.tryParse('${tasca['id'] ?? ''}') ?? 0;
+    final descripcio = (tasca['descripcio'] ?? '—').toString();
+    final dataInici = _formatRawDate(tasca['data_inici']);
+    final dataFi = _formatRawDate(tasca['data_fi']);
+    final prioritat = int.tryParse('${tasca['prioritat'] ?? ''}');
+    final visible = tasca['visibilitat_tasca'] == true;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: visible ? Colors.green : Colors.grey,
+          child: Icon(
+            visible ? Icons.visibility : Icons.visibility_off,
+            color: Colors.white,
+          ),
+        ),
+        title: Text(
+          descripcio,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          'Inici: $dataInici · Fi: $dataFi\nPrioritat: ${prioritat ?? '—'}',
+        ),
+        isThreeLine: true,
+        onTap: id <= 0 || onOpen == null ? null : () => onOpen!(id),
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'edit') {
+              onEdit?.call(tasca);
+            }
+
+            if (value == 'delete' && id > 0) {
+              onDelete?.call(id);
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'edit',
+              child: Text('Edita'),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: Text('Elimina'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatRawDate(dynamic value) {
+  if (value == null) return 'N/D';
+
+  if (value is DateTime) {
+    return formatDate(value);
+  }
+
+  final parsed = DateTime.tryParse(value.toString());
+  if (parsed != null) {
+    return formatDate(parsed);
+  }
+
+  final text = value.toString().trim();
+  return text.isEmpty ? 'N/D' : text;
+}

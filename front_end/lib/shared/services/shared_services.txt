@@ -1,0 +1,78 @@
+ 
+ 
+ 
+ import 'package:front_end/services/obra_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Future<String> _requireAuthenticatedSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = _readStoredToken(prefs);
+
+    if (token == null || token.isEmpty) {
+      throw const ObraServiceException('No hi ha sessió guardada.');
+    }
+
+    if (_validatedToken == token) {
+      return token;
+    }
+
+    final response = await _client.get(
+      Uri.parse('$baseUrl/me/'),
+      headers: _authHeaders(token),
+    );
+
+    if (response.statusCode == 200) {
+      await _storeSessionContext(prefs, token, response.body);
+      _validatedToken = token;
+      return token;
+    }
+
+    _validatedToken = null;
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await _clearStoredSession();
+      throw ObraServiceException(
+        _extractErrorMessage(
+          response,
+          fallback: 'La sessió ha caducat o no és vàlida. Torna a fer login.',
+        ),
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
+
+    throw ObraServiceException(
+      _extractErrorMessage(
+        response,
+        fallback: 'Error al validar la sessió.',
+      ),
+      statusCode: response.statusCode,
+      body: response.body,
+    );
+  }
+
+  
+  Future<int> requireEmpresaId() async {
+    await _requireAuthenticatedSession();
+
+    final prefs = await SharedPreferences.getInstance();
+
+    final rawEmpresaId =
+        prefs.getString('id_empresa')?.trim() ??
+        prefs.getString('subject_id')?.trim();
+
+    if (rawEmpresaId == null || rawEmpresaId.isEmpty) {
+      throw const ObraServiceException(
+        'No s’ha trobat l’identificador de l’empresa a la sessió.',
+      );
+    }
+
+    final empresaId = int.tryParse(rawEmpresaId);
+    if (empresaId == null) {
+      throw ObraServiceException(
+        'L’identificador de l’empresa no és vàlid: $rawEmpresaId',
+      );
+    }
+
+    return empresaId;
+  }

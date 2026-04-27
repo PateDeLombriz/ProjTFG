@@ -1,9 +1,8 @@
-import 'dart:convert';
-
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/shared/services/app_api_service.dart';
+
 
 class TascaServiceException implements Exception {
   final String message;
@@ -15,344 +14,261 @@ class TascaServiceException implements Exception {
   String toString() => message;
 }
 
-class TascaService {
-  final String baseUrl;
-  final http.Client _client;
-
-  String? _validatedToken;
-
+class TascaService extends AppApiService {
   TascaService({
-    required this.baseUrl,
+    String? baseUrl,
     http.Client? client,
-  }) : _client = client ?? http.Client();
+  }) : super(
+          baseUrl: baseUrl,
+          client: client,
+        );
+
+  Future<T> _runMapped<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on AppApiException catch (e) {
+      throw TascaServiceException(
+        e.message,
+        statusCode: e.statusCode,
+      );
+    }
+  }
+
+  // ──────────────────── TASCA DETAIL / PROFILE ────────────────────
 
   Future<TascaProfileData> fetchTascaProfile(int tascaId) async {
     final raw = await fetchTascaRaw(tascaId);
     return TascaProfileData.fromMap(raw);
   }
 
-  Future<Map<String, dynamic>> fetchTascaDetail(int tascaId) async {
+  Future<Map<String, dynamic>> fetchTascaDetail(int tascaId) {
     return fetchTascaRaw(tascaId);
   }
 
-  Future<Map<String, dynamic>> fetchTascaRaw(int tascaId) async {
-    final token = await _requireAuthenticatedSession();
-
-    final response = await _client.get(
-      Uri.parse('$baseUrl/tasca/$tascaId/'),
-      headers: _authHeaders(token),
+  Future<Map<String, dynamic>> fetchTascaRaw(int tascaId) {
+    return _runMapped(
+      () => getJsonMap(
+        '/tasca/$tascaId/',
+        fallback: 'Error carregant la tasca',
+        invalidResponseMessage: 'La resposta de la tasca no és vàlida.',
+      ),
     );
-
-    if (response.statusCode != 200) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw TascaServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error carregant la tasca',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw const TascaServiceException('La resposta de la tasca no és vàlida.');
-    }
-
-    return decoded;
   }
 
-  /// Requereix que l'endpoint GET /tasques/ estigui exposat a urls.
-  ///
-  /// Al backend que m'has passat, la vista TascaList existeix,
-  /// però la ruta està comentada a urls - apiApp.py.
-  Future<List<Map<String, dynamic>>> fetchTasques({int? obraId}) async {
-    final token = await _requireAuthenticatedSession();
+  // ──────────────────── LLISTAT ────────────────────
 
-    final uri = Uri.parse('$baseUrl/tasques/').replace(
-      queryParameters: {
-        if (obraId != null) 'id_obra': obraId.toString(),
-      },
+  Future<List<Map<String, dynamic>>> fetchTasques({int? obraId}) {
+    return _runMapped(
+      () => getJsonList(
+        '/tasques/',
+        queryParameters: {
+          if (obraId != null) 'id_obra': obraId.toString(),
+        },
+        fallback: 'Error carregant les tasques',
+        invalidResponseMessage: 'La resposta de les tasques no és vàlida.',
+      ),
     );
-
-    final response = await _client.get(
-      uri,
-      headers: _authHeaders(token),
-    );
-
-    if (response.statusCode != 200) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw TascaServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error carregant les tasques',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! List) {
-      throw const TascaServiceException('La resposta de les tasques no és vàlida.');
-    }
-
-    return decoded.map((item) {
-      if (item is Map<String, dynamic>) {
-        return item;
-      }
-      return Map<String, dynamic>.from(item as Map);
-    }).toList();
   }
 
-  Future<List<Map<String, dynamic>>> fetchTasquesByObra(int obraId) async {
+  Future<List<Map<String, dynamic>>> fetchTasquesByObra(int obraId) {
     return fetchTasques(obraId: obraId);
   }
 
-  /// Requereix que l'endpoint POST /tasques/ estigui exposat a urls.
-  Future<Map<String, dynamic>> createTasca(Map<String, dynamic> payload) async {
-    final token = await _requireAuthenticatedSession();
+  Future<List<TascaOption>> fetchTasquesPerObra(int obraId) async {
+    final list = await fetchTasques(obraId: obraId);
 
-    final response = await _client.post(
-      Uri.parse('$baseUrl/tasques/'),
-      headers: _authHeaders(token),
-      body: jsonEncode(payload),
-    );
-
-    if (response.statusCode != 201) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw TascaServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error creant la tasca',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw const TascaServiceException('La resposta de creació de la tasca no és vàlida.');
-    }
-
-    return decoded;
+    return list
+        .map(
+          (e) => TascaOption(
+            id: _asInt(e['id']) ?? 0,
+            desc: (e['descripcio'] ?? '').toString(),
+          ),
+        )
+        .toList();
   }
 
+  // ──────────────────── FORM OPTIONS ────────────────────
 
-  Future<List<Map<String, dynamic>>> fetchAssignacionsTasca(int tascaId) async {
-    final token = await _requireAuthenticatedSession();
-
-    final uri = Uri.parse('$baseUrl/tasca_treballador/').replace(
-      queryParameters: {
-        'id_tasca': tascaId.toString(),
-      },
+  Future<List<ObraOption>> fetchObres() async {
+    int idEmpresa = await requireEmpresaId();
+  if (idEmpresa == null) {
+    throw const TascaServiceException(
+      'No s’ha pogut carregar les obres: falta id_empresa.',
     );
-
-    final response = await _client.get(
-      uri,
-      headers: _authHeaders(token),
-    );
-
-    if (response.statusCode != 200) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw TascaServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error carregant les assignacions de la tasca',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! List) {
-      throw const TascaServiceException(
-        'La resposta de les assignacions de la tasca no és vàlida.',
-      );
-    }
-
-    return decoded.map((item) {
-      if (item is Map<String, dynamic>) {
-        return item;
-      }
-      return Map<String, dynamic>.from(item as Map);
-    }).toList();
   }
 
-  Future<void> deleteAssignacionsTasca(int tascaId) async {
-    final token = await _requireAuthenticatedSession();
-
-    final response = await _client.delete(
-      Uri.parse('$baseUrl/tasca_treballador/$tascaId/bulk_delete/'),
-      headers: _authHeaders(token),
+  return _runMapped(() async {
+    final list = await getJsonList(
+      '/obresEmpresa/$idEmpresa/',
+      fallback: 'Error carregant les obres',
+      invalidResponseMessage: 'La resposta de les obres no és vàlida.',
     );
 
-    if (response.statusCode != 204) {
-      await _handleUnauthorizedIfNeeded(response.statusCode);
-      throw TascaServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'Error eliminant les assignacions de la tasca',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
-  }
+    return list
+        .map((e) {
+          final obraInfo = e['obra_info'] as Map<String, dynamic>?;
 
-  Future<int> requireEmpresaId() async {
-    await _requireAuthenticatedSession();
+          return ObraOption(
+            id: _asInt(obraInfo?['id']) ?? 0,
+            nom: (obraInfo?['nom'] ?? '—').toString(),
+          );
+        })
+        .where((obra) => obra.id != 0)
+        .toList();
+  });
+}
 
-    final prefs = await SharedPreferences.getInstance();
-    final rawId = prefs.getString('subject_id')?.trim();
-
-    if (rawId == null || rawId.isEmpty) {
-      throw const TascaServiceException(
-        'No s’ha trobat l’identificador de l’empresa a la sessió.',
-      );
-    }
-
-    final idEmpresa = int.tryParse(rawId);
-    if (idEmpresa == null) {
-      throw TascaServiceException(
-        'L’identificador de l’empresa no és vàlid: $rawId',
-      );
-    }
-
-    return idEmpresa;
-  }
-
-  Future<void> ensureAuthenticatedSession() async {
-    await _requireAuthenticatedSession();
-  }
-
-  Future<String> _requireAuthenticatedSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = _readStoredToken(prefs);
-
-    if (token == null || token.isEmpty) {
-      throw const TascaServiceException('No hi ha sessió guardada.');
-    }
-
-    if (_validatedToken == token) {
-      return token;
-    }
-
-    final response = await _client.get(
-      Uri.parse('$baseUrl/me/'),
-      headers: _authHeaders(token),
+  Future<List<UsuariOption>> fetchTreballadors() async {
+    int idEmpresa = await requireEmpresaId();
+  return _runMapped(() async {
+    final list = await getJsonList(
+      '/treballadors/empresa/$idEmpresa/',
+      fallback: 'Error carregant els treballadors',
+      invalidResponseMessage: 'La resposta dels treballadors no és vàlida.',
     );
 
-    if (response.statusCode == 200) {
-      await _storeSessionContext(prefs, token, response.body);
-      _validatedToken = token;
-      return token;
-    }
+    return list
+        .map(
+          (e) => UsuariOption(
+            id: _asInt(e['id']) ?? 0,
+            nom: (e['nom'] ?? '—').toString(),
+            cognoms: (e['cognoms'] ?? '').toString(),
+          ),
+        )
+        .where((u) => u.id != 0)
+        .toList();
+  });
+}
 
-    _validatedToken = null;
+  Future<List<UsuariOption>> fetchTreballadorsDeTasca(int tascaId) async {
+    final assignacions = await fetchAssignacionsTasca(tascaId);
 
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      await _clearStoredSession();
-      throw TascaServiceException(
-        _extractErrorMessage(
-          response,
-          fallback: 'La sessió ha caducat o no és vàlida. Torna a fer login.',
-        ),
-        statusCode: response.statusCode,
-      );
-    }
+    return assignacions
+        .map(
+          (e) => UsuariOption(
+            id: _asInt(e['id_treballador']) ?? 0,
+            nom: (e['treballador_nom'] ?? 'Treballador').toString(),
+            cognoms: (e['treballador_cognoms'] ?? '').toString(),
+          ),
+        )
+        .toList();
+  }
 
-    throw TascaServiceException(
-      _extractErrorMessage(
-        response,
-        fallback: 'Error al carregar la sessió.',
+  // ──────────────────── CREATE / UPDATE / DELETE ────────────────────
+
+  Future<Map<String, dynamic>> createTasca(Map<String, dynamic> payload) {
+    return _runMapped(
+      () => postJsonMap(
+        '/tasques/',
+        body: payload,
+        expectedStatus: 201,
+        fallback: 'Error creant la tasca',
+        invalidResponseMessage:
+            'La resposta de creació de la tasca no és vàlida.',
       ),
-      statusCode: response.statusCode,
     );
   }
 
-  String? _readStoredToken(SharedPreferences prefs) {
-    final token = prefs.getString('token')?.trim();
-    if (token != null && token.isNotEmpty) {
-      return token;
-    }
-
-    final legacyToken = prefs.getString('session_token')?.trim();
-    if (legacyToken != null && legacyToken.isNotEmpty) {
-      return legacyToken;
-    }
-
-    return null;
+  Future<int> createTascaAndReturnId(Map<String, dynamic> payload) async {
+    final map = await createTasca(payload);
+    return _asInt(map['id']) ?? 0;
   }
 
-  Future<void> _storeSessionContext(
-    SharedPreferences prefs,
-    String token,
-    String body,
-  ) async {
-    await prefs.setString('token', token);
-
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) {
-        final subjectId = decoded['subject_id'];
-        if (subjectId != null) {
-          await prefs.setString('subject_id', subjectId.toString());
-        }
-
-        final tipus = decoded['tipus'];
-        if (tipus is String && tipus.trim().isNotEmpty) {
-          await prefs.setString('tipus', tipus);
-        }
-
-        final idEmpresa = decoded['id_empresa'];
-        if (idEmpresa != null) {
-          await prefs.setString('id_empresa', idEmpresa.toString());
-        }
-      }
-    } catch (_) {
-      // Si /me/ no es pot parsejar, mantenim com a mínim el token validat.
-    }
+  Future<void> updateTasca(int tascaId, Map<String, dynamic> payload) {
+    return _runMapped(
+      () => putJsonMap(
+        '/tasca/$tascaId/',
+        body: payload,
+        expectedStatus: 200,
+        fallback: 'Error actualitzant la tasca',
+        invalidResponseMessage:
+            'La resposta d’actualització de la tasca no és vàlida.',
+      ).then((_) => null),
+    );
   }
 
-  Map<String, String> _authHeaders(String token) {
-    return <String, String>{
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
+  Future<void> deleteTasca(int tascaId) {
+    return _runMapped(
+      () => deleteExpectNoContent(
+        '/tasca/$tascaId/',
+        fallback: 'Error eliminant la tasca',
+      ),
+    );
   }
 
-  Future<void> _handleUnauthorizedIfNeeded(int statusCode) async {
-    if (statusCode == 401 || statusCode == 403) {
-      _validatedToken = null;
-      await _clearStoredSession();
-    }
+  // ──────────────────── ASSIGNACIONS ────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchAssignacionsTasca(int tascaId) {
+    return _runMapped(
+      () => getJsonList(
+        '/tasca_treballador/',
+        queryParameters: {
+          'id_tasca': tascaId.toString(),
+        },
+        fallback: 'Error carregant les assignacions de la tasca',
+        invalidResponseMessage:
+            'La resposta de les assignacions de la tasca no és vàlida.',
+      ),
+    );
   }
 
-  Future<void> _clearStoredSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('session_token');
-    await prefs.remove('subject_id');
-    await prefs.remove('tipus');
-    await prefs.remove('id_empresa');
+  Future<void> deleteAssignacionsTasca(int tascaId) {
+    return _runMapped(
+      () => deleteExpectNoContent(
+        '/tasca_treballador/$tascaId/bulk_delete/',
+        fallback: 'Error eliminant les assignacions de la tasca',
+      ),
+    );
   }
 
-  String _extractErrorMessage(
-    http.Response response, {
-    required String fallback,
+  Future<void> createAssignacionsTasca(
+  int tascaId,
+  List<UsuariOption> treballadors,
+) async {
+  for (final usuari in treballadors) {
+    if (usuari.id == 0) continue;
+
+    await assignarTreballador(
+      tascaId: tascaId,
+      treballadorId: usuari.id,
+    );
+  }
+}
+
+  Future<void> assignarTreballador({
+    required int tascaId,
+    required int treballadorId,
+    String? comentari,
   }) {
-    try {
-      final decoded = jsonDecode(response.body);
-
-      if (decoded is Map<String, dynamic>) {
-        final detail = decoded['detail'];
-        if (detail is String && detail.trim().isNotEmpty) {
-          return detail;
-        }
-      }
-    } catch (_) {
-      // Ignoram errors de parseig i usam el fallback.
-    }
-
-    return '$fallback (${response.statusCode})';
+    return _runMapped(
+      () => postJsonMap(
+        '/tasca_treballador/',
+        body: {
+          'id_tasca': tascaId,
+          'id_treballador': treballadorId,
+          'comentari': comentari,
+        },
+        expectedStatus: 201,
+        fallback: 'Error assignant el treballador a la tasca',
+        invalidResponseMessage:
+            'La resposta de l’assignació del treballador no és vàlida.',
+      ).then((_) => null),
+    );
   }
+
+ Future<void> syncTreballadors(
+  int tascaId,
+  List<UsuariOption> treballadors,
+) async {
+  await deleteAssignacionsTasca(tascaId);
+  await createAssignacionsTasca(tascaId, treballadors);
+}
+}
+
+int? _asInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim());
+  return null;
 }

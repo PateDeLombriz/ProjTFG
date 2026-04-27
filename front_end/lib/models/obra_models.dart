@@ -33,27 +33,44 @@ class Obra {
 
   factory Obra.fromMap(Map<String, dynamic> map) {
     return Obra(
-      id: _asInt(map['id']),
+      id: _asIntOrZero(map['id']),
       nom: _asString(map['nom']) ?? 'Obra',
       ubicacio: ObraUbicacioRef.fromDynamic(map['ubicacio']),
       ubicacioInfo: ObraUbicacioInfo.fromDynamic(map['ubicacio_info']),
-      dataInici: _asDate(map['data_inici']),
-      dataPrevFi: _asDate(map['data_prev_fi']),
-      dataFi: _asDate(map['data_fi']),
-      pressupost: _asNum(map['pressupost']),
+      dataInici: _asDateOrNull(map['data_inici']),
+      dataPrevFi: _asDateOrNull(map['data_prev_fi']),
+      dataFi: _asDateOrNull(map['data_fi']),
+      pressupost: _asNumOrNull(map['pressupost']),
       descripcio: _asString(map['descripcio']),
       estat: _asString(map['estat']),
     );
   }
 
-  bool get hasDescription => descripcio != null && descripcio!.trim().isNotEmpty;
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'nom': nom,
+      'ubicacio': ubicacio?.toMap(),
+      'ubicacio_info': ubicacioInfo?.toMap(),
+      'data_inici': _formatApiDateOrNull(dataInici),
+      'data_prev_fi': _formatApiDateOrNull(dataPrevFi),
+      'data_fi': _formatApiDateOrNull(dataFi),
+      'pressupost': pressupost,
+      'descripcio': descripcio,
+      'estat': estat,
+    };
+  }
+
+  Map<String, dynamic> toObraMap() => toMap();
+
+  bool get hasDescription => _hasText(descripcio);
 
   bool get hasMapCoordinates =>
       ubicacioInfo?.latitud != null && ubicacioInfo?.longitud != null;
 
   bool get hasLocationData =>
       ubicacioInfo?.hasVisualData == true ||
-      (ubicacio?.etiqueta != null && ubicacio!.etiqueta!.trim().isNotEmpty) ||
+      _hasText(ubicacio?.etiqueta) ||
       ubicacio?.id != null;
 
   String get locationLabel {
@@ -67,9 +84,9 @@ class Obra {
       return etiqueta;
     }
 
-    final id = ubicacio?.id;
-    if (id != null) {
-      return 'Ubicació #$id';
+    final idUbicacio = ubicacio?.id;
+    if (idUbicacio != null) {
+      return 'Ubicació #$idUbicacio';
     }
 
     return 'Sense ubicació';
@@ -105,9 +122,22 @@ class ObraProfileData {
   }
 
   factory ObraProfileData.fromJson(String source) {
-    return ObraProfileData.fromMap(
-      jsonDecode(source) as Map<String, dynamic>,
-    );
+    final decoded = jsonDecode(source);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('El JSON d’obra no té un format vàlid.');
+    }
+    return ObraProfileData.fromMap(decoded);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'obra': obra.toMap(),
+      'incidencies': incidencies.map((e) => e.toMap()).toList(),
+      'tasques': tasques.map((e) => e.toMap()).toList(),
+      'documents': documents.map((e) => e.toMap()).toList(),
+      'sol_recursos': solRecursos.map((e) => e.toMap()).toList(),
+      'responsable': responsables.map((e) => e.toMap()).toList(),
+    };
   }
 }
 
@@ -126,25 +156,38 @@ class ObraUbicacioRef {
     }
 
     if (value is int) {
-      return ObraUbicacioRef(id: value, etiqueta: 'Ubicació #$value');
-    }
-
-    if (value is String) {
       return ObraUbicacioRef(
-        id: int.tryParse(value),
-        etiqueta: value,
+        id: value,
+        etiqueta: 'Ubicació #$value',
       );
     }
 
-    if (value is Map<String, dynamic>) {
+    if (value is num) {
+      final parsed = value.toInt();
       return ObraUbicacioRef(
-        id: _asIntOrNull(value['id'] ?? value['id_ubicacio']),
+        id: parsed,
+        etiqueta: 'Ubicació #$parsed',
+      );
+    }
+
+    if (value is String) {
+      final parsedId = int.tryParse(value.trim());
+      return ObraUbicacioRef(
+        id: parsedId,
+        etiqueta: value.trim().isEmpty ? null : value.trim(),
+      );
+    }
+
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      return ObraUbicacioRef(
+        id: _asIntOrNull(map['id'] ?? map['id_ubicacio']),
         etiqueta: _firstNonEmptyString([
-          value['display_name'],
-          value['adreca'],
-          value['adreça'],
-          value['nom'],
-          value['ciutat'],
+          map['display_name'],
+          map['adreca'],
+          map['adreça'],
+          map['nom'],
+          map['ciutat'],
         ]),
       );
     }
@@ -154,10 +197,17 @@ class ObraUbicacioRef {
       etiqueta: value.toString(),
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'etiqueta': etiqueta,
+    };
+  }
 }
 
 class ObraUbicacioInfo {
-  final int? idUbicacio;
+  final int idUbicacio;
   final String? adreca;
   final String? ciutat;
   final String? codiPostal;
@@ -178,9 +228,9 @@ class ObraUbicacioInfo {
   });
 
   factory ObraUbicacioInfo.fromDynamic(dynamic value) {
-    if (value is! Map<String, dynamic>) {
+    if (value is! Map) {
       return const ObraUbicacioInfo(
-        idUbicacio: null,
+        idUbicacio: 0,
         adreca: null,
         ciutat: null,
         codiPostal: null,
@@ -191,28 +241,112 @@ class ObraUbicacioInfo {
       );
     }
 
+    final map = Map<String, dynamic>.from(value);
+
     return ObraUbicacioInfo(
-      idUbicacio: _asIntOrNull(value['id_ubicacio'] ?? value['id']),
-      adreca: _asString(value['adreca'] ?? value['adreça']),
-      ciutat: _asString(value['ciutat']),
-      codiPostal: _asString(value['codi_postal']),
-      provincia: _asString(value['provincia']),
-      pais: _asString(value['pais'] ?? value['país']),
-      latitud: _asDouble(value['latitud']),
-      longitud: _asDouble(value['longitud']),
+      idUbicacio: _asIntOrZero(map['id_ubicacio'] ?? map['id']),
+      adreca: _asString(map['adreca'] ?? map['adreça']),
+      ciutat: _asString(map['ciutat']),
+      codiPostal: _asString(map['codi_postal']),
+      provincia: _asString(map['provincia']),
+      pais: _asString(map['pais'] ?? map['país']),
+      latitud: _asDoubleOrNull(map['latitud']),
+      longitud: _asDoubleOrNull(map['longitud']),
     );
+  }
+  factory ObraUbicacioInfo.fromJson(Map<String, dynamic> json) {
+    final parsedId = _asIntOrZero(json['id_ubicacio'] ?? json['id']);
+    final adreca = _asString(json['adreca'] ?? json['adreça']);
+    final ciutat = _asString(json['ciutat']);
+    final codiPostal = _asString(json['codi_postal']);
+    final provincia = _asString(json['provincia']);
+    final pais = _asString(json['pais'] ?? json['país']);
+
+    final parts = <String>[
+      if (_hasText(adreca)) adreca!.trim(),
+      if (_hasText(ciutat)) ciutat!.trim(),
+      if (_hasText(provincia)) provincia!.trim(),
+    ];
+
+    return ObraUbicacioInfo(
+      idUbicacio: parsedId,
+      adreca: adreca,
+      ciutat: ciutat,
+      codiPostal: codiPostal,
+      provincia: provincia,
+      pais: pais,
+      latitud: _asDoubleOrNull(json['latitud']),
+      longitud: _asDoubleOrNull(json['longitud']),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id_ubicacio': idUbicacio,
+      'adreca': adreca,
+      'ciutat': ciutat,
+      'codi_postal': codiPostal,
+      'provincia': provincia,
+      'pais': pais,
+      'latitud': latitud,
+      'longitud': longitud,
+    };
   }
 
   bool get hasVisualData =>
       displayLabel.isNotEmpty || latitud != null || longitud != null;
 
-  String get displayLabel => _firstNonEmptyString([
-        adreca,
-        ciutat,
-        provincia,
-        pais,
-      ]) ??
-      '';
+  String get displayLabel =>
+      _firstNonEmptyString([adreca, ciutat, provincia, pais]) ?? '';
+}
+
+class ObraCreateRequest {
+  final String nom;
+  final int ubicacioId;
+  final DateTime dataInici;
+  final DateTime dataPrevFi;
+  final int pressupost;
+  final String? descripcio;
+  final String estat;
+
+  const ObraCreateRequest({
+    required this.nom,
+    required this.ubicacioId,
+    required this.dataInici,
+    required this.dataPrevFi,
+    required this.pressupost,
+    required this.estat,
+    this.descripcio,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'nom': nom.trim(),
+      'ubicacio': ubicacioId,
+      'data_inici': _formatApiDate(dataInici),
+      'data_prev_fi': _formatApiDate(dataPrevFi),
+      'pressupost': pressupost,
+      'descripcio': _cleanNullableText(descripcio),
+      'estat': estat.trim(),
+    };
+  }
+}
+
+class ObraCreateResult {
+  final int? obraId;
+  final int? relacioId;
+
+  const ObraCreateResult({
+    this.obraId,
+    this.relacioId,
+  });
+
+  factory ObraCreateResult.fromJson(Map<String, dynamic> json) {
+    return ObraCreateResult(
+      obraId: _asIntOrNull(json['id_obra'] ?? json['obra_id']),
+      relacioId: _asIntOrNull(json['id']),
+    );
+  }
 }
 
 List<T> _mapList<T>(
@@ -225,6 +359,16 @@ List<T> _mapList<T>(
       .whereType<Map>()
       .map((item) => fromMap(Map<String, dynamic>.from(item)))
       .toList(growable: false);
+}
+
+bool _hasText(String? value) {
+  return value != null && value.trim().isNotEmpty;
+}
+
+String? _cleanNullableText(String? value) {
+  if (value == null) return null;
+  final text = value.trim();
+  return text.isEmpty ? null : text;
 }
 
 String? _asString(dynamic value) {
@@ -241,7 +385,7 @@ String? _firstNonEmptyString(List<dynamic> values) {
   return null;
 }
 
-int _asInt(dynamic value) {
+int _asIntOrZero(dynamic value) {
   return _asIntOrNull(value) ?? 0;
 }
 
@@ -249,23 +393,35 @@ int? _asIntOrNull(dynamic value) {
   if (value == null) return null;
   if (value is int) return value;
   if (value is num) return value.toInt();
-  return int.tryParse(value.toString());
+  return int.tryParse(value.toString().trim());
 }
 
-num? _asNum(dynamic value) {
+num? _asNumOrNull(dynamic value) {
   if (value == null) return null;
   if (value is num) return value;
-  return num.tryParse(value.toString());
+  return num.tryParse(value.toString().trim());
 }
 
-double? _asDouble(dynamic value) {
+double? _asDoubleOrNull(dynamic value) {
   if (value == null) return null;
   if (value is double) return value;
   if (value is num) return value.toDouble();
-  return double.tryParse(value.toString());
+  return double.tryParse(value.toString().trim());
 }
 
-DateTime? _asDate(dynamic value) {
+DateTime? _asDateOrNull(dynamic value) {
   if (value == null) return null;
-  return DateTime.tryParse(value.toString());
+  if (value is DateTime) return value;
+  return DateTime.tryParse(value.toString().trim());
+}
+
+String _formatApiDate(DateTime value) {
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  return '${value.year}-$month-$day';
+}
+
+String? _formatApiDateOrNull(DateTime? value) {
+  if (value == null) return null;
+  return _formatApiDate(value);
 }

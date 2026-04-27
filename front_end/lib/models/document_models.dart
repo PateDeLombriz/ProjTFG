@@ -34,6 +34,22 @@ class DocumentObraItem {
       tipus: _asString(map['tipus']),
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'id_obra': idObra,
+      'id_creador': idCreador,
+      'nom': nom,
+      'format': format,
+      'mida': mida,
+      'comentari': comentari,
+      'data_pujada': dataPujada,
+      'tipus': tipus,
+    };
+  }
+
+  Map<String, dynamic> toDocumentMap() => toMap();
 }
 
 String? _asString(dynamic value) {

@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:front_end/screens/treballador/treballador_main_scaffold.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/Constants/api_constants.dart';
 import '../base/mainScaffold.dart';
-import '../treballador/perfil_treb.dart';
+import '../treballador/treballador_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -94,9 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => TreballadorProfileScreen(
-                treballadorId: subjectId,
-              ),
+              builder: (_) => TreballadorMainScaffold(),
             ),
           );
           return;

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/empresa/home_empresa.dart';
-import 'package:front_end/screens/obra_screens/obra_form.dart';
-import 'package:front_end/screens/recursos/sol_recurs_list_screen.dart';
-import 'package:front_end/screens/tasca_screens/tasca_form.dart';
+import 'package:front_end/screens/empresa/obra_screens/obra_form.dart';
+import 'package:front_end/screens/empresa/recursos/sol_recurs_list_screen.dart';
+import 'package:front_end/screens/empresa/tasca_screens/tasca_form.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
-import 'package:front_end/screens/recursos/solicRec_form.dart';
+import 'package:front_end/screens/empresa/recursos/solicRec_form.dart';
 import 'package:front_end/screens/empresa/doc_form.dart';
-import 'package:front_end/screens/treballador/treballador_form.dart';
-import 'package:front_end/screens/treballador/treballadors_empresa_list_screen.dart';
-import 'package:front_end/screens/incidencia/incidencia_list_screen.dart';
+import 'package:front_end/screens/empresa/treballador%20Empresa/treballador_form.dart';
+import 'package:front_end/screens/empresa/treballador%20Empresa/treballadors_empresa_list_screen.dart';
+import 'package:front_end/screens/empresa/incidencia/incidencia_list_screen.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});

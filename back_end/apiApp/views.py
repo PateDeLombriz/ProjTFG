@@ -26,14 +26,14 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import (Obra,Empresa, ObraEmpresa,Treballador, ContracteTreballador,Ubicacio, Contrasenya, Permis, PermisTreballador,
     LogDeSessio, Configuracio, Verificacio, DocumentObra, Tasca, TascaTreballador,
-    Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra, LogDeSessio)
+    Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra, LogDeSessio, RegistreHorari)
 from .serializer import (
     ObraEmpresaSerializer, ObraSerializer, TreballadorSerializer, EmpresaSerializer,
     ContracteTreballadorSerializer, ContrasenyaSerializer,
     PermisSerializer, PermisTreballadorSerializer, LogDeSessioSerializer, UbicacioSerializer,
     ConfiguracioSerializer, VerificacioSerializer, DocumentObraSerializer,
     TascaSerializer, TascaTreballadorSerializer, IncidenciaSerializer, SolucioSerializer,
-    RecursSerializer, SolRecursSerializer, ResponsableObraSerializer
+    RecursSerializer, SolRecursSerializer, ResponsableObraSerializer,RegistreHorariSerializer
 )
 from django.http import Http404
 from django.conf import settings
@@ -1021,6 +1021,194 @@ class TreballadorObresParticipadesView(APIView):
 
         return Response(ObraSerializer(obres, many=True).data, status=status.HTTP_200_OK)
     
+
+
+class TreballadorMeTasquesView(APIView):
+    """
+    Tasques assignades al treballador autenticat.
+    GET /api/treballadors/me/tasques/
+    Equivalent a TreballladorTasquesAssignadesView pero per al propi treballador.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        subject_type, treballador_id = _get_auth_context(request)
+
+        if subject_type != 'treballador':
+            raise PermissionDenied("Nomes el treballador autenticat pot accedir a les seves tasques.")
+
+        tasca_ids = TascaTreballador.objects.filter(
+            id_treballador_id=treballador_id
+        ).values_list('id_tasca_id', flat=True)
+
+        tasques = Tasca.objects.filter(id__in=list(tasca_ids))
+
+        data = []
+        for t in tasques:
+            t_data = TascaSerializer(t).data
+
+            if t.id_obra_id:
+                t_data['obra'] = ObraSerializer(t.id_obra).data
+
+            inc_qs = Incidencia.objects.filter(id_tasca=t)
+            t_data['incidencies'] = IncidenciaSerializer(inc_qs, many=True).data
+
+            data.append(t_data)
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class TreballadorMeObresParticipadesView(APIView):
+    """
+    Obres on participa el treballador autenticat.
+    GET /api/treballadors/me/obres_participades/
+    Equivalent a TreballadorObresParticipadesView pero per al propi treballador.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        subject_type, treballador_id = _get_auth_context(request)
+
+        if subject_type != 'treballador':
+            raise PermissionDenied("Nomes el treballador autenticat pot accedir a les seves obres.")
+
+        ids_tasques = TascaTreballador.objects.filter(
+            id_treballador_id=treballador_id
+        ).values_list('id_tasca_id', flat=True)
+
+        obra_ids_tasques = Tasca.objects.filter(
+            id__in=list(ids_tasques)
+        ).values_list('id_obra_id', flat=True)
+
+        obra_ids_resp = ResponsableObra.objects.filter(
+            id_treballador_id=treballador_id
+        ).values_list('id_obra_id', flat=True)
+
+        ids = set(list(obra_ids_tasques) + list(obra_ids_resp))
+        obres = Obra.objects.filter(id__in=list(ids))
+
+        return Response(ObraSerializer(obres, many=True).data, status=status.HTTP_200_OK)
+
+
+class RegistreHorariMeView(APIView):
+    """
+    Registre d'entrada i sortida del treballador autenticat.
+    GET  /api/treballadors/me/registre_horari/  -> historial propi
+    POST /api/treballadors/me/registre_horari/  -> fichar entrada
+    PATCH /api/treballadors/me/registre_horari/ -> fichar sortida (tanca l'entrada oberta)
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _assert_treballador(self, request):
+        subject_type, treballador_id = _get_auth_context(request)
+        if subject_type != 'treballador':
+            raise PermissionDenied("Nomes el treballador autenticat pot accedir al registre horari.")
+        return treballador_id
+
+    def get(self, request, format=None):
+        treballador_id = self._assert_treballador(request)
+
+        qs = RegistreHorari.objects.filter(
+            id_treballador_id=treballador_id
+        ).order_by('-data_entrada')
+
+        return Response(
+            RegistreHorariSerializer(qs, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request, format=None):
+        """Fichar entrada. Bloqueja si ja hi ha una entrada oberta (sense sortida)."""
+        treballador_id = self._assert_treballador(request)
+
+        entrada_oberta = RegistreHorari.objects.filter(
+            id_treballador_id=treballador_id,
+            data_sortida__isnull=True,
+        ).first()
+
+        if entrada_oberta:
+            return Response(
+                {'detail': 'Ja tens una entrada registrada sense sortida.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = {
+            'id_treballador': treballador_id,
+            'data_entrada': timezone.now(),
+            'id_obra': request.data.get('id_obra'),
+        }
+
+        serializer = RegistreHorariSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, format=None):
+        """Fichar sortida. Tanca l'entrada oberta mes recent."""
+        treballador_id = self._assert_treballador(request)
+
+        entrada_oberta = RegistreHorari.objects.filter(
+            id_treballador_id=treballador_id,
+            data_sortida__isnull=True,
+        ).order_by('-data_entrada').first()
+
+        if not entrada_oberta:
+            return Response(
+                {'detail': 'No hi ha cap entrada oberta per tancar.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        entrada_oberta.data_sortida = timezone.now()
+        entrada_oberta.save()
+
+        return Response(
+            RegistreHorariSerializer(entrada_oberta).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class TreballadorMeTascaFinalitzarView(APIView):
+    """
+    El treballador autenticat marca una tasca com a finalitzada pendent de revisio.
+    PATCH /api/treballadors/me/tasques/<tasca_id>/finalitzar/
+    Comprova que la tasca esta assignada al treballador autenticat.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, tasca_id, format=None):
+        subject_type, treballador_id = _get_auth_context(request)
+
+        if subject_type != 'treballador':
+            raise PermissionDenied("Nomes el treballador autenticat pot finalitzar les seves tasques.")
+
+        assignat = TascaTreballador.objects.filter(
+            id_tasca_id=tasca_id,
+            id_treballador_id=treballador_id,
+        ).exists()
+
+        if not assignat:
+            raise PermissionDenied("Nomes pots finalitzar tasques assignades a tu.")
+
+        try:
+            tasca = Tasca.objects.get(pk=tasca_id)
+        except Tasca.DoesNotExist:
+            return Response(
+                {'detail': 'Tasca no trobada.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        tasca.estat = 'finalitzada_pendent_revisio'
+        tasca.save()
+
+        return Response(TascaSerializer(tasca).data, status=status.HTTP_200_OK)
+
+
+
 class TascaTreballadorBulkDelete(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
@@ -1180,20 +1368,42 @@ class IncidenciaList(APIView):
 
     def post(self, request, format=None):
         subject_type = request.auth["tipus"]
-
+        subject_id = int(request.auth["subject_id"])
+    
+        if subject_type == "treballador":
+            # El treballador nomes pot reportar incidencies de tasques assignades a ell
+            id_tasca = request.data.get('id_tasca')
+            if not id_tasca:
+                return Response(
+                    {'detail': 'El camp id_tasca es obligatori per als treballadors.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            assignat = TascaTreballador.objects.filter(
+                id_tasca_id=id_tasca,
+                id_treballador_id=subject_id,
+            ).exists()
+            if not assignat:
+                raise PermissionDenied("Nomes pots reportar incidencies de tasques assignades a tu.")
+    
+            serializer = IncidenciaSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
         if subject_type != "empresa":
-            raise PermissionDenied("Només les empreses poden crear incidències.")
-
+            raise PermissionDenied("Tipus de subjecte no autoritzat.")
+    
         id_obra = request.data.get('id_obra')
         if id_obra:
             _assert_query_obra_in_context(request, id_obra)
-
+    
         serializer = IncidenciaSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+#
 
 
         

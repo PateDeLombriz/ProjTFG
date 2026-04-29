@@ -993,3 +993,180 @@ String _formatRawDate(dynamic value) {
   final text = value.toString().trim();
   return text.isEmpty ? 'N/D' : text;
 }
+
+
+class TascaWorkerCard extends StatelessWidget {
+  final Map<String, dynamic> tasca;
+  final VoidCallback? onTap;
+
+  const TascaWorkerCard({
+    super.key,
+    required this.tasca,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final descripcio = (tasca['descripcio'] ?? '—').toString().trim();
+    final estat = (tasca['estat'] ?? '').toString();
+    final dataInici = _formatRawDate(tasca['data_inici']);
+    final dataFi = _formatRawDate(tasca['data_fi']);
+    final config = _estatWorkerConfig(estat, scheme);
+
+    final obraMap = tasca['obra'];
+    final String? nomObra = obraMap is Map
+        ? (obraMap['nom'] ?? '').toString().trim().isEmpty
+            ? null
+            : obraMap['nom'].toString().trim()
+        : null;
+
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: config.borderColor, width: 1),
+      ),
+      color: scheme.surface,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: config.badgeColor,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      config.label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: config.textColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (onTap != null)
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: scheme.outline,
+                      size: 20,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                descripcio.isEmpty ? 'Sense descripció' : descripcio,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 13,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$dataInici → $dataFi',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              if (nomObra != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.business_outlined,
+                      size: 13,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        nomObra,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+//Classe per contrlar el color de les tasques del treballador segons el seu estat. Es pot ampliar fàcilment per nous estats o canviar colors.
+class _EstatConfig {
+  final String label;
+  final Color badgeColor;
+  final Color textColor;
+  final Color borderColor;
+
+  const _EstatConfig({
+    required this.label,
+    required this.badgeColor,
+    required this.textColor,
+    required this.borderColor,
+  });
+}
+
+_EstatConfig _estatWorkerConfig(String estat, ColorScheme scheme) {
+  switch (estat) {
+    case 'en_curs':
+      return _EstatConfig(
+        label: 'En curs',
+        badgeColor: const Color(0xFFE7F0FA),
+        textColor: const Color(0xFF2B6CB0),
+        borderColor: const Color(0xFF2B6CB0).withOpacity(0.25),
+      );
+    case 'finalitzada_pendent_revisio':
+      return _EstatConfig(
+        label: 'Pendent revisió',
+        badgeColor: const Color(0xFFEEF2F5),
+        textColor: const Color(0xFF5E7486),
+        borderColor: const Color(0xFF5E7486).withOpacity(0.25),
+      );
+    case 'finalitzada':
+      return _EstatConfig(
+        label: 'Finalitzada',
+        badgeColor: const Color(0xFFE6F4EC),
+        textColor: const Color(0xFF2F855A),
+        borderColor: const Color(0xFF2F855A).withOpacity(0.25),
+      );
+    case 'pendent':
+    default:
+      return _EstatConfig(
+        label: estat == 'pendent' ? 'Pendent' : (estat.isEmpty ? 'Desconegut' : estat),
+        badgeColor: const Color(0xFFFBF1DE),
+        textColor: const Color(0xFFB7791F),
+        borderColor: const Color(0xFFB7791F).withOpacity(0.25),
+      );
+  }
+}

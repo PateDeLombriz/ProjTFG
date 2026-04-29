@@ -13,7 +13,7 @@ from rest_framework import serializers
 from django.contrib.auth.hashers import check_password,make_password
 from .models import (Usuari, Empresa, Contrasenya, Verificacio, Obra, ObraEmpresa, Treballador, Empresa, Contrasenya,
     Permis, PermisTreballador, LogDeSessio, Configuracio, Ubicacio, Usuari, Verificacio,
-    DocumentObra, Tasca, TascaTreballador, Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra, ResponsableObra,ContracteTreballador
+    DocumentObra, Tasca, TascaTreballador, Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra, ResponsableObra,ContracteTreballador,RegistreHorari
 )
 from .authentication.helpers import _is_contracte_vigent
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -136,6 +136,12 @@ class ObraEmpresaSerializer(serializers.ModelSerializer):
     class Meta:
         model = ObraEmpresa
         fields = '__all__'
+
+class RegistreHorariSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RegistreHorari
+        fields = '__all__'
+        read_only_fields = ['id']
 
 
 

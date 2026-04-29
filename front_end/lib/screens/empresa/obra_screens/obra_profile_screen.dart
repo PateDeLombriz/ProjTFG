@@ -7,11 +7,11 @@ import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/screens/empresa/doc_form.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
-import 'package:front_end/screens/recursos/solicRec_form.dart';
-import 'package:front_end/screens/incidencia/incidenciaDetail_screen.dart';
-import 'package:front_end/screens/obra_screens/obra_edit_screen.dart';
-import 'package:front_end/screens/tasca_screens/tasca_detail_screen.dart';
-import 'package:front_end/screens/tasca_screens/tasca_form.dart';
+import 'package:front_end/screens/empresa/recursos/solicRec_form.dart';
+import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
+import 'package:front_end/screens/empresa/obra_screens/obra_edit_screen.dart';
+import 'package:front_end/screens/empresa/tasca_screens/tasca_detail_screen.dart';
+import 'package:front_end/screens/empresa/tasca_screens/tasca_form.dart';
 import 'package:front_end/services/obra_service.dart';
 import 'package:front_end/widgets/obra_widgets.dart';
 

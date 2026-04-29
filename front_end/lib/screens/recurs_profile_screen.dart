@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../shared/Constants/api_constants.dart';
 
 class RecursDetail extends StatefulWidget {
+  
   final int recursId;
 
   const RecursDetail({super.key, required this.recursId});
-
+  
   @override
   State<RecursDetail> createState() => _RecursDetailState();
 }
@@ -14,17 +16,19 @@ class RecursDetail extends StatefulWidget {
 class _RecursDetailState extends State<RecursDetail> {
   Map<String, dynamic>? recurs;
   List<dynamic> solRecursos = [];
+  final baseUrl = ApiConstants.baseUrl;
 
   @override
   void initState() {
     super.initState();
-    _carregarDetallsRecurs();
+    _carregarDetallsRecurs(widget.recursId);
   }
 
-  Future<void> _carregarDetallsRecurs() async {
+  Future<void> _carregarDetallsRecurs(int recursId) async {
+    
     try {
       final recursRes = await http.get(
-        Uri.parse('http://localhost:8000/api/recursos/${widget.recursId}/'),
+        Uri.parse('$baseUrl/recursos/$recursId/'),
       );
 
       if (recursRes.statusCode == 200) {
@@ -42,7 +46,7 @@ class _RecursDetailState extends State<RecursDetail> {
   }
 
   Future<void> _carregarSolRecursos(int idRecurs) async {
-    final url = Uri.parse('http://localhost:8000/api/sol_recursos/?id_recurs=$idRecurs');
+    final url = Uri.parse('$baseUrl/api/sol_recurs/?id_recurs=$idRecurs');
     try {
       final res = await http.get(url);
       if (res.statusCode == 200) {

@@ -419,15 +419,28 @@ class Solucio(models.Model):
         db_table = 'solucio'
 
 
+
 class Tasca(models.Model):
-    id = models.AutoField(primary_key=True) 
-    id_obra = models.ForeignKey(Obra, models.CASCADE,related_name='tasques', db_column='id_obra')
+    ESTAT_TASCA = [
+        ('pendent', 'Pendent'),
+        ('en_curs', 'En curs'),
+        ('finalitzada_pendent_revisio', 'Finalitzada pendent de revisio'),
+        ('finalitzada', 'Finalitzada'),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    id_obra = models.ForeignKey(Obra, models.CASCADE, related_name='tasques', db_column='id_obra')
     id_tasca_pare = models.ForeignKey('self', models.SET_NULL, db_column='id_tasca_pare', blank=True, null=True)
     descripcio = models.TextField()
     data_inici = models.DateField()
     data_fi = models.DateField(blank=True, null=True)
     prioritat = models.IntegerField()
     visibilitat_tasca = models.BooleanField(default=True)
+    estat = models.CharField(
+        max_length=40,
+        choices=ESTAT_TASCA,
+        default='pendent',
+    )
 
     class Meta:
         managed = True
@@ -444,6 +457,28 @@ class TascaTreballador(models.Model):
         managed = True
         db_table = 'tasca_treballador'
         unique_together = (('id_tasca', 'id_treballador'),)
+
+
+class RegistreHorari(models.Model):
+    id = models.AutoField(primary_key=True)
+    id_treballador = models.ForeignKey(
+        'Treballador',
+        on_delete=models.CASCADE,
+        db_column='id_treballador',
+    )
+    id_obra = models.ForeignKey(
+        'Obra',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='id_obra',
+    )
+    data_entrada = models.DateTimeField()
+    data_sortida = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = 'registre_horari'
 
 
 class Verificacio(models.Model):

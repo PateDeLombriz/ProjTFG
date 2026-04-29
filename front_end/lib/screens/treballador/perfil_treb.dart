@@ -1,9 +1,12 @@
+
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:front_end/models/treballador_models.dart';
+import 'package:front_end/screens/base/splash_screen.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/widgets/treballador_widgets.dart';
 
@@ -52,6 +55,17 @@ class _TreballadorProfileScreenState extends State<TreballadorProfileScreen> {
     await _futureProfile;
   }
 
+  // CANVI 2: logout (només actiu quan treballadorId == null)
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const SplashScreen()),
+      (_) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -66,6 +80,13 @@ class _TreballadorProfileScreenState extends State<TreballadorProfileScreen> {
             onPressed: _reload,
             icon: const Icon(Icons.refresh),
           ),
+          // CANVI 3: botó de logout només en el perfil propi del treballador
+          if (widget.treballadorId == null)
+            IconButton(
+              tooltip: 'Tanca sessió',
+              onPressed: _logout,
+              icon: const Icon(Icons.logout),
+            ),
         ],
       ),
       body: FutureBuilder<TreballadorProfileData>(
@@ -85,7 +106,7 @@ class _TreballadorProfileScreenState extends State<TreballadorProfileScreen> {
           final profile = snapshot.data;
           if (profile == null) {
             return _ProfileErrorView(
-              message: 'No s’han rebut dades del perfil.',
+              message: 'No s\'han rebut dades del perfil.',
               onRetry: _reload,
             );
           }

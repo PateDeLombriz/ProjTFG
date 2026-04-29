@@ -116,6 +116,86 @@ class TreballadorService extends AppApiService {
     );
   }
 
+   Future<List<Map<String, dynamic>>> fetchMyTasques() {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/me/tasques/',
+        fallback: 'Error carregant les teves tasques',
+        invalidResponseMessage: 'La resposta de les tasques no és vàlida.',
+      ),
+    );
+  }
+
+  /// Obres on participa el treballador autenticat.
+  /// Crida /treballadors/me/obres_participades/.
+  Future<List<Map<String, dynamic>>> fetchMyObresParticipades() {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/me/obres_participades/',
+        fallback: 'Error carregant les teves obres',
+        invalidResponseMessage: 'La resposta de les obres no és vàlida.',
+      ),
+    );
+  }
+
+  /// Historial de registre horari del treballador autenticat.
+  Future<List<Map<String, dynamic>>> fetchMyRegistreHorari() {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/me/registre_horari/',
+        fallback: 'Error carregant el registre horari',
+        invalidResponseMessage: 'La resposta del registre horari no és vàlida.',
+      ),
+    );
+  }
+
+  /// Ficha entrada (POST /treballadors/me/registre_horari/).
+  /// [idObra] es opcional; si es null no s'envia.
+  Future<Map<String, dynamic>> fitxarEntrada({int? idObra}) {
+    final body = <String, dynamic>{};
+    if (idObra != null) body['id_obra'] = idObra;
+
+    return _runMapped(
+      () => postJsonMap(
+        '/treballadors/me/registre_horari/',
+        body: body,
+        expectedStatus: 201,
+        fallback: 'Error en fichar entrada',
+        invalidResponseMessage: 'La resposta del servidor no és vàlida.',
+      ),
+    );
+  }
+
+  /// Ficha sortida (PATCH /treballadors/me/registre_horari/).
+  /// Tanca l'entrada oberta mes recent.
+  Future<Map<String, dynamic>> fitxarSortida() {
+    return _runMapped(
+      () => patchJsonMap(
+        '/treballadors/me/registre_horari/',
+        body: {},
+        expectedStatus: 200,
+        fallback: 'Error en fichar sortida',
+        invalidResponseMessage: 'La resposta del servidor no és vàlida.',
+      ),
+    );
+  }
+
+  /// Marca una tasca com a finalitzada pendent de revisio.
+  /// PATCH /treballadors/me/tasques/<tascaId>/finalitzar/
+  /// Comprova al backend que la tasca esta assignada al treballador autenticat.
+  Future<Map<String, dynamic>> finalitzarTasca(int tascaId) {
+    return _runMapped(
+      () => patchJsonMap(
+        '/treballadors/me/tasques/$tascaId/finalitzar/',
+        body: {},
+        expectedStatus: 200,
+        fallback: 'Error en finalitzar la tasca',
+        invalidResponseMessage: 'La resposta del servidor no és vàlida.',
+      ),
+    );
+  }
+
+
   // =========================
   // TREBALLADORS EMPRESA
   // =========================

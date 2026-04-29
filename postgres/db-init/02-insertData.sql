@@ -202,80 +202,79 @@ VALUES
 /* ────────────────
    TASCA (igual)
    ──────────────── */
-INSERT INTO tasca (id_obra, id_tasca_pare, descripcio, data_inici, data_fi, prioritat, visibilitat_tasca) VALUES
-(1, NULL, 'Preparació fonament',                   '2024-07-02', NULL, 1, TRUE),
-(1, 1,    'Col·locació armadures',                 '2024-07-03', NULL, 2, TRUE),
+INSERT INTO tasca (id_obra, id_tasca_pare, descripcio, data_inici, data_fi, prioritat, visibilitat_tasca,estat) VALUES
+(1, NULL, 'Preparació fonament',                   '2024-07-02', NULL, 1, TRUE, 'en_curs'),
+(1, 1,    'Col·locació armadures',                 '2024-07-03', NULL, 2, TRUE, 'en_curs'),
 
-(2, NULL, 'Excavació de terreny',                  '2024-05-21', NULL, 1, TRUE),
-(2, 3,    'Nivellació de base',                    '2024-05-22', NULL, 2, TRUE),
+(2, NULL, 'Excavació de terreny',                  '2024-05-21', NULL, 1, TRUE, 'en_curs'),
+(2, 3,    'Nivellació de base',                    '2024-05-22', NULL, 2, TRUE, 'en_curs'),
 
-(3, NULL, 'Tall de paviment existent',             '2024-04-02', '2024-04-03', 2, TRUE),
-(3, 5,    'Retirada de peces malmeses',            '2024-04-03', '2024-04-05', 2, TRUE),
-(3, 5,    'Preparació de base de grava',           '2024-04-06', '2024-04-08', 1, TRUE),
+(3, NULL, 'Tall de paviment existent',             '2024-04-02', '2024-04-03', 2, TRUE, 'finalitzada'),
+(3, 5,    'Retirada de peces malmeses',            '2024-04-03', '2024-04-05', 2, TRUE, 'finalitzada'),
+(3, 5,    'Preparació de base de grava',           '2024-04-06', '2024-04-08', 1, TRUE, 'finalitzada'),
 
-(4, NULL, 'Demolició envans interiors',            '2024-06-16', NULL, 2, TRUE),
-(4, 8,    'Desmuntatge d’aparells sanitaris',      '2024-06-16', NULL, 2, TRUE),
-(4, 8,    'Substitució de paviment interior',      '2024-06-20', NULL, 2, TRUE),
-(4, 8,    'Anivellat de solera interior',          '2024-06-20', NULL, 1, TRUE),
+(4, NULL, 'Demolició envans interiors',            '2024-06-16', NULL, 2, TRUE, 'en_curs'),
+(4, 8,    'Desmuntatge d’aparells sanitaris',      '2024-06-16', NULL, 2, TRUE, 'en_curs'),
+(4, 8,    'Substitució de paviment interior',      '2024-06-20', NULL, 2, TRUE, 'en_curs'),
+(4, 8,    'Anivellat de solera interior',          '2024-06-20', NULL, 1, TRUE, 'en_curs'),
 
-(5, NULL, 'Replanteig d’aules noves',              '2024-07-02', NULL, 1, TRUE),
-(5, 12,   'Marcatge de divisòries interiors',      '2024-07-02', NULL, 2, TRUE),
-(5, 12,   'Instal·lació de fals sostre',           '2024-07-10', NULL, 2, TRUE),
-(5, 12,   'Col·locació de perfileria metàl·lica',  '2024-07-10', NULL, 2, TRUE),
+(5, NULL, 'Replanteig d’aules noves',              '2024-07-02', NULL, 1, TRUE, 'en_curs'),
+(5, 12,   'Marcatge de divisòries interiors',      '2024-07-02', NULL, 2, TRUE, 'en_curs'),
+(5, 12,   'Instal·lació de fals sostre',           '2024-07-10', NULL, 2, TRUE, 'en_curs'),
+(5, 12,   'Col·locació de perfileria metàl·lica',  '2024-07-10', NULL, 2, TRUE, 'en_curs'),
 
-(6, NULL, 'Picat de revestiment exterior',         '2024-05-11', '2024-05-14', 2, TRUE),
-(6, 16,   'Neteja de superfície de façana',        '2024-05-15', '2024-05-16', 2, TRUE),
-(6, 16,   'Aplicació de morter monocapa',          '2024-05-18', '2024-05-24', 1, TRUE),
+(6, NULL, 'Picat de revestiment exterior',         '2024-05-11', '2024-05-14', 2, TRUE, 'finalitzada'),
+(6, 16,   'Neteja de superfície de façana',        '2024-05-15', '2024-05-16', 2, TRUE, 'finalitzada'),
+(6, 16,   'Aplicació de morter monocapa',          '2024-05-18', '2024-05-24', 1, TRUE, 'finalitzada'),
 
-(7, NULL, 'Moviment de terres inicial',            '2024-09-02', NULL, 1, TRUE),
-(7, 19,   'Compactació del terreny',               '2024-09-04', NULL, 1, TRUE),
-(7, 19,   'Execució de sabates aïllades',          '2024-09-06', NULL, 1, TRUE),
-(7, 19,   'Col·locació de ferralla en fonament',   '2024-09-07', NULL, 1, TRUE),
+(7, NULL, 'Moviment de terres inicial',            '2024-09-02', NULL, 1, TRUE, 'en_curs'),
+(7, 19,   'Compactació del terreny',               '2024-09-04', NULL, 1, TRUE, 'en_curs'),
+(7, 19,   'Execució de sabates aïllades',          '2024-09-06', NULL, 1, TRUE, 'en_curs'),
+(7, 19,   'Col·locació de ferralla en fonament',   '2024-09-07', NULL, 1, TRUE, 'en_curs'),
 
-(8, NULL, 'Obertura de rasa principal',            '2024-06-06', NULL, 1, TRUE),
-(8, 23,   'Col·locació de tubs de drenatge',       '2024-06-08', NULL, 1, TRUE),
-(8, 23,   'Reposició de paviment afectat',         '2024-06-20', NULL, 2, TRUE),
+(8, NULL, 'Obertura de rasa principal',            '2024-06-06', NULL, 1, TRUE, 'en_curs'),
+(8, 23,   'Col·locació de tubs de drenatge',       '2024-06-08', NULL, 1, TRUE, 'en_curs'),
+(8, 23,   'Reposició de paviment afectat',         '2024-06-20', NULL, 2, TRUE, 'en_curs'),
 
-(9, NULL, 'Desmuntatge de cuines antigues',        '2024-04-21', '2024-04-23', 2, TRUE),
-(9, 26,   'Retirada d’electrodomèstics vells',     '2024-04-21', '2024-04-22', 3, TRUE),
-(9, 26,   'Pintura interior d’apartaments',        '2024-06-10', '2024-06-20', 2, TRUE),
+(9, NULL, 'Desmuntatge de cuines antigues',        '2024-04-21', '2024-04-23', 2, TRUE, 'finalitzada'),
+(9, 26,   'Retirada d’electrodomèstics vells',     '2024-04-21', '2024-04-22', 3, TRUE, 'finalitzada'),
+(9, 26,   'Pintura interior d’apartaments',        '2024-06-10', '2024-06-20', 2, TRUE, 'finalitzada'),
 
-(10, NULL,'Excavació per ampliació de nau',        '2024-08-13', NULL, 1, TRUE),
-(10, 29,  'Formació de rampa de càrrega',          '2024-08-16', NULL, 2, TRUE),
-(10, 29,  'Muntatge d’estructura metàl·lica',      '2024-08-22', NULL, 1, TRUE),
-(10, 29,  'Soldadura de jàsseres principals',      '2024-08-24', NULL, 1, TRUE),
+(10, NULL,'Excavació per ampliació de nau',        '2024-08-13', NULL, 1, TRUE, 'en_curs'),
+(10, 29,  'Formació de rampa de càrrega',          '2024-08-16', NULL, 2, TRUE, 'en_curs'),
+(10, 29,  'Muntatge d’estructura metàl·lica',      '2024-08-22', NULL, 1, TRUE, 'en_curs'),
+(10, 29,  'Soldadura de jàsseres principals',      '2024-08-24', NULL, 1, TRUE, 'en_curs'),
 
-(11, NULL,'Desbrossament de marge de camí',        '2024-03-19', '2024-03-21', 2, TRUE),
-(11, 33,  'Retirada de pedres grans',              '2024-03-20', '2024-03-22', 2, TRUE),
-(11, 33,  'Estesa de capa granular',               '2024-04-01', '2024-04-05', 1, TRUE),
+(11, NULL,'Desbrossament de marge de camí',        '2024-03-19', '2024-03-21', 2, TRUE, 'finalitzada'),
+(11, 33,  'Retirada de pedres grans',              '2024-03-20', '2024-03-22', 2, TRUE, 'finalitzada'),
+(11, 33,  'Estesa de capa granular',               '2024-04-01', '2024-04-05', 1, TRUE, 'finalitzada'),
 
-(12, NULL,'Enderroc de fals sostre antic',         '2024-07-23', NULL, 2, TRUE),
-(12, 36,  'Recollida de residus interiors',        '2024-07-24', NULL, 2, TRUE),
-(12, 36,  'Col·locació d’enrajolat nou',           '2024-08-05', NULL, 2, TRUE),
-(12, 36,  'Tall de peces per cantonades',          '2024-08-06', NULL, 3, TRUE),
+(12, NULL,'Enderroc de fals sostre antic',         '2024-07-23', NULL, 2, TRUE, 'en_curs'),
+(12, 36,  'Recollida de residus interiors',        '2024-07-24', NULL, 2, TRUE, 'en_curs'),
+(12, 36,  'Col·locació d’enrajolat nou',           '2024-08-05', NULL, 2, TRUE, 'en_curs'),
+(12, 36,  'Tall de peces per cantonades',          '2024-08-06', NULL, 3, TRUE, 'en_curs'),
 
-(13, NULL,'Replanteig de camins interiors',        '2024-05-28', NULL, 2, TRUE),
-(13, 40,  'Excavació de rases per reg',            '2024-05-30', NULL, 2, TRUE),
-(13, 40,  'Col·locació de mobiliari urbà',         '2024-08-12', NULL, 3, TRUE),
+(13, NULL,'Replanteig de camins interiors',        '2024-05-28', NULL, 2, TRUE, 'en_curs'),
+(13, 40,  'Excavació de rases per reg',            '2024-05-30', NULL, 2, TRUE, 'en_curs'),
+(13, 40,  'Col·locació de mobiliari urbà',         '2024-08-12', NULL, 3, TRUE, 'en_curs'),
 
-(14, NULL,'Reforç de bigues de fusta',             '2024-06-04', NULL, 1, TRUE),
-(14, 43,  'Tractament protector de fusta',         '2024-06-06', NULL, 2, TRUE),
-(14, 43,  'Reposició de coberta inclinada',        '2024-07-01', NULL, 1, TRUE),
+(14, NULL,'Reforç de bigues de fusta',             '2024-06-04', NULL, 1, TRUE, 'en_curs'),
+(14, 43,  'Tractament protector de fusta',         '2024-06-06', NULL, 2, TRUE, 'en_curs'),
+(14, 43,  'Reposició de coberta inclinada',        '2024-07-01', NULL, 1, TRUE, 'en_curs'),
 
-(15, NULL,'Formació de vorades per aparcament',    '2024-09-16', NULL, 2, TRUE),
-(15, 46,  'Col·locació de rigoles de drenatge',    '2024-09-18', NULL, 1, TRUE),
-(15, 46,  'Pavimentació de zona d’estacionament',  '2024-10-02', NULL, 1, TRUE),
+(15, NULL,'Formació de vorades per aparcament',    '2024-09-16', NULL, 2, TRUE, 'en_curs'),
+(15, 46,  'Col·locació de rigoles de drenatge',    '2024-09-18', NULL, 1, TRUE, 'en_curs'),
+(15, 46,  'Pavimentació de zona d’estacionament',  '2024-10-02', NULL, 1, TRUE, 'en_curs'),
 
-(16, NULL,'Demolició de particions interiors',     '2024-10-02', NULL, 2, TRUE),
-(16, 49,  'Retirada selectiva de ferralla',        '2024-10-03', NULL, 2, TRUE),
-(16, 49,  'Renovació d’enllumenat exterior',       '2024-11-10', NULL, 2, TRUE),
+(16, NULL,'Demolició de particions interiors',     '2024-10-02', NULL, 2, TRUE, 'en_curs'),
+(16, 49,  'Retirada selectiva de ferralla',        '2024-10-03', NULL, 2, TRUE, 'en_curs'),
+(16, 49,  'Renovació d’enllumenat exterior',       '2024-11-10', NULL, 2, TRUE, 'en_curs'),
 
-(17, NULL,'Desmuntatge de portes antigues',        '2024-05-15', '2024-05-16', 2, TRUE),
-(17, 52,  'Instal·lació de portes noves',          '2024-06-01', '2024-06-03', 2, TRUE),
+(17, NULL,'Desmuntatge de portes antigues',        '2024-05-15', '2024-05-16', 2, TRUE, 'finalitzada'),
+(17, 52,  'Instal·lació de portes noves',          '2024-06-01', '2024-06-03', 2, TRUE, 'finalitzada'),
 
-(18, NULL,'Muntatge de prestatgeries fixes',       '2024-08-02', NULL, 3, TRUE),
-(18, 54,  'Ancoratge de mobiliari a paret',        '2024-08-03', NULL, 2, TRUE);
-
+(18, NULL,'Muntatge de prestatgeries fixes',       '2024-08-02', NULL, 3, TRUE, 'en_curs'),
+(18, 54,  'Ancoratge de mobiliari a paret',        '2024-08-03', NULL, 2, TRUE, 'en_curs');
 /* ───────────────────────────────
    TASCA_TREBALLADOR (igual concept)
    ─────────────────────────────── */
@@ -700,12 +699,12 @@ INSERT INTO solucio (id_incidencia, id_tasca, descripcio, cost_monetari, eficaci
    ───────────────────────── */
 INSERT INTO verificacio
 (id_empresa, estat_ver, data_ver, token_verificacio, data_token) VALUES
-  (1, 1, 'OK',      '2024-06-02', 'token_alzina_123',        '2024-06-01 10:00:00'),
-  (2, 2, 'PENDENT', NULL,         'token_servint_456',       '2024-06-03 11:00:00'),
-  (3, 3, 'OK',      '2024-06-06', 'token_mallorcaobres_789', '2024-06-05 09:30:00'),
-  (4, 4, 'OK',      '2024-06-07', 'token_menorca_321',       '2024-06-06 12:15:00'),
-  (5, 5, 'PENDENT', NULL,         'token_eivissa_654',       '2024-06-07 16:40:00'),
-  (6, 6, 'OK',      '2024-06-09', 'token_formentera_987',    '2024-06-08 08:50:00');   
+  (1, 'OK',      '2024-06-02', 'token_alzina_123',        '2024-06-01 10:00:00'),
+  (2, 'PENDENT', NULL,         'token_servint_456',       '2024-06-03 11:00:00'),
+  (3, 'OK',      '2024-06-06', 'token_mallorcaobres_789', '2024-06-05 09:30:00'),
+  (4, 'OK',      '2024-06-07', 'token_menorca_321',       '2024-06-06 12:15:00'),
+  (5, 'PENDENT', NULL,         'token_eivissa_654',       '2024-06-07 16:40:00'),
+  (6, 'OK',      '2024-06-09', 'token_formentera_987',    '2024-06-08 08:50:00');   
 
 
 /* (Opcional però recomanat si has fixat IDs manualment)

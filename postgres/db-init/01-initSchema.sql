@@ -287,6 +287,7 @@ CREATE TABLE verificacio (
     data_ver          DATE        NULL,          -- Fecha de verificación
     token_verificacio VARCHAR(120) NOT NULL,     -- Token único
     data_token        TIMESTAMP    NOT NULL,     -- Fecha de emisión
+    
     CONSTRAINT fk_ver_user
         FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
         ON DELETE CASCADE ON UPDATE CASCADE
@@ -387,13 +388,24 @@ CREATE TABLE tasca (
     data_fi           DATE    NULL,               -- Fin real
     prioritat         INTEGER NOT NULL,           -- 1-5
     visibilitat_tasca BOOLEAN NOT NULL DEFAULT TRUE, -- Visible al cliente
+    estat             VARCHAR(40) NOT NULL,      -- Pendiente, en curso, etc.
+
     CONSTRAINT fk_tasca_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_tasca_pare
         FOREIGN KEY (id_tasca_pare) REFERENCES tasca(id)
-        ON DELETE SET NULL ON UPDATE CASCADE
+        ON DELETE SET NULL ON UPDATE CASCADE,
+
+    CONSTRAINT chk_tasca_estat
+        CHECK (estat IN (
+            'pendent',
+            'en_curs',
+            'finalitzada_pendent_revisio',
+            'finalitzada'
+        ))
 );
+CREATE INDEX idx_tasca_obra ON tasca (id_obra);
 
 -- 3B. Relación tarea-trabajador (N-a-N)
 CREATE TABLE tasca_treballador (

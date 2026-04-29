@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/treballador_models.dart';
-import 'package:front_end/screens/treballador/treballador_detail_screen.dart';
+import 'package:front_end/screens/empresa/treballador%20Empresa/treballador_detail_screen.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/widgets/treballador_widgets.dart';

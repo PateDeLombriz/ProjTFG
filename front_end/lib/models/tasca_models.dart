@@ -520,3 +520,36 @@ List<Map<String, dynamic>> _asList(dynamic value) {
       .whereType<Map<String, dynamic>>()
       .toList();
 }
+
+class TascaProfileCapabilities {
+  final bool canEdit;
+  final bool canDelete;
+  final bool canAssignWorkers;
+  final bool canComplete;
+  final bool canReportIncidencia;
+
+  const TascaProfileCapabilities({
+    required this.canEdit,
+    required this.canDelete,
+    required this.canAssignWorkers,
+    required this.canComplete,
+    required this.canReportIncidencia,
+  });
+
+  /// Capacitats per a empresa: accions de gestió completes.
+  const TascaProfileCapabilities.empresa()
+      : canEdit = true,
+        canDelete = true,
+        canAssignWorkers = true,
+        canComplete = false,
+        canReportIncidencia = false;
+
+  /// Capacitats per a treballador: accions d'execució (finalitzar + incidència).
+  const TascaProfileCapabilities.treballador()
+      : canEdit = false,
+        canDelete = false,
+        canAssignWorkers = false,
+        canComplete = true,
+        canReportIncidencia = true;
+}
+

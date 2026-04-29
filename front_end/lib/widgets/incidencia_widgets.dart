@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/tasca_models.dart';
-import 'package:front_end/screens/incidencia/incidenciaDetail_screen.dart';
+import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
 
 /* ─────────────────────── LLISTAT / FILTRES ─────────────────────── */
 

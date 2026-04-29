@@ -164,8 +164,7 @@ abstract class AppApiService {
         'La sessió actual no correspon a una empresa.',
       );
     }
-    final rawEmpresaId =
-        prefs.getString('id_empresa')?.trim() ??
+    final rawEmpresaId = prefs.getString('id_empresa')?.trim() ??
         prefs.getString('subject_id')?.trim();
 
     if (rawEmpresaId == null || rawEmpresaId.isEmpty) {
@@ -433,62 +432,93 @@ abstract class AppApiService {
     );
   }
 
-  /// DELETE que espera 204 No Content.
- // Future<void> deleteExpectNoContent(
- //   String path, {
- //   Map<String, String?>? queryParameters,
- //   int expectedStatus = 204,
- //   required String fallback,
- // }) async {
- //   final token = await requireAuthenticatedSession();
-//
- //   final response = await client.delete(
- //     buildUri(path, queryParameters: queryParameters),
- //     headers: authHeaders(token),
- //   );
-//
- //   if (response.statusCode != expectedStatus) {
- //     await _handleUnauthorizedIfNeeded(response.statusCode);
- //     _throwServiceException(
- //       extractErrorMessage(response, fallback: fallback),
- //       statusCode: response.statusCode,
- //       body: response.body,
- //     );
- //   }
- // }
+  Future<Map<String, dynamic>> patchJsonMap(
+    String path, {
+    required Object body,
+    Map<String, String?>? queryParameters,
+    int expectedStatus = 200,
+    required String fallback,
+    required String invalidResponseMessage,
+  }) async {
+    final token = await requireAuthenticatedSession();
 
- Future<void> deleteExpectNoContent(
-  String path, {
-  Map<String, String?>? queryParameters,
-  int expectedStatus = 204,
-  required String fallback,
-}) async {
-  final token = await requireAuthenticatedSession();
-  final uri = buildUri(path, queryParameters: queryParameters);
-  final headers = authHeaders(token);
+    final response = await client.patch(
+      buildUri(path, queryParameters: queryParameters),
+      headers: authHeaders(token),
+      body: jsonEncode(body),
+    );
 
-  print('DELETE URI: $uri');
-  print('TOKEN PRESENT: ${token.trim().isNotEmpty}');
-  print('AUTH HEADER PRESENT: ${headers.containsKey('Authorization')}');
-  print('AUTH HEADER PREFIX: ${headers['Authorization']?.split(' ').first}');
+    if (response.statusCode != expectedStatus) {
+      await _handleUnauthorizedIfNeeded(response.statusCode);
+      _throwServiceException(
+        extractErrorMessage(response, fallback: fallback),
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
 
-  final response = await client.delete(
-    uri,
-    headers: headers,
-  );
-
-  print('DELETE STATUS: ${response.statusCode}');
-  print('DELETE BODY: ${response.body}');
-
-  if (response.statusCode != expectedStatus) {
-    await _handleUnauthorizedIfNeeded(response.statusCode);
-    _throwServiceException(
-      extractErrorMessage(response, fallback: fallback),
-      statusCode: response.statusCode,
-      body: response.body,
+    return decodeObject(
+      response.body,
+      fallbackMessage: invalidResponseMessage,
     );
   }
-}
+
+  /// DELETE que espera 204 No Content.
+  // Future<void> deleteExpectNoContent(
+  //   String path, {
+  //   Map<String, String?>? queryParameters,
+  //   int expectedStatus = 204,
+  //   required String fallback,
+  // }) async {
+  //   final token = await requireAuthenticatedSession();
+//
+  //   final response = await client.delete(
+  //     buildUri(path, queryParameters: queryParameters),
+  //     headers: authHeaders(token),
+  //   );
+//
+  //   if (response.statusCode != expectedStatus) {
+  //     await _handleUnauthorizedIfNeeded(response.statusCode);
+  //     _throwServiceException(
+  //       extractErrorMessage(response, fallback: fallback),
+  //       statusCode: response.statusCode,
+  //       body: response.body,
+  //     );
+  //   }
+  // }
+
+  Future<void> deleteExpectNoContent(
+    String path, {
+    Map<String, String?>? queryParameters,
+    int expectedStatus = 204,
+    required String fallback,
+  }) async {
+    final token = await requireAuthenticatedSession();
+    final uri = buildUri(path, queryParameters: queryParameters);
+    final headers = authHeaders(token);
+
+    print('DELETE URI: $uri');
+    print('TOKEN PRESENT: ${token.trim().isNotEmpty}');
+    print('AUTH HEADER PRESENT: ${headers.containsKey('Authorization')}');
+    print('AUTH HEADER PREFIX: ${headers['Authorization']?.split(' ').first}');
+
+    final response = await client.delete(
+      uri,
+      headers: headers,
+    );
+
+    print('DELETE STATUS: ${response.statusCode}');
+    print('DELETE BODY: ${response.body}');
+
+    if (response.statusCode != expectedStatus) {
+      await _handleUnauthorizedIfNeeded(response.statusCode);
+      _throwServiceException(
+        extractErrorMessage(response, fallback: fallback),
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // DECODE / ERROR PARSING

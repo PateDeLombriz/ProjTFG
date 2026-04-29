@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/incidencia_models.dart';
-import 'package:front_end/screens/obra_screens/obra_profile_screen.dart';
-import 'package:front_end/screens/tasca_screens/tasca_detail_screen.dart';
+import 'package:front_end/screens/empresa/obra_screens/obra_profile_screen.dart';
+import 'package:front_end/screens/empresa/tasca_screens/tasca_detail_screen.dart';
 import 'package:front_end/services/incidencia_service.dart';
 import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/widgets/incidencia_widgets.dart';

@@ -35,6 +35,20 @@ class IncidenciaService extends AppApiService {
     );
   }
 
+
+   /// Crea una nova incidencia.
+  /// Per a treballadors: cal passar id_tasca (obligatori al backend).
+  /// Per a empreses: id_obra es opcional.
+  Future<Map<String, dynamic>> createIncidencia(Map<String, dynamic> payload) {
+    return postJsonMap(
+      '/incidencies/',
+      body: payload,
+      expectedStatus: 201,
+      fallback: 'Error creant la incidencia',
+      invalidResponseMessage: 'La resposta del servidor no es valida.',
+    );
+  }
+  
   Future<Map<String, dynamic>> updateIncidencia(
     int incidenciaId,
     Map<String, dynamic> payload,

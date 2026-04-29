@@ -1,22 +1,15 @@
 from django.urls import path
 from .views import (
-    # Obres
     ContracteTreballadorDetail, MeView, ObraDetail,
-    # Empresa / Treballador
-    EmpresaDetail, ObresListEmpresa, TasquesList,
-     TreballadorDetail, TreballadorEmpresaList, TreballadorProfileView,
-    # Altres entitats
-     UbicacioDetail,
-     PermisUsuariList, PermisUsuariDetail,
-    IncidenciaList, IncidenciaDetail,
-     TasquesDetail,
+    EmpresaDetail, ObresListEmpresa, RegistreHorariMeView, TasquesList,
+    TreballadorDetail, TreballadorEmpresaList, TreballadorMeObresParticipadesView, TreballadorMeTascaFinalitzarView, TreballadorMeTasquesView, TreballadorProfileView,
+    UbicacioDetail,PermisUsuariList, PermisUsuariDetail,IncidenciaList, IncidenciaDetail,TasquesDetail,
     RecursList, RecursDetail,
     SolucioList, SolucioDetail, SolucioBulkDeleteView,
     DocumentObraList, DocumentObraDetail,
     TascaTreballadorList, TascaTreballadorDetail, TascaTreballadorBulkDelete,
     SolRecursList, SolRecursDetail,
     ResponsableObraList,
-    TreballadorObresParticipadesView, TreballladorTasquesAssignadesView,
     LoginView,EmpresaRegisterView
 )
 
@@ -35,10 +28,12 @@ urlpatterns = [
     path('treballadors/<int:pk>/', TreballadorDetail.as_view(), name='treballador-detail'),
     path('treballadors/profile/<int:pk>/', TreballadorProfileView.as_view(), name='treballador-profile'),
     path('treballadors/empresa/<int:pk>/', TreballadorEmpresaList.as_view(), name='treballadors-empresa-list'),
-        # Vistes de conveniència per Treballador
-    path('treballadors/<int:treballador_id>/obres_participades/', TreballadorObresParticipadesView.as_view(), name='treballador-obres-participades'),
-    path('treballadors/<int:treballador_id>/tasques/', TreballladorTasquesAssignadesView.as_view(), name='treballador-tasques-assignades'),
-    
+    # Vistes me (treballador autenticat accedeix a les seves propies dades)
+    path('treballadors/me/tasques/', TreballadorMeTasquesView.as_view(), name='treballador-me-tasques'),
+    path('treballadors/me/obres_participades/', TreballadorMeObresParticipadesView.as_view(), name='treballador-me-obres'),
+    path('treballadors/me/registre_horari/', RegistreHorariMeView.as_view(), name='treballador-me-registre-horari'),
+    path('treballadors/me/tasques/<int:tasca_id>/finalitzar/', TreballadorMeTascaFinalitzarView.as_view(), name='treballador-me-tasca-finalitzar'),
+
         # id:TascaTreballador
     path('tasca_treballador/', TascaTreballadorList.as_view(), name='tascatreballador-list'),
     path('tasca_treballador/<int:pk>/', TascaTreballadorDetail.as_view(), name='tascatreballador-detail'),

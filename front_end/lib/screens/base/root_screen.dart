@@ -1,11 +1,6 @@
-// Aquesta pantalla (`RootScreen`) comprova si hi ha una sessió d’usuari activa utilitzant `SharedPreferences`.
-// Si hi ha un token i un rol guardats, redirigeix automàticament a la pantalla corresponent segons el rol ('empresa' o 'usuari').
-// Si no hi ha sessió iniciada, es mostra la `SplashScreen` com a pantalla de benvinguda.
-// Es fa servir un `FutureBuilder` per esperar l’accés a les preferències compartides i mostrar un indicador de càrrega mentrestant.
-
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/base/mainScaffold.dart';
-import 'package:front_end/screens/treballador/perfil_treb.dart';
+import 'package:front_end/screens/treballador/treballador_main_scaffold.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'splash_screen.dart';
 
@@ -15,13 +10,10 @@ class RootScreen extends StatelessWidget {
   Future<Map<String, dynamic>> getSessionInfo() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
-    final role = prefs.getString('tipus'); // 'empresa' o 'usuari'
-    
+    final role = prefs.getString('tipus');
+
     if (token != null && role != null) {
-      return {
-        'loggedIn': true,
-        'role': role,
-      };
+      return {'loggedIn': true, 'role': role};
     } else {
       return {'loggedIn': false};
     }
@@ -46,15 +38,9 @@ class RootScreen extends StatelessWidget {
         switch (session['role']) {
           case 'empresa':
             return const MainScaffold();
+          // CANVI 3: treballador → TreballadorMainScaffold
           case 'treballador':
-            final subjectId = session['subjectId'] as int?;
-            if (subjectId == null) {
-              return const SplashScreen();
-            }
-
-            return TreballadorProfileScreen(
-              treballadorId: subjectId,
-            );
+            return const TreballadorMainScaffold();
           default:
             return const SplashScreen();
         }

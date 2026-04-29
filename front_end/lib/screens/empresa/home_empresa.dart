@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/dialogs/notifications_dropdown.dart';
 import 'package:front_end/shared/Constants/api_constants.dart';
-import 'package:front_end/screens/obra_screens/obra_profile_screen.dart';
+import 'package:front_end/screens/empresa/obra_screens/obra_profile_screen.dart';
 import 'package:front_end/services/obra_service.dart';
 import 'package:front_end/widgets/empresa_widgets.dart';
 import 'package:front_end/dialogs/notifications_modal.dart';

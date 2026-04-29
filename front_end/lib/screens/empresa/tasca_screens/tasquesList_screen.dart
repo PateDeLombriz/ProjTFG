@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:front_end/screens/tasca_screens/tasca_detail_screen.dart';
+import 'package:front_end/screens/empresa/tasca_screens/tasca_detail_screen.dart';
 import 'package:front_end/services/tasques_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/widgets/tasca_widgets.dart';

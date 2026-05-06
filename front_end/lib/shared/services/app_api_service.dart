@@ -215,17 +215,17 @@ abstract class AppApiService {
   }
 
   /// Esborra la sessió guardada i invalida el token memorizat.
-  Future<void> clearStoredSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('access');
-    await prefs.remove('refresh');
-    await prefs.remove('session_token');
-    await prefs.remove('subject_id');
-    await prefs.remove('tipus');
-    await prefs.remove('id_empresa');
-    _validatedToken = null;
-  }
+  //Future<void> clearStoredSession() async {
+  //  final prefs = await SharedPreferences.getInstance();
+  //  await prefs.remove('token');
+  //  await prefs.remove('access');
+  //  await prefs.remove('refresh');
+  //  await prefs.remove('session_token');
+  //  await prefs.remove('subject_id');
+  //  await prefs.remove('tipus');
+  //  await prefs.remove('id_empresa');
+  //  _validatedToken = null;
+  //}
 
   // ---------------------------------------------------------------------------
   // CONSTRUCCIÓ D'URI I HEADERS
@@ -683,7 +683,7 @@ abstract class AppApiService {
 
   Future<void> _handleUnauthorizedIfNeeded(int statusCode) async {
     if (statusCode == 401 || statusCode == 403) {
-      await clearStoredSession();
+      //await clearStoredSession();
     }
   }
 

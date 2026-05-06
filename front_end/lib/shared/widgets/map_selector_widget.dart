@@ -1,198 +1,137 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:front_end/shared/services/geocoding_services.dart';
-import 'package:latlong2/latlong.dart';
-
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/shared/services/geocoding_services.dart';
+import 'package:front_end/shared/screen/map_selector_screen.dart';
+import 'package:latlong2/latlong.dart';
 
-class UbicacioSelectorScreen extends StatefulWidget {
-  const UbicacioSelectorScreen({
+class UbicacioMapPreview extends StatelessWidget {
+  const UbicacioMapPreview({
     super.key,
-    this.ubicacioInicial,
-    this.puntInicial,
-    this.centrePerDefecte = const LatLng(39.5696, 2.6502),
-    this.zoomInicial = 13,
+    required this.ubicacio,
+    this.height = 180,
+    this.zoomInicial = 14,
+    this.borderRadius = 18,
+    this.permetSeleccionarEnObrir = false,
+    this.onUbicacioSeleccionada,
   });
 
-  final ObraUbicacioInfo? ubicacioInicial;
-  final LatLng? puntInicial;
-  final LatLng centrePerDefecte;
+  final ObraUbicacioInfo? ubicacio;
+  final double height;
   final double zoomInicial;
+  final double borderRadius;
 
-  @override
-  State<UbicacioSelectorScreen> createState() => _UbicacioSelectorScreenState();
-}
+  /// false: si es toca el preview, obre pantalla només de visualització.
+  /// true: si es toca el preview, obre pantalla que permet seleccionar punt.
+  final bool permetSeleccionarEnObrir;
 
-class _UbicacioSelectorScreenState extends State<UbicacioSelectorScreen> {
-  LatLng? _puntSeleccionat;
-  ObraUbicacioInfo? _ubicacioSeleccionada;
-  String _resumAdreca = 'Toca el mapa per seleccionar una ubicació';
-  bool _carregantAdreca = false;
+  /// Només s’usa si permetSeleccionarEnObrir és true.
+  final ValueChanged<ObraUbicacioInfo>? onUbicacioSeleccionada;
 
-  @override
-  void initState() {
-    super.initState();
-    _configurarValorInicial();
+  LatLng? get _punt {
+    final lat = ubicacio?.latitud;
+    final lon = ubicacio?.longitud;
+
+    if (lat == null || lon == null) return null;
+
+    return LatLng(lat, lon);
   }
 
-  void _configurarValorInicial() {
-    final punt = widget.puntInicial;
-    final ubicacio = widget.ubicacioInicial;
+  String get _resumUbicacio {
+    final value = ubicacio;
+    if (value == null) return 'Ubicació no definida';
 
-    if (punt != null) {
-      _puntSeleccionat = punt;
-      _ubicacioSeleccionada = ubicacio ??
-          GeocodingService.fromCoordinates(
-            lat: punt.latitude,
-            lon: punt.longitude,
-          );
-
-      _resumAdreca = ubicacio != null
-          ? _resumDesDeUbicacio(ubicacio)
-          : 'Punt inicial carregat';
-      return;
-    }
-
-    if (ubicacio == null) return;
-
-    _resumAdreca = _resumDesDeUbicacio(ubicacio);
-
-    if (ubicacio.latitud != null && ubicacio.longitud != null) {
-      _puntSeleccionat = LatLng(
-        ubicacio.latitud!,
-        ubicacio.longitud!,
-      );
-      _ubicacioSeleccionada = ubicacio;
-    }
+    final resum = GeocodingService.buildAddressQuery(value);
+    return resum.isEmpty ? 'Ubicació sense adreça detallada' : resum;
   }
 
-  String _resumDesDeUbicacio(ObraUbicacioInfo ubicacio) {
-    final resum = GeocodingService.buildAddressQuery(ubicacio);
-    return resum.isEmpty ? 'Ubicació existent sense coordenades' : resum;
-  }
-
-  Future<void> _onTapMapa(LatLng punt) async {
-    setState(() {
-      _puntSeleccionat = punt;
-      _ubicacioSeleccionada = null;
-      _carregantAdreca = true;
-      _resumAdreca = 'Carregant adreça...';
-    });
-
-    final ubicacio = await GeocodingService.reverseGeocode(
-      punt.latitude,
-      punt.longitude,
+  Future<void> _obrirMapa(BuildContext context) async {
+    final selected = await Navigator.of(context).push<ObraUbicacioInfo>(
+      MaterialPageRoute(
+        builder: (_) => UbicacioSelectorScreen(
+          ubicacioInicial: ubicacio,
+          puntInicial: _punt,
+          zoomInicial: zoomInicial,
+          permetSeleccionar: permetSeleccionarEnObrir,
+        ),
+      ),
     );
 
-    if (!mounted) return;
-
-    final resolved = ubicacio ??
-        GeocodingService.fromCoordinates(
-          lat: punt.latitude,
-          lon: punt.longitude,
-        );
-
-    setState(() {
-      _ubicacioSeleccionada = resolved;
-      _carregantAdreca = false;
-      _resumAdreca = _resumDesDeUbicacio(resolved);
-    });
-  }
-
-  void _confirmarSeleccio() {
-    if (_ubicacioSeleccionada == null) return;
-    Navigator.of(context).pop(_ubicacioSeleccionada);
+    if (selected != null && permetSeleccionarEnObrir) {
+      onUbicacioSeleccionada?.call(selected);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final centre = _puntSeleccionat ?? widget.centrePerDefecte;
+    final scheme = Theme.of(context).colorScheme;
+    final punt = _punt;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Seleccionar ubicació'),
-      ),
-      body: SafeArea(
-        child: Column(
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(
           children: [
-            Expanded(
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: centre,
-                  initialZoom: widget.zoomInicial,
-                  onTap: (_, point) => _onTapMapa(point),
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.front_end',
-                  ),
-                  if (_puntSeleccionat != null)
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: _puntSeleccionat!,
-                          width: 40,
-                          height: 40,
-                          child: const Icon(
-                            Icons.location_pin,
-                            size: 40,
-                          ),
+            Positioned.fill(
+              child: punt == null
+                  ? _UbicacioMapPreviewEmptyState(
+                      message: permetSeleccionarEnObrir
+                          ? 'Toca per seleccionar una ubicació'
+                          : 'Aquesta obra no té coordenades',
+                    )
+                  : FlutterMap(
+                      options: MapOptions(
+                        initialCenter: punt,
+                        initialZoom: zoomInicial,
+
+                        /// Això és la clau:
+                        /// - tap simple: obre la pantalla completa
+                        /// - moure o fer zoom: queda com a mapa petit
+                        onTap: (_, __) => _obrirMapa(context),
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.front_end',
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: punt,
+                              width: 42,
+                              height: 42,
+                              child: Icon(
+                                Icons.location_pin,
+                                size: 42,
+                                color: scheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                ],
-              ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.place_outlined),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(_resumAdreca),
+            if (punt == null)
+              Positioned.fill(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _obrirMapa(context),
                   ),
-                ],
-              ),
-            ),
-            if (widget.ubicacioInicial != null &&
-                widget.ubicacioInicial!.latitud == null &&
-                widget.ubicacioInicial!.longitud == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'La ubicació existent no té coordenades. Toca el mapa per fixar-ne unes de noves.',
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel·lar'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: (_ubicacioSeleccionada == null || _carregantAdreca)
-                          ? null
-                          : _confirmarSeleccio,
-                      child: _carregantAdreca
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Utilitzar aquesta ubicació'),
-                    ),
-                  ),
-                ],
+            Positioned(
+              left: 10,
+              right: 10,
+              bottom: 10,
+              child: _UbicacioMapPreviewLabel(
+                text: _resumUbicacio,
+                icon: permetSeleccionarEnObrir
+                    ? Icons.edit_location_alt_outlined
+                    : Icons.open_in_full_rounded,
               ),
             ),
           ],
@@ -202,17 +141,97 @@ class _UbicacioSelectorScreenState extends State<UbicacioSelectorScreen> {
   }
 }
 
-Future<ObraUbicacioInfo?> mostrarSelectorUbicacio(
-  BuildContext context, {
-  ObraUbicacioInfo? ubicacioInicial,
-  LatLng? puntInicial,
-}) {
-  return Navigator.of(context).push<ObraUbicacioInfo>(
-    MaterialPageRoute(
-      builder: (_) => UbicacioSelectorScreen(
-        ubicacioInicial: ubicacioInicial,
-        puntInicial: puntInicial,
+class _UbicacioMapPreviewEmptyState extends StatelessWidget {
+  const _UbicacioMapPreviewEmptyState({
+    required this.message,
+  });
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      color: scheme.surfaceContainerHighest.withOpacity(0.65),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.map_outlined,
+            size: 36,
+            color: scheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _UbicacioMapPreviewLabel extends StatelessWidget {
+  const _UbicacioMapPreviewLabel({
+    required this.text,
+    required this.icon,
+  });
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surface.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 8,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 17,
+              color: scheme.primary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

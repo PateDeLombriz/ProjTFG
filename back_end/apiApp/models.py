@@ -282,21 +282,35 @@ class Contrasenya(models.Model):
         ]
 
 
+    """
+    Organitza els documents per obra.
+
+    Exemple:
+    media/documents_obra/obra_12/contracte.pdf
+    """
+def document_obra_upload_path(instance, filename):
+    
+    obra_id = instance.id_obra_id or 'sense_obra'
+    return f'documents_obra/obra_{obra_id}/{filename}'
+
+
 class DocumentObra(models.Model):
     id = models.AutoField(primary_key=True) 
     id_obra = models.ForeignKey(Obra, models.DO_NOTHING, related_name= 'documents', db_column='id_obra')
     id_creador = models.IntegerField( blank=False, null=False)  # Assuming this is a username or similar identifier
-    path_doc = models.TextField( null=False)  # Path to the file in the server
+    path_doc = models.FileField(upload_to=document_obra_upload_path, db_column='path_doc',max_length=255, null=False)  # Path to the file in the server
     format = models.CharField(max_length=40)
     mida = models.DecimalField(max_digits=6, decimal_places=2)  # Assuming size in MB
     comentari = models.TextField(blank=True, null=True)
-    data_pujada = models.DateTimeField()
+    data_pujada = models.DateTimeField(auto_now_add=True)
     tipus = models.CharField(max_length=40)
     #Ubicacio del fitxer potser sigui necesssari
     class Meta:
         managed = True
         db_table = 'document_obra'
 
+    def __str__(self):
+        return f'Document {self.id} - Obra {self.id_obra_id} - {self.path_doc.name}'
 
 class Incidencia(models.Model):
     id = models.AutoField(primary_key=True) 
@@ -383,6 +397,13 @@ class ResponsableObra(models.Model):
 
 #Solicitud de recurs per a una obra, pot ser per a una tasca concreta o no, i pot ser per a una incidencia concreta o no. Pot tenir un comentari i una data de necessitat, i opcionalment una data d'entrega i un proveïdor associat.
 class SolRecurs(models.Model):
+
+    ESTAT_SOL_RECURS = [
+        ('pendent', 'Pendent'),
+        ('aprovada', 'Aprovada'),
+        ('rebutjada', 'Rebutjada'),
+    ]
+
     id = models.AutoField(primary_key=True)
     id_empresa = models.ForeignKey(
         Empresa,
@@ -398,7 +419,9 @@ class SolRecurs(models.Model):
     data_entrega = models.DateField(blank=True, null=True)
     data_creacio = models.DateTimeField()
     proveidor = models.CharField(max_length=120, blank=True, null=True)
-
+    id_treballador =models.ForeignKey(Treballador, models.DO_NOTHING, null= True, blank=True, db_column='id_treballador')
+    estat=models.CharField(max_length=40, choices=ESTAT_SOL_RECURS, default='pendent')
+    
     class Meta:
         managed = True
         db_table = 'sol_recurs'
@@ -424,7 +447,7 @@ class Tasca(models.Model):
     ESTAT_TASCA = [
         ('pendent', 'Pendent'),
         ('en_curs', 'En curs'),
-        ('finalitzada_pendent_revisio', 'Finalitzada pendent de revisio'),
+        ('pendent_revisio', 'Pendent de revisió'),
         ('finalitzada', 'Finalitzada'),
     ]
 

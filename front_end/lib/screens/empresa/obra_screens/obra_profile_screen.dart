@@ -5,7 +5,7 @@ import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/responsable_models.dart';
 import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/tasca_models.dart';
-import 'package:front_end/screens/empresa/doc_form.dart';
+import 'package:front_end/screens/documents_obra_screen.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/recursos/solicRec_form.dart';
 import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
@@ -174,7 +174,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DocumentObraScreen(obraId: _obraId),
+        builder: (_) => DocumentsObraScreen(obraId: _obraId),
       ),
     );
   }
@@ -286,7 +286,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
   Future<void> _deleteDocument(DocumentObraItem item) {
     return _confirmDeleteItem(
       subjectLabel: 'document',
-      itemLabel: item.nom,
+      itemLabel: item.pathDoc,
     );
   }
 

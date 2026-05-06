@@ -18,9 +18,9 @@ class SolRecursService extends AppApiService {
     String? baseUrl,
     http.Client? client,
   }) : super(
-         baseUrl: baseUrl,
-         client: client,
-       );
+          baseUrl: baseUrl,
+          client: client,
+        );
 
   /// Converteix les excepcions genèriques de [AppApiService]
   /// en l'excepció pròpia del domini de sol·licituds de recursos.
@@ -36,31 +36,53 @@ class SolRecursService extends AppApiService {
   }
 
   // =========================
+  // ACCIONS D'ESTAT
+  // =========================
+
+  Future<Map<String, dynamic>> aprovarSolRecurs(int id, String estat) {
+    return _runMapped(
+      () => patchJsonMap(
+        '/sol_recurs/$id/',
+        body: {'estat': estat},
+        fallback: 'Error actualitzant la sol·licitud de recurs',
+        invalidResponseMessage: 'La resposta de la sol·licitud no és vàlida.',
+      ),
+    );
+  }
+
+  // =========================
   // LLISTA / DETALL
   // =========================
 
+  // -------------------------
+  // EMPRESA
+  // -------------------------
+
   /// Retorna la llista de sol·licituds de recursos visibles per a l’empresa.
   /// El backend ja filtra pel context autenticat i admet id_obra i id_recurs.
-  Future<SolRecursListData> fetchSolRecursData({
+  Future<SolRecursListData> fetchEmpresaSolRecursData({
     int? obraId,
     int? recursId,
   }) async {
-    final raw = await fetchSolRecursRaw(
+    await requireEmpresaId();
+
+    final raw = await fetchSolRecursEmpresaRaw(
       obraId: obraId,
       recursId: recursId,
     );
+
     return SolRecursListData.fromList(raw);
   }
 
-  /// Variant convenient que retorna només la llista tipada.
-  Future<List<SolRecurs>> fetchSolRecurs({
+  Future<List<SolRecurs>> fetchEmpresaSolRecurs({
     int? obraId,
     int? recursId,
   }) async {
-    final data = await fetchSolRecursData(
+    final data = await fetchEmpresaSolRecursData(
       obraId: obraId,
       recursId: recursId,
     );
+
     return data.sollicituds;
   }
 
@@ -69,27 +91,58 @@ class SolRecursService extends AppApiService {
   Future<SolRecursListData> fetchMyEmpresaSolRecursData({
     int? obraId,
     int? recursId,
-  }) async {
-    await requireEmpresaId();
-    return fetchSolRecursData(
+  }) {
+    return fetchEmpresaSolRecursData(
       obraId: obraId,
       recursId: recursId,
     );
   }
 
-  /// Retorna el detall tipat d’una sol·licitud concreta.
-  Future<SolRecurs> fetchSolRecursDetail(int solRecursId) async {
-    final raw = await fetchSolRecursDetailRaw(solRecursId);
-    return SolRecurs.fromMap(raw);
-  }
-
-  Future<List<Map<String, dynamic>>> fetchSolRecursRaw({
+  Future<List<Map<String, dynamic>>> fetchSolRecursEmpresaRaw({
     int? obraId,
     int? recursId,
   }) {
     return _runMapped(
       () => getJsonList(
         '/sol_recurs/',
+        queryParameters: {
+          if (obraId != null) 'id_obra': obraId.toString(),
+          if (recursId != null) 'id_recurs': recursId.toString(),
+        },
+        fallback: 'Error carregant les sol·licituds de recursos de l’empresa',
+        invalidResponseMessage:
+            'La resposta de les sol·licituds de recursos de l’empresa no és vàlida.',
+      ),
+    );
+  }
+
+  // -------------------------
+  // TREBALLADOR
+  // -------------------------
+
+  /// Retorna la llista de sol·licituds de recursos visibles per a l’empresa.
+  /// El backend ja filtra pel context autenticat i admet id_obra i id_recurs.
+  Future<SolRecursListData> fetchSolRecursTreballadorData({
+    int? obraId,
+    int? recursId,
+  }) async {
+    final raw = await fetchSolRecursTreballadorRaw(
+      //fetchSolRecursRaw
+      obraId: obraId,
+      recursId: recursId,
+    );
+
+    return SolRecursListData.fromList(raw);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchSolRecursTreballadorRaw({
+    //fetchSolRecursRaw
+    int? obraId,
+    int? recursId,
+  }) {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/me/sol_recurs/', //'/sol_recurs/',
         queryParameters: {
           if (obraId != null) 'id_obra': obraId.toString(),
           if (recursId != null) 'id_recurs': recursId.toString(),
@@ -101,6 +154,16 @@ class SolRecursService extends AppApiService {
     );
   }
 
+  // -------------------------
+  // DETALL
+  // -------------------------
+
+  /// Retorna el detall tipat d’una sol·licitud concreta.
+  Future<SolRecurs> fetchSolRecursDetail(int solRecursId) async {
+    final raw = await fetchSolRecursDetailRaw(solRecursId);
+    return SolRecurs.fromMap(raw);
+  }
+
   Future<Map<String, dynamic>> fetchSolRecursDetailRaw(int solRecursId) {
     return _runMapped(
       () => getJsonMap(
@@ -110,6 +173,28 @@ class SolRecursService extends AppApiService {
             'La resposta del detall de la sol·licitud no és vàlida.',
       ),
     );
+  }
+
+  // -------------------------
+  // ALIAS / COMPATIBILITAT
+  // -------------------------
+
+  /// Variant convenient que retorna només la llista tipada.
+  ///
+  /// IMPORTANT:
+  /// Es manté apuntant al flux de treballador perquè així funciona ara
+  /// la UI dels treballadors. Per a pantalles d'empresa, usa
+  /// [fetchEmpresaSolRecurs] o [fetchEmpresaSolRecursData].
+  Future<List<SolRecurs>> fetchSolRecurs({
+    int? obraId,
+    int? recursId,
+  }) async {
+    final data = await fetchSolRecursTreballadorData(
+      obraId: obraId,
+      recursId: recursId,
+    );
+
+    return data.sollicituds;
   }
 
   Future<List<SolRecurs>> fetchSolRecursByObra(int obraId) {

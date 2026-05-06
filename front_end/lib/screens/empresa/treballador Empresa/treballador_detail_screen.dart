@@ -1,12 +1,10 @@
 //Aquesta pantalla es la uqe es mostra desde una sessio de empresa
 //quant mira la informacio d'un treballador, es mostra el perfil del treballador, amb les seves dades i les seves obres associades
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/treballador_models.dart';
 import 'package:front_end/services/treballador_service.dart';
+import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/widgets/treballador_widgets.dart';
 
 class TreballadorDetailScreen extends StatefulWidget {
@@ -26,39 +24,40 @@ class _TreballadorDetailScreenState extends State<TreballadorDetailScreen> {
   late final TreballadorService _service;
   late Future<_TreballadorDetailBundle> _future;
 
-  static String get _apiBase {
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api';
-    }
-    return 'http://localhost:8000/api';
-  }
-
   @override
   void initState() {
     super.initState();
-    _service = TreballadorService(baseUrl: _apiBase);
+    _service = TreballadorService(baseUrl: ApiConstants.baseUrl);
     _future = _loadData();
   }
 
   Future<_TreballadorDetailBundle> _loadData() async {
-    final profileFuture = _service.fetchTreballadorProfile(widget.treballadorId);
     final detailFuture = _service.fetchTreballadorDetail(widget.treballadorId);
     final tasquesFuture = _service.fetchTreballadorTasques(widget.treballadorId);
     final obresFuture =
         _service.fetchTreballadorObresParticipades(widget.treballadorId);
 
     final results = await Future.wait<dynamic>([
-      profileFuture,
       detailFuture,
       tasquesFuture,
       obresFuture,
     ]);
 
+    final detail = Map<String, dynamic>.from(
+      results[0] as Map<String, dynamic>,
+    );
+    final tasques = (results[1] as List).cast<Map<String, dynamic>>();
+    final obres = (results[2] as List).cast<Map<String, dynamic>>();
+
     return _TreballadorDetailBundle(
-      profile: results[0] as TreballadorProfileData,
-      detail: results[1] as Map<String, dynamic>,
-      tasques: (results[2] as List).cast<Map<String, dynamic>>(),
-      obres: (results[3] as List).cast<Map<String, dynamic>>(),
+      profile: _buildProfileFromDetail(
+        detail: detail,
+        tasques: tasques,
+        obres: obres,
+      ),
+      detail: detail,
+      tasques: tasques,
+      obres: obres,
     );
   }
 
@@ -204,6 +203,47 @@ class _TreballadorDetailBundle {
     required this.tasques,
     required this.obres,
   });
+}
+
+TreballadorProfileData _buildProfileFromDetail({
+  required Map<String, dynamic> detail,
+  required List<Map<String, dynamic>> tasques,
+  required List<Map<String, dynamic>> obres,
+}) {
+  final contractes = _asMapList(detail['contractes']);
+  final contracteActual = _selectContracteActual(contractes);
+
+  final profileMap = <String, dynamic>{
+    ...detail,
+    'tasques_count': tasques.length,
+    'obres_count': obres.length,
+  };
+
+  if (contracteActual != null) {
+    profileMap['contracte_vigent'] = contracteActual;
+
+    final empresaActual = _textOrNull(contracteActual['empresa']);
+    if (empresaActual != null) {
+      profileMap['empresa_actual'] = empresaActual;
+    }
+  }
+
+  return TreballadorProfileData.fromMap(profileMap);
+}
+
+Map<String, dynamic>? _selectContracteActual(
+  List<Map<String, dynamic>> contractes,
+) {
+  if (contractes.isEmpty) return null;
+
+  for (final contracte in contractes) {
+    final estat = _textOrNull(contracte['estat'])?.toLowerCase();
+    if (estat == 'actiu' || estat == 'activa') {
+      return contracte;
+    }
+  }
+
+  return contractes.first;
 }
 
 class _TreballadorDetailLoadingView extends StatelessWidget {

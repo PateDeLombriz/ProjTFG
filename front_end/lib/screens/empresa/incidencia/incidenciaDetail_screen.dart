@@ -1,20 +1,55 @@
+// =============================================================================
+// FITXER: incidenciaDetail_screen_Modif_S6.dart
+// MODIFICA: front_end/lib/screens/incidencia/incidenciaDetail_screen.dart
+// =============================================================================
+//
+// PREREQUISIT: treballador_obra_info_screen.dart (S6) ja creat.
+//
+// CANVIS RESPECTE A LA VERSIÓ ACTUAL:
+//   CANVI 1 — Imports: afegir tasca_models.dart i treballador_obra_info_screen.dart
+//   CANVI 2 — IncidenciaProfileScreen: afegir paràmetre `workerView` (default false)
+//   CANVI 3 — _openObra: afegir paràmetre nomObra; en mode worker navega a
+//             TreballadorObraInfoScreen en comptes d'ObraProfileScreen
+//   CANVI 4 — _openTasca: en mode worker passa TascaProfileCapabilities.treballador()
+//   CANVI 5 — Callsite: _openObra ara rep obra.id i obra.nom
+//
+// L'empresa NO canvia: workerView per defecte és false, cap pantalla
+// d'empresa passa aquest paràmetre.
+//
+// ## QUÈ FA I PER A QUÈ SERVEIX
+// Permet reutilitzar IncidenciaProfileScreen per al treballador: l'obra
+// obre TreballadorObraInfoScreen i la tasca s'obre en mode treballador.
+// Per a: empresa (workerView: false) i treballador (workerView: true).
+// =============================================================================
+
+
+// =============================================================================
+// RESULTAT FINAL de incidenciaDetail_screen.dart (substitueix el fitxer sencer)
+// =============================================================================
+
 import 'package:flutter/material.dart';
 
+// CANVI 1 — imports nous
 import 'package:front_end/models/incidencia_models.dart';
+import 'package:front_end/models/obra_models.dart';
+import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/screens/empresa/obra_screens/obra_profile_screen.dart';
 import 'package:front_end/screens/empresa/tasca_screens/tasca_detail_screen.dart';
+import 'package:front_end/screens/treballador/treballador_obra_info_screen.dart';
 import 'package:front_end/services/incidencia_service.dart';
 import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/widgets/incidencia_widgets.dart';
-import 'package:front_end/services/obra_service.dart';
 
 class IncidenciaProfileScreen extends StatefulWidget {
   final int incidenciaId;
+  // CANVI 2 — paràmetre nou (default false: empresa sense canvis)
+  final bool workerView;
   final String baseUrl = ApiConstants.baseUrl;
 
   IncidenciaProfileScreen({
     super.key,
     required this.incidenciaId,
+    this.workerView = false,
   });
 
   @override
@@ -24,7 +59,7 @@ class IncidenciaProfileScreen extends StatefulWidget {
 
 class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
   late final IncidenciaService _service;
-  
+
   bool _loading = true;
   String? _error;
   IncidenciaProfileData? _profile;
@@ -102,7 +137,7 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
     final profile = _profile;
     if (profile == null) {
       return _IncidenciaErrorView(
-        message: 'No s’han pogut carregar les dades de la incidència.',
+        message: 'No s\'han pogut carregar les dades de la incidència.',
         onRetry: _load,
       );
     }
@@ -128,11 +163,12 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
           initiallyExpanded: true,
           child: obra == null
               ? const IncidenciaEmptyState(
-                  text: 'No s’ha trobat informació de l’obra associada.',
+                  text: 'No s\'ha trobat informació de l\'obra associada.',
                 )
               : IncidenciaObraCard(
                   obra: obra,
-                  onTap: () => _openObra(context, obra.id),
+                  // CANVI 5 — passa també obra.nom
+                  onTap: () => _openObra(context, obra.id, obra.nom),
                 ),
         ),
         const SizedBox(height: 14),
@@ -166,27 +202,41 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
     );
   }
 
-  void _openObra(BuildContext context, int obraId) async {
-    final os = ObraService(baseUrl: widget.baseUrl);
-    if (!mounted) return;
-
+  // CANVI 3 — branca worker navega a TreballadorObraInfoScreen
+  void _openObra(BuildContext context, int obraId, String nomObra) {
+    if (widget.workerView) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ObraProfileScreen(
-            obraId: obraId,
-            baseUrl: widget.baseUrl,
+          builder: (_) => TreballadorObraInfoScreen(
+            obra: Obra.fromMap({'id': obraId, 'nom': nomObra}),
           ),
         ),
       );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ObraProfileScreen(
+          obraId: obraId,
+          baseUrl: widget.baseUrl,
+        ),
+      ),
+    );
   }
 
+  // CANVI 4 — branca worker passa TascaProfileCapabilities.treballador()
   void _openTasca(BuildContext context, int tascaId) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => TascaDetailScreen(
           tascaId: tascaId,
+          capabilities: widget.workerView
+              ? const TascaProfileCapabilities.treballador()
+              : null,
         ),
       ),
     );
@@ -252,7 +302,7 @@ class _IncidenciaErrorView extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'No s’ha pogut carregar la incidència',
+                'No s\'ha pogut carregar la incidència',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: scheme.onSurface,
@@ -282,3 +332,7 @@ class _IncidenciaErrorView extends StatelessWidget {
     );
   }
 }
+
+// =============================================================================
+// FI DEL FITXER
+// =============================================================================

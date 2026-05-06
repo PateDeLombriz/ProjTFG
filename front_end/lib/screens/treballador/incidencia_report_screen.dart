@@ -102,12 +102,9 @@ class _IncidenciaReportScreenState extends State<IncidenciaReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // CANVI 1+2: sense backgroundColor explícit ni colors d'AppBar
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnDark,
-        elevation: 0,
         title: const Text('Reportar incidència'),
       ),
       body: Form(
@@ -124,9 +121,9 @@ class _IncidenciaReportScreenState extends State<IncidenciaReportScreen> {
               AppCard(
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.assignment_outlined,
-                      color: AppColors.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 18,
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -147,7 +144,10 @@ class _IncidenciaReportScreenState extends State<IncidenciaReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Descripció de la incidència', style: AppTextStyles.labelLarge),
+                  Text(
+                    'Descripció de la incidència',
+                    style: AppTextStyles.labelLarge,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   TextFormField(
                     controller: _descripcioCtrl,
@@ -233,7 +233,8 @@ class _IncidenciaReportScreenState extends State<IncidenciaReportScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
-              onPressed: _loading ? null : () => Navigator.of(context).pop(false),
+              onPressed:
+                  _loading ? null : () => Navigator.of(context).pop(false),
               child: const Text('Cancel·lar'),
             ),
           ],
@@ -242,3 +243,4 @@ class _IncidenciaReportScreenState extends State<IncidenciaReportScreen> {
     );
   }
 }
+

@@ -349,35 +349,30 @@ CREATE TABLE responsable_obra (
 
 -- 2C. Documentos asociados a la obra
 
--- **********COM AFEGIR ARXIUS A AQUESTA TAULA**********
-
--- La taula guarda només les dades (nom, tipus, descripció, ruta, etc.), però no 
--- el fitxer real dins la base de dades. Si vols que un document real (PDF, Word,
--- imatge…) estigui vinculat i accessible des d’una app, el que normalment es fa 
---és guardar el document en un sistema d’arxius (filesystem) o en un sistema 
--- d’emmagatzematge (com Amazon S3, Google Cloud Storage, o una carpeta del servidor)
---, i la taula SQL guarda només la “ruta” o “URL” al fitxer.
---
 CREATE TABLE document_obra (
-    id           SERIAL PRIMARY KEY,        -- PK autoincremental
-    id_obra      INTEGER NOT NULL,          -- FK → obra.id
-    id_creador   INTEGER NOT NULL,          -- Usuario o no usuario que sube el doc
-    path_doc     TEXT NOT NULL,                 -- Ruta + nom fins al fitxer dins el servidor Back End.
-    format       VARCHAR(40)  NOT NULL,     -- PDF, DWG, etc.
-    mida         NUMERIC(6,2)      NOT NULL,     -- Tamaño (MB)
-    comentari    TEXT         NULL,         -- Comentario opcional
-    data_pujada  TIMESTAMP    NOT NULL,     -- Fecha de subida
-    tipus        VARCHAR(40)  NOT NULL,     -- Plano, informe…
+    id           SERIAL PRIMARY KEY,            -- PK autoincremental
+    id_obra      INTEGER NOT NULL,              -- FK → obra.id
+    id_creador   INTEGER NOT NULL,              -- Usuari/subjecte que puja el document
+    path_doc     VARCHAR(255) NOT NULL,         -- Ruta relativa dins MEDIA_ROOT.
+    format       VARCHAR(40)  NOT NULL,         -- PDF, DWG, XLSX, JPG, etc.
+    mida         NUMERIC(8,2) NOT NULL,         -- Mida en MB
+    comentari    TEXT         NULL,             -- Comentari opcional
+    data_pujada  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    tipus        VARCHAR(40)  NOT NULL,         -- Pla, informe, pressupost, certificat...
+
     CONSTRAINT fk_doc_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
-        ON DELETE NO ACTION ON UPDATE CASCADE
+        ON DELETE NO ACTION
+        ON UPDATE CASCADE
 );
--- Índice para listar docs por obra
-CREATE INDEX idx_doc_obra ON document_obra (id_obra);
 
+-- Índex per listar documents per obra
+CREATE INDEX idx_doc_obra ON document_obra (id_obra);
 /*=============================================================
 =  3.  TAREAS, INCIDENTES Y SOLUCIONES                        =
 =============================================================*/
+/* cicle de la tasca : pendent_revisio, solicitada, finalitzada. */
+create type estat_tasca_enum as enum ('pendent_revisio','cancelada','en_curs','finalitzada','aprovada');
 -- 3A. Tareas de la obra (estructura jerárquica opcional)
 CREATE TABLE tasca (
     id                SERIAL PRIMARY KEY,         -- PK autoincremental
@@ -388,7 +383,7 @@ CREATE TABLE tasca (
     data_fi           DATE    NULL,               -- Fin real
     prioritat         INTEGER NOT NULL,           -- 1-5
     visibilitat_tasca BOOLEAN NOT NULL DEFAULT TRUE, -- Visible al cliente
-    estat             VARCHAR(40) NOT NULL,      -- Pendiente, en curso, etc.
+    estat             estat_tasca_enum NOT NULL, -- Pendiente, en curso, etc.
 
     CONSTRAINT fk_tasca_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
@@ -399,10 +394,11 @@ CREATE TABLE tasca (
 
     CONSTRAINT chk_tasca_estat
         CHECK (estat IN (
-            'pendent',
+            'pendent_revisio',
             'en_curs',
-            'finalitzada_pendent_revisio',
-            'finalitzada'
+            'finalitzada',
+            'cancelada',
+            'aprovada'
         ))
 );
 CREATE INDEX idx_tasca_obra ON tasca (id_obra);
@@ -479,6 +475,9 @@ CREATE TABLE recurs (
     tipus_recurs   VARCHAR(60) NOT NULL     -- Material, equipo…
 );
 
+--Aqui es defineixen els estats de les sol.licituds de recurs, per a que hi hagi un control de les diferents fases del procés de sol.licitud, aprovació i entrega.
+CREATE TYPE estat_sol_recurs AS ENUM ('pendent', 'aprovada', 'rebutjada');
+
 -- 4B. Solicitudes de recurso por obra
 CREATE TABLE sol_recurs (
     id               SERIAL PRIMARY KEY,   -- PK autoincremental
@@ -491,6 +490,13 @@ CREATE TABLE sol_recurs (
     data_entrega     DATE    NULL,         -- Entregado el…
     data_creacio     TIMESTAMP NOT NULL,   -- Creado el…
     proveidor        VARCHAR(120) NULL,    -- Proveedor asignado
+    id_treballador   INTEGER NULL,         -- Trabajador asignado a gestionar la solicitud
+    estat            estat_sol_recurs NOT NULL, -- Pendiente, aprobada, rechazada…
+
+    CONSTRAINT fk_sr_treballador
+        FOREIGN KEY (id_treballador) REFERENCES treballador(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+
     CONSTRAINT fk_sr_empresa
         FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
         ON DELETE CASCADE ON UPDATE CASCADE,
@@ -515,4 +521,29 @@ SELECT i.*, o.nom AS obra
 FROM incidencia i
 JOIN obra o ON o.id = i.id_obra
 WHERE i.estat <> 'TANCADA';
+
+/* ─────────────────────────
+   REGISTRE HORARI
+   ───────────────────────── */
  
+CREATE TABLE registre_horari (
+    id SERIAL PRIMARY KEY,
+
+    id_treballador INTEGER NOT NULL,
+    id_obra INTEGER NULL,
+
+    data_entrada TIMESTAMPTZ NOT NULL,
+    data_sortida TIMESTAMPTZ NULL,
+
+    CONSTRAINT fk_registre_horari_treballador
+        FOREIGN KEY (id_treballador)
+        REFERENCES treballador(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_registre_horari_obra
+        FOREIGN KEY (id_obra)
+        REFERENCES obra(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+);

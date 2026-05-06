@@ -151,7 +151,7 @@ class ObraService extends AppApiService {
         }
 
         if (response.statusCode == 401 || response.statusCode == 403) {
-          await clearStoredSession();
+    
           throw ObraServiceException(
             extractErrorMessage(
               response,
@@ -235,9 +235,6 @@ class ObraService extends AppApiService {
         return null;
       }
 
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        await clearStoredSession();
-      }
 
       throw ObraServiceException(
         extractErrorMessage(

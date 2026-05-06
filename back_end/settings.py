@@ -2,7 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 import os
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent#.parent
 
 # Secret key: fail-fast
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
@@ -115,5 +115,10 @@ USE_TZ = True
 AUTH_USER_MODEL= 'apiApp.Usuari'# Necessari per utilitzar simpleJwt
 
 STATIC_URL = 'static/'
+
+# Fitxers pujats pels usuaris: documents, imatges, evidències, etc.
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/services/obra_service.dart';
 import 'package:front_end/shared/Constants/api_constants.dart';
-import 'package:front_end/shared/widgets/map_selector_widget.dart';
+import 'package:front_end/shared/screen/map_selector_screen.dart';
 import 'package:front_end/widgets/obra_widgets.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';

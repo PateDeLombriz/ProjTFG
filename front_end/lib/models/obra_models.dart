@@ -5,6 +5,7 @@ import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/responsable_models.dart';
 import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/tasca_models.dart';
+import 'package:latlong2/latlong.dart';
 
 class Obra {
   final int id;
@@ -293,6 +294,13 @@ class ObraUbicacioInfo {
     };
   }
 
+  LatLng  getLatLng() {
+    if (latitud != null && longitud != null) {
+      return LatLng(latitud!, longitud!);
+    }
+    return const LatLng(0, 0);
+  }
+  
   bool get hasVisualData =>
       displayLabel.isNotEmpty || latitud != null || longitud != null;
 

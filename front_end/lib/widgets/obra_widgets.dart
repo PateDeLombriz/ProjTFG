@@ -6,11 +6,11 @@ import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/responsable_models.dart';
 import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/screens/documents_obra_screen.dart';
 import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
 import 'package:front_end/screens/empresa/tasca_screens/tasca_detail_screen.dart';
 import 'package:front_end/screens/empresa/treballador%20Empresa/treballador_detail_screen.dart';
-import 'package:front_end/shared/constants/api_constants.dart';
-import 'package:front_end/shared/widgets/map_selector_widget.dart';
+import 'package:front_end/shared/screen/map_selector_screen.dart';
 import 'package:front_end/utils/obra_feedback.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:front_end/shared/services/geocoding_services.dart';
@@ -887,17 +887,19 @@ class ObraDocumentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final open = onTap ??
         () {
-          Navigator.pushNamed(
-            context,
-            '/documentView',
-            arguments: document.id,
-          );
+          Navigator.push(
+  context,
+    MaterialPageRoute(
+      builder: (_) => DocumentsObraScreen(
+          obraId: document.idObra,
+      ),
+    ),
+    );
         };
-
     return _ObraDataCard(
       accent: Colors.blueGrey,
       icon: Icons.description_outlined,
-      title: document.nom,
+      title: document.pathDoc,
       lines: [
         'Format: ${_displayText(document.format)}',
         'Mida: ${_formatFileSizeMb(document.mida)}',
@@ -1343,6 +1345,7 @@ class _ObraTag extends StatelessWidget {
     );
   }
 }
+
 
 List<String> _buildLocationLines(ObraUbicacioInfo? info) {
   if (info == null) {

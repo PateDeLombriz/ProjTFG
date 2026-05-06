@@ -1,8 +1,9 @@
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:front_end/services/treballador_service.dart';
-import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/shared/themes/app_colors.dart';
 import 'package:front_end/shared/themes/app_spacing.dart';
 import 'package:front_end/shared/themes/app_text_styles.dart';
@@ -34,7 +35,10 @@ class _FinalitzarTascaScreenState extends State<FinalitzarTascaScreen> {
   bool _loading = false;
   String? _error;
 
-  static final String _apiBase = ApiConstants.baseUrl;
+  static String get _apiBase {
+    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    return 'http://localhost:8000/api';
+  }
 
   @override
   void initState() {
@@ -73,12 +77,9 @@ class _FinalitzarTascaScreenState extends State<FinalitzarTascaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // CANVI 1+2: sense backgroundColor explícit ni colors d'AppBar
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnDark,
-        elevation: 0,
         title: const Text('Finalitzar tasca'),
       ),
       body: Padding(
@@ -115,7 +116,7 @@ class _FinalitzarTascaScreenState extends State<FinalitzarTascaScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'Estàs a punt de marcar la tasca com a finalitzada pendent de revisió:',
+                    "Estàs a punt de marcar la tasca com a finalitzada pendent de revisió:",
                     style: AppTextStyles.bodyMedium,
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -137,7 +138,7 @@ class _FinalitzarTascaScreenState extends State<FinalitzarTascaScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'L\'empresa haurà de revisar i aprovar la finalització.',
+                    "L'empresa haurà de revisar i aprovar la finalització.",
                     style: AppTextStyles.bodySmall,
                   ),
                 ],
@@ -171,7 +172,8 @@ class _FinalitzarTascaScreenState extends State<FinalitzarTascaScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
-              onPressed: _loading ? null : () => Navigator.of(context).pop(false),
+              onPressed:
+                  _loading ? null : () => Navigator.of(context).pop(false),
               child: const Text('Cancel·lar'),
             ),
           ],
@@ -180,3 +182,4 @@ class _FinalitzarTascaScreenState extends State<FinalitzarTascaScreen> {
     );
   }
 }
+

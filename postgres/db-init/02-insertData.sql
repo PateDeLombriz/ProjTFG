@@ -202,79 +202,85 @@ VALUES
 /* ────────────────
    TASCA (igual)
    ──────────────── */
-INSERT INTO tasca (id_obra, id_tasca_pare, descripcio, data_inici, data_fi, prioritat, visibilitat_tasca,estat) VALUES
-(1, NULL, 'Preparació fonament',                   '2024-07-02', NULL, 1, TRUE, 'en_curs'),
-(1, 1,    'Col·locació armadures',                 '2024-07-03', NULL, 2, TRUE, 'en_curs'),
+INSERT INTO tasca
+(id, id_obra, id_tasca_pare, descripcio, data_inici, data_fi, prioritat, visibilitat_tasca, estat) VALUES
+(1,  1, NULL, 'Preparació fonament',                   '2024-07-02', NULL,         1, TRUE, 'en_curs'),
+(2,  1, 1,    'Col·locació armadures',                 '2024-07-03', NULL,         2, TRUE, 'en_curs'),
 
-(2, NULL, 'Excavació de terreny',                  '2024-05-21', NULL, 1, TRUE, 'en_curs'),
-(2, 3,    'Nivellació de base',                    '2024-05-22', NULL, 2, TRUE, 'en_curs'),
+(3,  2, NULL, 'Excavació de terreny',                  '2024-05-21', NULL,         1, TRUE, 'en_curs'),
+(4,  2, 3,    'Nivellació de base',                    '2024-05-22', NULL,         2, TRUE, 'en_curs'),
 
-(3, NULL, 'Tall de paviment existent',             '2024-04-02', '2024-04-03', 2, TRUE, 'finalitzada'),
-(3, 5,    'Retirada de peces malmeses',            '2024-04-03', '2024-04-05', 2, TRUE, 'finalitzada'),
-(3, 5,    'Preparació de base de grava',           '2024-04-06', '2024-04-08', 1, TRUE, 'finalitzada'),
+(5,  3, NULL, 'Tall de paviment existent',             '2024-04-02', '2024-04-03', 2, TRUE, 'finalitzada'),
+(6,  3, 5,    'Retirada de peces malmeses',            '2024-04-03', '2024-04-05', 2, TRUE, 'finalitzada'),
+(7,  3, 5,    'Preparació de base de grava',           '2024-04-06', '2024-04-08', 1, TRUE, 'finalitzada'),
 
-(4, NULL, 'Demolició envans interiors',            '2024-06-16', NULL, 2, TRUE, 'en_curs'),
-(4, 8,    'Desmuntatge d’aparells sanitaris',      '2024-06-16', NULL, 2, TRUE, 'en_curs'),
-(4, 8,    'Substitució de paviment interior',      '2024-06-20', NULL, 2, TRUE, 'en_curs'),
-(4, 8,    'Anivellat de solera interior',          '2024-06-20', NULL, 1, TRUE, 'en_curs'),
+(8,  4, NULL, 'Demolició envans interiors',            '2024-06-16', NULL,         2, TRUE, 'en_curs'),
+(9,  4, 8,    'Desmuntatge d’aparells sanitaris',      '2024-06-16', NULL,         2, TRUE, 'cancelada'),
+(10, 4, 8,    'Substitució de paviment interior',      '2024-06-20', NULL,         2, TRUE, 'en_curs'),
+(11, 4, 8,    'Anivellat de solera interior',          '2024-06-20', NULL,         1, TRUE, 'en_curs'),
 
-(5, NULL, 'Replanteig d’aules noves',              '2024-07-02', NULL, 1, TRUE, 'en_curs'),
-(5, 12,   'Marcatge de divisòries interiors',      '2024-07-02', NULL, 2, TRUE, 'en_curs'),
-(5, 12,   'Instal·lació de fals sostre',           '2024-07-10', NULL, 2, TRUE, 'en_curs'),
-(5, 12,   'Col·locació de perfileria metàl·lica',  '2024-07-10', NULL, 2, TRUE, 'en_curs'),
+(12, 5, NULL, 'Replanteig d’aules noves',              '2024-07-02', NULL,         1, TRUE, 'en_curs'),
+(13, 5, 12,   'Marcatge de divisòries interiors',      '2024-07-02', NULL,         2, TRUE, 'en_curs'),
+(14, 5, 12,   'Instal·lació de fals sostre',           '2024-07-10', NULL,         2, TRUE, 'pendent_revisio'),
+(15, 5, 12,   'Col·locació de perfileria metàl·lica',  '2024-07-10', NULL,         2, TRUE, 'en_curs'),
 
-(6, NULL, 'Picat de revestiment exterior',         '2024-05-11', '2024-05-14', 2, TRUE, 'finalitzada'),
-(6, 16,   'Neteja de superfície de façana',        '2024-05-15', '2024-05-16', 2, TRUE, 'finalitzada'),
-(6, 16,   'Aplicació de morter monocapa',          '2024-05-18', '2024-05-24', 1, TRUE, 'finalitzada'),
+(16, 6, NULL, 'Picat de revestiment exterior',         '2024-05-11', '2024-05-14', 2, TRUE, 'finalitzada'),
+(17, 6, 16,   'Neteja de superfície de façana',        '2024-05-15', '2024-05-16', 2, TRUE, 'finalitzada'),
+(18, 6, 16,   'Aplicació de morter monocapa',          '2024-05-18', '2024-05-24', 1, TRUE, 'finalitzada'),
 
-(7, NULL, 'Moviment de terres inicial',            '2024-09-02', NULL, 1, TRUE, 'en_curs'),
-(7, 19,   'Compactació del terreny',               '2024-09-04', NULL, 1, TRUE, 'en_curs'),
-(7, 19,   'Execució de sabates aïllades',          '2024-09-06', NULL, 1, TRUE, 'en_curs'),
-(7, 19,   'Col·locació de ferralla en fonament',   '2024-09-07', NULL, 1, TRUE, 'en_curs'),
+(19, 7, NULL, 'Moviment de terres inicial',            '2024-09-02', NULL,         1, TRUE, 'en_curs'),
+(20, 7, 19,   'Compactació del terreny',               '2024-09-04', NULL,         1, TRUE, 'en_curs'),
+(21, 7, 19,   'Execució de sabates aïllades',          '2024-09-06', NULL,         1, TRUE, 'en_curs'),
+(22, 7, 19,   'Col·locació de ferralla en fonament',   '2024-09-07', '2024-09-09', 1, TRUE, 'pendent_revisio'),
 
-(8, NULL, 'Obertura de rasa principal',            '2024-06-06', NULL, 1, TRUE, 'en_curs'),
-(8, 23,   'Col·locació de tubs de drenatge',       '2024-06-08', NULL, 1, TRUE, 'en_curs'),
-(8, 23,   'Reposició de paviment afectat',         '2024-06-20', NULL, 2, TRUE, 'en_curs'),
+(23, 8, NULL, 'Obertura de rasa principal',            '2024-06-06', NULL,         1, TRUE, 'cancelada'),
+(24, 8, 23,   'Col·locació de tubs de drenatge',       '2024-06-08', NULL,         1, TRUE, 'en_curs'),
+(25, 8, 23,   'Reposició de paviment afectat',         '2024-06-20', NULL,         2, TRUE, 'pendent_revisio'),
 
-(9, NULL, 'Desmuntatge de cuines antigues',        '2024-04-21', '2024-04-23', 2, TRUE, 'finalitzada'),
-(9, 26,   'Retirada d’electrodomèstics vells',     '2024-04-21', '2024-04-22', 3, TRUE, 'finalitzada'),
-(9, 26,   'Pintura interior d’apartaments',        '2024-06-10', '2024-06-20', 2, TRUE, 'finalitzada'),
+(26, 9, NULL, 'Desmuntatge de cuines antigues',        '2024-04-21', '2024-04-23', 2, TRUE, 'finalitzada'),
+(27, 9, 26,   'Retirada d’electrodomèstics vells',     '2024-04-21', '2024-04-22', 3, TRUE, 'finalitzada'),
+(28, 9, 26,   'Pintura interior d’apartaments',        '2024-06-10', '2024-06-20', 2, TRUE, 'finalitzada'),
 
-(10, NULL,'Excavació per ampliació de nau',        '2024-08-13', NULL, 1, TRUE, 'en_curs'),
-(10, 29,  'Formació de rampa de càrrega',          '2024-08-16', NULL, 2, TRUE, 'en_curs'),
-(10, 29,  'Muntatge d’estructura metàl·lica',      '2024-08-22', NULL, 1, TRUE, 'en_curs'),
-(10, 29,  'Soldadura de jàsseres principals',      '2024-08-24', NULL, 1, TRUE, 'en_curs'),
+(29, 10, NULL,'Excavació per ampliació de nau',        '2024-08-13', NULL,         1, TRUE, 'en_curs'),
+(30, 10, 29,  'Formació de rampa de càrrega',          '2024-08-16', NULL,         2, TRUE, 'en_curs'),
+(31, 10, 29,  'Muntatge d’estructura metàl·lica',      '2024-08-22', NULL,         1, TRUE, 'cancelada'),
+(32, 10, 29,  'Soldadura de jàsseres principals',      '2024-08-24', '2024-08-28', 1, TRUE, 'pendent_revisio'),
 
-(11, NULL,'Desbrossament de marge de camí',        '2024-03-19', '2024-03-21', 2, TRUE, 'finalitzada'),
-(11, 33,  'Retirada de pedres grans',              '2024-03-20', '2024-03-22', 2, TRUE, 'finalitzada'),
-(11, 33,  'Estesa de capa granular',               '2024-04-01', '2024-04-05', 1, TRUE, 'finalitzada'),
+(33, 11, NULL,'Desbrossament de marge de camí',        '2024-03-19', '2024-03-21', 2, TRUE, 'finalitzada'),
+(34, 11, 33,  'Retirada de pedres grans',              '2024-03-20', '2024-03-22', 2, TRUE, 'finalitzada'),
+(35, 11, 33,  'Estesa de capa granular',               '2024-04-01', '2024-04-05', 1, TRUE, 'finalitzada'),
 
-(12, NULL,'Enderroc de fals sostre antic',         '2024-07-23', NULL, 2, TRUE, 'en_curs'),
-(12, 36,  'Recollida de residus interiors',        '2024-07-24', NULL, 2, TRUE, 'en_curs'),
-(12, 36,  'Col·locació d’enrajolat nou',           '2024-08-05', NULL, 2, TRUE, 'en_curs'),
-(12, 36,  'Tall de peces per cantonades',          '2024-08-06', NULL, 3, TRUE, 'en_curs'),
+(36, 12, NULL,'Enderroc de fals sostre antic',         '2024-07-23', NULL,         2, TRUE, 'en_curs'),
+(37, 12, 36,  'Recollida de residus interiors',        '2024-07-24', NULL,         2, TRUE, 'en_curs'),
+(38, 12, 36,  'Col·locació d’enrajolat nou',           '2024-08-05', NULL,         2, TRUE, 'en_curs'),
+(39, 12, 36,  'Tall de peces per cantonades',          '2024-08-06', '2024-08-07', 3, TRUE, 'pendent_revisio'),
 
-(13, NULL,'Replanteig de camins interiors',        '2024-05-28', NULL, 2, TRUE, 'en_curs'),
-(13, 40,  'Excavació de rases per reg',            '2024-05-30', NULL, 2, TRUE, 'en_curs'),
-(13, 40,  'Col·locació de mobiliari urbà',         '2024-08-12', NULL, 3, TRUE, 'en_curs'),
+(40, 13, NULL,'Replanteig de camins interiors',        '2024-05-28', NULL,         2, TRUE, 'en_curs'),
+(41, 13, 40,  'Excavació de rases per reg',            '2024-05-30', NULL,         2, TRUE, 'en_curs'),
+(42, 13, 40,  'Col·locació de mobiliari urbà',         '2024-08-12', NULL,         3, TRUE, 'pendent_revisio'),
 
-(14, NULL,'Reforç de bigues de fusta',             '2024-06-04', NULL, 1, TRUE, 'en_curs'),
-(14, 43,  'Tractament protector de fusta',         '2024-06-06', NULL, 2, TRUE, 'en_curs'),
-(14, 43,  'Reposició de coberta inclinada',        '2024-07-01', NULL, 1, TRUE, 'en_curs'),
+(43, 14, NULL,'Reforç de bigues de fusta',             '2024-06-04', NULL,         1, TRUE, 'en_curs'),
+(44, 14, 43,  'Tractament protector de fusta',         '2024-06-06', NULL,         2, TRUE, 'en_curs'),
+(45, 14, 43,  'Reposició de coberta inclinada',        '2024-07-01', NULL,         1, TRUE, 'pendent_revisio'),
 
-(15, NULL,'Formació de vorades per aparcament',    '2024-09-16', NULL, 2, TRUE, 'en_curs'),
-(15, 46,  'Col·locació de rigoles de drenatge',    '2024-09-18', NULL, 1, TRUE, 'en_curs'),
-(15, 46,  'Pavimentació de zona d’estacionament',  '2024-10-02', NULL, 1, TRUE, 'en_curs'),
+(46, 15, NULL,'Formació de vorades per aparcament',    '2024-09-16', NULL,         2, TRUE, 'en_curs'),
+(47, 15, 46,  'Col·locació de rigoles de drenatge',    '2024-09-18', NULL,         1, TRUE, 'en_curs'),
+(48, 15, 46,  'Pavimentació de zona d’estacionament',  '2024-10-02', NULL,         1, TRUE, 'pendent_revisio'),
 
-(16, NULL,'Demolició de particions interiors',     '2024-10-02', NULL, 2, TRUE, 'en_curs'),
-(16, 49,  'Retirada selectiva de ferralla',        '2024-10-03', NULL, 2, TRUE, 'en_curs'),
-(16, 49,  'Renovació d’enllumenat exterior',       '2024-11-10', NULL, 2, TRUE, 'en_curs'),
+(49, 16, NULL,'Demolició de particions interiors',     '2024-10-02', NULL,         2, TRUE, 'en_curs'),
+(50, 16, 49,  'Retirada selectiva de ferralla',        '2024-10-03', NULL,         2, TRUE, 'en_curs'),
+(51, 16, 49,  'Renovació d’enllumenat exterior',       '2024-11-10', NULL,         2, TRUE, 'pendent_revisio'),
 
-(17, NULL,'Desmuntatge de portes antigues',        '2024-05-15', '2024-05-16', 2, TRUE, 'finalitzada'),
-(17, 52,  'Instal·lació de portes noves',          '2024-06-01', '2024-06-03', 2, TRUE, 'finalitzada'),
+(52, 17, NULL,'Desmuntatge de portes antigues',        '2024-05-15', '2024-05-16', 2, TRUE, 'finalitzada'),
+(53, 17, 52,  'Instal·lació de portes noves',          '2024-06-01', '2024-06-03', 2, TRUE, 'finalitzada'),
 
-(18, NULL,'Muntatge de prestatgeries fixes',       '2024-08-02', NULL, 3, TRUE, 'en_curs'),
-(18, 54,  'Ancoratge de mobiliari a paret',        '2024-08-03', NULL, 2, TRUE, 'en_curs');
+(54, 18, NULL,'Muntatge de prestatgeries fixes',       '2024-08-02', NULL,         3, TRUE, 'en_curs'),
+(55, 18, 54,  'Ancoratge de mobiliari a paret',        '2024-08-03', NULL,         2, TRUE, 'en_curs');
+
+SELECT setval(
+  'tasca_id_seq',
+  (SELECT MAX(id) FROM tasca)
+);
 /* ───────────────────────────────
    TASCA_TREBALLADOR (igual concept)
    ─────────────────────────────── */
@@ -442,11 +448,17 @@ INSERT INTO contrasenya
 /* ───────────────────────────
    DOCUMENT_OBRA (coherent ara)
    ─────────────────────────── */
-INSERT INTO document_obra (id_obra, id_creador, path_doc, format, mida, comentari, data_pujada, tipus) VALUES
-  (1, 1, 'back_end/media/documents/obra2/plano_fonament.pdf',     'PDF',  2.3, 'Plànol fonaments',     '2024-06-15 10:00:00', 'Pla'),
-  (2, 2, 'back_end/media/documents/obra3/certificat_energia.pdf', 'PDF',  0.7, 'Certificat energètic', '2024-06-25 09:00:00', 'Informe'),
-  (3, 1, 'back_end/media/documents/obra4/pressupost_final.xlsx',  'XLSX', 0.2, 'Pressupost final',     '2024-07-01 11:00:00', 'Pressupost');
+INSERT INTO document_obra
+    (id_obra, id_creador, path_doc, format, mida, comentari, tipus)
+VALUES
+    (1, 1, 'documents_obra/obra_1/plano_fonament.pdf',
+        'PDF',  2.30, 'Plànol fonaments',     'Pla'),
 
+    (2, 2, 'documents_obra/obra_2/certificat_energia.pdf',
+        'PDF',  0.70, 'Certificat energètic', 'Informe'),
+
+    (3, 1, 'documents_obra/obra_3/pressupost_final.xlsx',
+        'XLSX', 0.20, 'Pressupost final',     'Pressupost');
 /* ────────────────
    INCIDENCIA (igual)
    ──────────────── */
@@ -634,65 +646,71 @@ INSERT INTO responsable_obra (id_obra, id_treballador, data_inici, data_fi) VALU
 /* ────────────────
    SOL_RECURS (igual)
    ──────────────── */
-INSERT INTO sol_recurs (id_obra, id_empresa, id_recurs, quantitat, data_necessitat, comentari, data_entrega, data_creacio, proveidor) VALUES
-  (1, 1, 1,  15,   '2024-07-02', 'Necessari per fonaments', NULL,         '2024-06-25 08:00:00', 'Formigons Balears'),
-  (2, 2, 2,   1,   '2024-06-10', 'Per començar estructura', '2024-06-12', '2024-06-01 10:00:00', 'Maquinària Mallorquina'),
-  (3, 1, 3, 5000,  '2024-04-15', 'Primera fase obra',       '2024-04-16', '2024-04-10 09:00:00', 'Totxos SA'),
-  (1, 1, 4, 1200, '2024-07-06', 'Acer per reforç estructural interior',         '2024-07-05', '2024-07-01 08:15:00', 'Aceros Mallorca'),
-  (1, 1, 6,   80, '2024-07-07', 'Morter per envans i reparacions',               NULL,         '2024-07-02 09:00:00', 'Materials Serra'),
+INSERT INTO sol_recurs
+(id_obra, id_empresa, id_recurs, quantitat, data_necessitat, comentari, data_entrega, data_creacio, proveidor, id_treballador, estat) VALUES
+  (1, 1, 1,  15,   '2024-07-02', 'Necessari per fonaments', NULL,         '2024-06-25 08:00:00', 'Formigons Balears',        1, 'pendent'),
+  (2, 2, 2,   1,   '2024-06-10', 'Per començar estructura', '2024-06-12', '2024-06-01 10:00:00', 'Maquinària Mallorquina',  2, 'aprovada'),
+  (3, 1, 3, 5000,  '2024-04-15', 'Primera fase obra',       '2024-04-16', '2024-04-10 09:00:00', 'Totxos SA',                3, 'aprovada'),
+  (1, 1, 4, 1200,  '2024-07-06', 'Acer per reforç estructural interior', '2024-07-05', '2024-07-01 08:15:00', 'Aceros Mallorca', 1, 'aprovada'),
+  (1, 1, 6,   80,  '2024-07-07', 'Morter per envans i reparacions', NULL, '2024-07-02 09:00:00', 'Materials Serra',          NULL, 'pendent'),
 
-  (4, 1, 8,   60, '2024-06-22', 'Plaques per divisòries noves',                  '2024-06-21', '2024-06-18 10:20:00', 'Pladur Illes'),
-  (4, 1, 24,  20, '2024-06-25', 'Interruptors per banys reformats',              NULL,         '2024-06-19 11:10:00', 'Electricitat Balear'),
+  (4, 1, 8,   60,  '2024-06-22', 'Plaques per divisòries noves', '2024-06-21', '2024-06-18 10:20:00', 'Pladur Illes',       4, 'aprovada'),
+  (4, 1, 24,  20,  '2024-06-25', 'Interruptors per banys reformats', NULL, '2024-06-19 11:10:00', 'Electricitat Balear',     NULL, 'pendent'),
 
-  (5, 2, 8,  140, '2024-07-11', 'Plaques per sostres i divisions interiors',     '2024-07-10', '2024-07-04 08:30:00', 'Pladur Illes'),
-  (5, 2, 23,  35, '2024-07-08', 'Caixes d’empalme per aules noves',              '2024-07-07', '2024-07-03 09:15:00', 'Subministres Tècnics'),
+  (5, 2, 8,  140,  '2024-07-11', 'Plaques per sostres i divisions interiors', '2024-07-10', '2024-07-04 08:30:00', 'Pladur Illes', 2, 'aprovada'),
+  (5, 2, 23,  35,  '2024-07-08', 'Caixes d’empalme per aules noves', '2024-07-07', '2024-07-03 09:15:00', 'Subministres Tècnics', 2, 'aprovada'),
 
-  (6, 3, 14, 110, '2024-05-20', 'Pintura exterior per façana principal',         '2024-05-19', '2024-05-15 08:45:00', 'Pintures Mediterrània'),
-  (6, 3, 31, 120, '2024-05-12', 'Bastida per rehabilitació de façana',           '2024-05-11', '2024-05-08 12:00:00', 'Lloguers Bastida'),
+  (6, 3, 14, 110,  '2024-05-20', 'Pintura exterior per façana principal', '2024-05-19', '2024-05-15 08:45:00', 'Pintures Mediterrània', 5, 'aprovada'),
+  (6, 3, 31, 120,  '2024-05-12', 'Bastida per rehabilitació de façana', '2024-05-11', '2024-05-08 12:00:00', 'Lloguers Bastida', 5, 'aprovada'),
 
-  (7, 1, 1,  90, '2024-09-08', 'Formigó per sabates i fonamentació',            NULL,         '2024-09-02 08:00:00', 'Formigons Balears'),
-  (7, 1, 4,2200, '2024-09-07', 'Ferralla per estructura de fonament',           '2024-09-06', '2024-09-03 09:40:00', 'Aceros Mallorca'),
+  (7, 1, 1,   90,  '2024-09-08', 'Formigó per sabates i fonamentació', NULL, '2024-09-02 08:00:00', 'Formigons Balears', 1, 'pendent'),
+  (7, 1, 4, 2200,  '2024-09-07', 'Ferralla per estructura de fonament', '2024-09-06', '2024-09-03 09:40:00', 'Aceros Mallorca', 1, 'aprovada'),
 
-  (8, 4, 20, 300, '2024-06-08', 'Tub PVC per drenatge principal',                '2024-06-07', '2024-06-05 08:20:00', 'Canalitzacions Maó'),
-  (8, 4, 33,   1, '2024-06-06', 'Excavadora per rasa principal',                 '2024-06-06', '2024-06-02 10:00:00', 'Maquinària Mallorquina'),
+  (8, 4, 20, 300,  '2024-06-08', 'Tub PVC per drenatge principal', '2024-06-07', '2024-06-05 08:20:00', 'Canalitzacions Maó', 6, 'aprovada'),
+  (8, 4, 33,   1,  '2024-06-06', 'Excavadora per rasa principal', '2024-06-06', '2024-06-02 10:00:00', 'Maquinària Mallorquina', 6, 'aprovada'),
 
-  (9, 4, 13, 180, '2024-06-10', 'Pintura blanca per apartaments',                '2024-06-09', '2024-06-01 09:00:00', 'Pintures Mediterrània'),
-  (9, 4, 28,  12, '2024-05-02', 'Portes interiors per habitatges reformats',     NULL,         '2024-04-27 08:50:00', 'Fusteria Levante'),
+  (9, 4, 13, 180,  '2024-06-10', 'Pintura blanca per apartaments', '2024-06-09', '2024-06-01 09:00:00', 'Pintures Mediterrània', 6, 'aprovada'),
+  (9, 4, 28,  12,  '2024-05-02', 'Portes interiors per habitatges reformats', NULL, '2024-04-27 08:50:00', 'Fusteria Levante', NULL, 'rebutjada'),
 
-  (10, 3, 40,  1, '2024-08-23', 'Soldadora per estructura metàl·lica',           '2024-08-22', '2024-08-18 11:30:00', 'Industrial Solda'),
-  (10, 3, 35,  1, '2024-08-20', 'Camió bolquet per retirada de terres',          '2024-08-20', '2024-08-14 07:45:00', 'Transports Illes'),
+  (10, 3, 40, 1,   '2024-08-23', 'Soldadora per estructura metàl·lica', '2024-08-22', '2024-08-18 11:30:00', 'Industrial Solda', 5, 'aprovada'),
+  (10, 3, 35, 1,   '2024-08-20', 'Camió bolquet per retirada de terres', '2024-08-20', '2024-08-14 07:45:00', 'Transports Illes', 5, 'aprovada'),
 
-  (11, 2, 3,  35, '2024-04-01', 'Grava per millora del ferm del camí',          '2024-03-30', '2024-03-25 10:10:00', 'Àrids Tramuntana'),
-  (11, 2, 49,  6, '2024-03-19', 'Carretons per suport a brigada',               '2024-03-18', '2024-03-16 08:00:00', 'Eines i Obra SL'),
+  (11, 2, 3,  35,  '2024-04-01', 'Grava per millora del ferm del camí', '2024-03-30', '2024-03-25 10:10:00', 'Àrids Tramuntana', 2, 'aprovada'),
+  (11, 2, 49, 6,   '2024-03-19', 'Carretons per suport a brigada', '2024-03-18', '2024-03-16 08:00:00', 'Eines i Obra SL', 2, 'aprovada'),
 
-  (12, 1, 11, 140, '2024-08-05', 'Rajoles per local comercial',                  NULL,         '2024-07-28 09:35:00', 'Ceràmiques Palma'),
-  (12, 1, 16,  25, '2024-07-30', 'Silicona de remat i juntes',                   '2024-07-29', '2024-07-24 08:25:00', 'Materials Serra'),
+  (12, 1, 11, 140, '2024-08-05', 'Rajoles per local comercial', NULL, '2024-07-28 09:35:00', 'Ceràmiques Palma', NULL, 'pendent'),
+  (12, 1, 16, 25,  '2024-07-30', 'Silicona de remat i juntes', '2024-07-29', '2024-07-24 08:25:00', 'Materials Serra', 1, 'aprovada'),
 
-  (13, 5, 50,  10, '2024-08-10', 'Escales per muntatge de mobiliari urbà',       '2024-08-09', '2024-08-02 09:20:00', 'Eines i Obra SL'),
-  (13, 5, 9,  300, '2024-06-01', 'Aïllament per elements de jardineria tècnica', NULL,         '2024-05-29 10:00:00', 'Aïllaments Balears'),
+  (13, 5, 50, 10,  '2024-08-10', 'Escales per muntatge de mobiliari urbà', '2024-08-09', '2024-08-02 09:20:00', 'Eines i Obra SL', 7, 'aprovada'),
+  (13, 5, 9,  300, '2024-06-01', 'Aïllament per elements de jardineria tècnica', NULL, '2024-05-29 10:00:00', 'Aïllaments Balears', NULL, 'pendent'),
 
-  (14, 6, 18,  20, '2024-06-05', 'Bigues de fusta per reforç interior',          '2024-06-04', '2024-06-01 08:40:00', 'Fustes Sóller'),
-  (14, 6, 29,   8, '2024-07-03', 'Finestres d’alumini per rehabilitació',        NULL,         '2024-06-25 11:15:00', 'Aluminis Costa'),
+  (14, 6, 18, 20,  '2024-06-05', 'Bigues de fusta per reforç interior', '2024-06-04', '2024-06-01 08:40:00', 'Fustes Sóller', 8, 'aprovada'),
+  (14, 6, 29, 8,   '2024-07-03', 'Finestres d’alumini per rehabilitació', NULL, '2024-06-25 11:15:00', 'Aluminis Costa', NULL, 'pendent'),
 
-  (15, 5, 12, 260, '2024-10-02', 'Paviment porcelànic per aparcament',           NULL,         '2024-09-24 09:05:00', 'Paviments Balears');
-/* ────────────────
-   SOLUCIO (igual)
-   ──────────────── */
-INSERT INTO solucio (id_incidencia, id_tasca, descripcio, cost_monetari, eficacia, cost_temporal, impacte) VALUES
-  (1, 1,   'Canvi de proveïdor formigó',         500, 4, 5, 6),
-  (2, NULL,'Reparació i segellat parets',       1200, 5, 8, 7),
-  (3, 3,   'Demora acceptada; ampliació termini',   0, 3, 2, 4),
-  (3, 3,    'Demora acceptada; ampliació termini',                     0,    3,  2, 4),
-  (5, 4,    'Retirada de runa i habilitació de contenidor extra',      180, 1, 49, 1),
-  (6, 11,   'Reajust i reforç dels ancoratges de bastida',             350, 1, 31, 19),
-  (8, 15,   'Aportació extra de grava i recompactició del tram',       420, 2, 5, 2),
-  (9, 16,   'Desviament de canonada i actualització del replanteig',   650, 5, 20, 19),
-  (11, 20,  'Correcció de replanteig i remarcació de divisòries',      140, 4, 45, 16),
-  (12, 26,  'Reaplicació de morter i protecció de la façana afectada', 390, 3, 6, 1),
-  (15, 32,  'Buidatge de rasa, bombeig i reposició de drenatge',       560, 4, 20, 2),
-  (16, 36,  'Repintat complet amb un únic lot de pintura',             275, 5, 13, 16),
-  (18, 43,  'Substitució del material granular i estesa controlada',   460, 3, 3, 2),
-  (20, 49,  'Desviament de conducció existent i protecció del traçat', 980, 4, 33, 16);
+  (15, 5, 12, 260, '2024-10-02', 'Paviment porcelànic per aparcament', NULL, '2024-09-24 09:05:00', 'Paviments Balears', NULL, 'pendent');
+   
+   
+   /*SOLUCIO (igual)
+  ─────────────────*/
+  INSERT INTO solucio (id_incidencia, id_tasca, descripcio, cost_monetari, eficacia, cost_temporal, impacte) VALUES
+    (1, 1,   'Canvi de proveïdor formigó',         500, 4, 5, 6),
+    (2, NULL,'Reparació i segellat parets',       1200, 5, 8, 7),
+    (3, 3,   'Demora acceptada; ampliació termini',   0, 3, 2, 4),
+    (3, 3,    'Demora acceptada; ampliació termini',                     0,    3,  2, 4),
+    (5, 4,    'Retirada de runa i habilitació de contenidor extra',      180, 1, 49, 1),
+    (6, 11,   'Reajust i reforç dels ancoratges de bastida',             350, 1, 31, 19),
+    (8, 15,   'Aportació extra de grava i recompactició del tram',       420, 2, 5, 2),
+    (9, 16,   'Desviament de canonada i actualització del replanteig',   650, 5, 20, 19),
+    (11, 20,  'Correcció de replanteig i remarcació de divisòries',      140, 4, 45, 16),
+    (12, 26,  'Reaplicació de morter i protecció de la façana afectada', 390, 3, 6, 1),
+    (15, 32,  'Buidatge de rasa, bombeig i reposició de drenatge',       560, 4, 20, 2),
+    (16, 36,  'Repintat complet amb un únic lot de pintura',             275, 5, 13, 16),
+    (18, 43,  'Substitució del material granular i estesa controlada',   460, 3, 3, 2),
+    (20, 49,  'Desviament de conducció existent i protecció del traçat', 980, 4, 33, 16);
+    SELECT setval(
+    'registre_horari_id_seq',
+    (SELECT MAX(id) FROM registre_horari)
+  );
 
 /* ─────────────────────────
    VERIFICACIO (abans id_usuari)
@@ -705,6 +723,25 @@ INSERT INTO verificacio
   (4, 'OK',      '2024-06-07', 'token_menorca_321',       '2024-06-06 12:15:00'),
   (5, 'PENDENT', NULL,         'token_eivissa_654',       '2024-06-07 16:40:00'),
   (6, 'OK',      '2024-06-09', 'token_formentera_987',    '2024-06-08 08:50:00');   
+  SELECT setval(
+  'verificacio_id_seq',
+  (SELECT MAX(id_empresa) FROM verificacio)
+);
+
+
+INSERT INTO registre_horari
+(id, id_treballador, id_obra, data_entrada, data_sortida) VALUES
+  (1, 1, 1, '2026-04-28 07:55:00+02', '2026-04-28 16:10:00+02'),
+  (2, 2, 1, '2026-04-28 08:03:00+02', '2026-04-28 15:58:00+02'),
+  (3, 1, 2, '2026-04-29 07:50:00+02', '2026-04-29 16:05:00+02'),
+  (4, 3, 2, '2026-04-30 08:00:00+02', NULL);
+
+
+/* Sincronitza la seqüència si has inserit IDs manualment */
+SELECT setval(
+  'registre_horari_id_seq',
+  (SELECT MAX(id) FROM registre_horari)
+);
 
 
 /* (Opcional però recomanat si has fixat IDs manualment)

@@ -345,10 +345,16 @@ class SolRecursListItemCard extends StatelessWidget {
   final SolRecurs sollicitud;
   final VoidCallback? onTap;
 
+  // CANVI S7 — paràmetres opcionals d'aprovació
+  final VoidCallback? onAprovar;
+  final VoidCallback? onRebutjar;
+
   const SolRecursListItemCard({
     super.key,
     required this.sollicitud,
     this.onTap,
+    this.onAprovar,
+    this.onRebutjar,
   });
 
   @override
@@ -356,6 +362,7 @@ class SolRecursListItemCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final accentColor = _accentColor(context);
     final backgroundColor = _backgroundColor(context);
+    final hasActions = onAprovar != null || onRebutjar != null;
 
     return Material(
       color: Colors.transparent,
@@ -406,10 +413,7 @@ class SolRecursListItemCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _SolRecursStatusChip(
-                          label: sollicitud.estatLabel,
-                          color: accentColor,
-                        ),
+                        _SolRecursAprovacioChip(sollicitud: sollicitud),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -446,7 +450,8 @@ class SolRecursListItemCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     _SolRecursMetaRow(
                       icon: Icons.event_available_outlined,
-                      label: 'Necessitat: ${sollicitud.dataNecessitat != null ? sollicitud.dataNecessitat!.toLocal().toString().split(' ')[0] : 'Sense data'}',
+                      label:
+                          'Necessitat: ${sollicitud.dataNecessitat != null ? sollicitud.dataNecessitat!.toLocal().toString().split(' ')[0] : 'Sense data'}',
                     ),
                     const SizedBox(height: 6),
                     _SolRecursMetaRow(
@@ -457,7 +462,7 @@ class SolRecursListItemCard extends StatelessWidget {
                           ? 'Entrega: ${sollicitud.dataEntrega!.toLocal().toString().split(' ')[0]}'
                           : 'Creat: ${sollicitud.dataCreacio!.toLocal().toString().split(' ')[0]}',
                     ),
-                    if (sollicitud.hasComentari) ...[  
+                    if (sollicitud.hasComentari) ...[
                       const SizedBox(height: 10),
                       Text(
                         (sollicitud.comentari ?? '').length > 60
@@ -470,6 +475,43 @@ class SolRecursListItemCard extends StatelessWidget {
                           fontSize: 13,
                           height: 1.35,
                         ),
+                      ),
+                    ],
+                    // CANVI S7 — botons d'aprovació per a sol·licituds pendents
+                    if (hasActions) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          if (onRebutjar != null)
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.close, size: 16),
+                                label: const Text('Rebutja'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: scheme.error,
+                                  side: BorderSide(
+                                      color: scheme.error.withOpacity(0.5)),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8),
+                                ),
+                                onPressed: onRebutjar,
+                              ),
+                            ),
+                          if (onRebutjar != null && onAprovar != null)
+                            const SizedBox(width: 8),
+                          if (onAprovar != null)
+                            Expanded(
+                              child: FilledButton.icon(
+                                icon: const Icon(Icons.check, size: 16),
+                                label: const Text('Aprova'),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8),
+                                ),
+                                onPressed: onAprovar,
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ],
@@ -511,6 +553,52 @@ class SolRecursListItemCard extends StatelessWidget {
     return accent.withOpacity(0.09);
   }
 }
+
+// CANVI S7 — Xip d'estat d'aprovació (pendent / aprovada / rebutjada)
+// Afegeix aquesta classe privada al final del fitxer, just abans de la darrera }
+// (o en qualsevol lloc entre les classes privades existents)
+
+class _SolRecursAprovacioChip extends StatelessWidget {
+  final SolRecurs sollicitud;
+
+  const _SolRecursAprovacioChip({required this.sollicitud});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Color color;
+    String label;
+
+    switch (sollicitud.estat) {
+      case 'aprovada':
+        color = Colors.green;
+        label = 'Aprovada';
+      case 'rebutjada':
+        color = scheme.error;
+        label = 'Rebutjada';
+      default:
+        color = Colors.amber.shade700;
+        label = 'Pendent';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 
 class SolRecursListEmptyState extends StatelessWidget {
   final String title;

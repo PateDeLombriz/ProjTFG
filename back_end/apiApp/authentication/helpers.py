@@ -6,7 +6,10 @@ from ..models import (
     Empresa,
     ContracteTreballador,
     ObraEmpresa,
+    PermisTreballador,
+    ResponsableObra,
     SolRecurs,
+    TascaTreballador,
 )
 # ───────────────────────────────────────────────
 # Helpers
@@ -27,6 +30,167 @@ def _is_contracte_vigent(c):
 def _get_auth_context(request):
     return request.auth["tipus"], int(request.auth["subject_id"])
 
+# ───────────────────────────────────────────────
+# Helpers genèrics per subjecte: empresa / treballador
+# ───────────────────────────────────────────────
+
+def _treballador_te_acces_a_obra(treballador_id, obra_id):
+    """
+    Un treballador té accés a una obra si:
+      - té qualque tasca assignada dins aquella obra
+      - o és responsable d'aquella obra
+
+    Aquesta regla és la base perquè els treballadors puguin veure
+    documents de les obres on participen.
+    """
+    obra_id = int(obra_id)
+    treballador_id = int(treballador_id)
+
+    te_tasca_assignada = TascaTreballador.objects.filter(
+        id_treballador_id=treballador_id,
+        id_tasca__id_obra_id=obra_id,
+    ).exists()
+
+    if te_tasca_assignada:
+        return True
+
+    es_responsable = ResponsableObra.objects.filter(
+        id_treballador_id=treballador_id,
+        id_obra_id=obra_id,
+    ).exists()
+
+    return es_responsable
+
+
+def _treballador_accessible_obra_ids(treballador_id):
+    """
+    Retorna ids d'obres accessibles per un treballador.
+
+    Fonts d'accés:
+      - tasques assignades
+      - responsable_obra
+    """
+    treballador_id = int(treballador_id)
+
+    obra_ids_tasques = TascaTreballador.objects.filter(
+        id_treballador_id=treballador_id,
+    ).values_list(
+        'id_tasca__id_obra_id',
+        flat=True,
+    )
+
+    obra_ids_responsable = ResponsableObra.objects.filter(
+        id_treballador_id=treballador_id,
+    ).values_list(
+        'id_obra_id',
+        flat=True,
+    )
+
+    return list(set(list(obra_ids_tasques) + list(obra_ids_responsable)))
+
+
+def _subject_te_acces_a_obra(subject_type, subject_id, obra_id):
+    """
+    Comprova accés a obra per qualsevol subjecte autenticat.
+    """
+    if subject_type == "empresa":
+        return _empresa_te_acces_a_obra(subject_id, obra_id)
+
+    if subject_type == "treballador":
+        return _treballador_te_acces_a_obra(subject_id, obra_id)
+
+    return False
+
+
+def _assert_subject_can_access_obra(request, obra_id):
+    """
+    Valida que el subjecte autenticat pugui accedir a l'obra.
+    Funciona tant per empresa com per treballador.
+    """
+    subject_type, subject_id = _get_auth_context(request)
+
+    if not _subject_te_acces_a_obra(subject_type, subject_id, int(obra_id)):
+        raise PermissionDenied("No pots accedir a aquesta obra.")
+
+    return subject_type, subject_id
+
+
+def _subject_accessible_obra_ids(request):
+    """
+    Retorna les obres accessibles segons el subjecte autenticat.
+    """
+    subject_type, subject_id = _get_auth_context(request)
+
+    if subject_type == "empresa":
+        return list(_empresa_accessible_obra_ids(subject_id))
+
+    if subject_type == "treballador":
+        return _treballador_accessible_obra_ids(subject_id)
+
+    return []
+
+
+def _assert_query_obra_in_subject_context(request, obra_id):
+    """
+    Versió genèrica de _assert_query_obra_in_context.
+    No assumeix que el subjecte sigui empresa.
+    """
+    return _assert_subject_can_access_obra(request, int(obra_id))
+
+
+def _assert_subject_can_access_document_obra(request, doc):
+    """
+    Valida accés al document a partir de l'obra associada.
+    """
+    return _assert_subject_can_access_obra(request, doc.id_obra_id)
+
+
+def _assert_subject_can_modify_document_obra(request, doc):
+    """
+    Regla recomanada:
+      - Empresa: pot modificar documents de les seves obres.
+      - Treballador: només pot modificar documents creats per ell.
+    """
+    subject_type, subject_id = _get_auth_context(request)
+
+    _assert_subject_can_access_document_obra(request, doc)
+
+    if subject_type == "empresa":
+        return subject_id
+
+    if subject_type == "treballador" and int(doc.id_creador) == int(subject_id):
+        return subject_id
+
+    raise PermissionDenied("No pots modificar aquest document.")
+
+
+def _check_treballador_permis(treballador_id, clau_funcional):
+    """
+    Valida que el treballador tingui escriptura=True per a clau_funcional.
+
+    Fallback: si el treballador no té cap PermisTreballador configurat
+    (taula buida per a ell), es concedeix l'accés per mantenir paritat
+    amb AppCapabilities.workerDefaults() al frontend.
+
+    Llança PermissionDenied si el permís existeix però escriptura=False.
+    """
+    te_algun_permis = PermisTreballador.objects.filter(
+        id_treballador_id=treballador_id
+    ).exists()
+
+    if not te_algun_permis:
+        return  # Fallback: sense configuració → accés concedit (workerDefaults)
+
+    te_permis_escriptura = PermisTreballador.objects.filter(
+        id_treballador_id=treballador_id,
+        id_permis__clau_funcional=clau_funcional,
+        escriptura=True,
+    ).exists()
+
+    if not te_permis_escriptura:
+        raise PermissionDenied(
+            f"No tens permís per a l'acció '{clau_funcional}'."
+        )
 
 def _assert_empresa_subject(request):
     subject_type, subject_id = _get_auth_context(request)

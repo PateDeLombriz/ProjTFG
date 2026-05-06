@@ -1,3 +1,4 @@
+import 'package:front_end/services/treballador_service.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:front_end/models/tasca_models.dart';
@@ -53,6 +54,21 @@ class TascaService extends AppApiService {
         invalidResponseMessage: 'La resposta de la tasca no és vàlida.',
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> fetchTascaTreballadorsRaw(int tascaId) {
+    return _runMapped(
+      () => getJsonMap(
+        '/tasca_treballador/$tascaId/',
+        fallback: 'Error carregant la tasca',
+        invalidResponseMessage: 'La resposta de la tasca no és vàlida.',
+      ),
+    );
+   
+  }
+   Future<TascaProfileData> fetchTascaTreballadorProfile(int tascaId) async {
+    final raw = await fetchTascaTreballadorsRaw(tascaId);
+    return TascaProfileData.fromMap(raw);
   }
 
   // ──────────────────── LLISTAT ────────────────────
@@ -118,21 +134,23 @@ class TascaService extends AppApiService {
   });
 }
 
-  Future<List<UsuariOption>> fetchTreballadors() async {
-    int idEmpresa = await requireEmpresaId();
+  Future<List<UsuariOption>> fetchTreballadors() {
   return _runMapped(() async {
-    final list = await getJsonList(
-      '/treballadors/empresa/$idEmpresa/',
-      fallback: 'Error carregant els treballadors',
-      invalidResponseMessage: 'La resposta dels treballadors no és vàlida.',
+    final idEmpresa = await requireEmpresaId();
+
+    final treballadorService = TreballadorService(
+      baseUrl: baseUrl,
+      client: client,
     );
 
-    return list
+    final treballadors = await treballadorService.fetchTreballadorsEmpresa(idEmpresa);
+
+    return treballadors
         .map(
-          (e) => UsuariOption(
-            id: _asInt(e['id']) ?? 0,
-            nom: (e['nom'] ?? '—').toString(),
-            cognoms: (e['cognoms'] ?? '').toString(),
+          (t) => UsuariOption(
+            id: t.id,
+            nom: t.nom,
+            cognoms: t.cognoms ?? '',
           ),
         )
         .where((u) => u.id != 0)

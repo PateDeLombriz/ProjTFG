@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/services/tasques_service.dart';
+import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/widgets/tasca_widgets.dart';
 
@@ -23,6 +24,7 @@ class TascaFormScreen extends StatefulWidget {
 
 class _TascaFormScreenState extends State<TascaFormScreen> {
   late final TascaService _service;
+  late final TreballadorService _serviceT;
 
   final _formKey = GlobalKey<FormState>();
   final _descCtrl = TextEditingController();
@@ -48,6 +50,7 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
   void initState() {
     super.initState();
     _service = TascaService(baseUrl: ApiConstants.baseUrl);
+    _serviceT=TreballadorService(baseUrl: ApiConstants.baseUrl);
     _initFromInitial();
     _loadOptions();
   }

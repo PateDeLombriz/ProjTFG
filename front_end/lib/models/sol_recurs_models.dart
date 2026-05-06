@@ -13,6 +13,8 @@ class SolRecurs {
   final String? proveidor;
   final SolRecursObraRef? obra;
   final SolRecursRecursRef? recurs;
+  final int? id_treballador; // CANVI 1c — camp id_treballador al model
+  final String estat; // CANVI 1a — camp `estat` al model, amb valors 'pendent', 'aprovada' o 'rebutjada'
 
   const SolRecurs({
     required this.id,
@@ -27,6 +29,8 @@ class SolRecurs {
     required this.proveidor,
     required this.obra,
     required this.recurs,
+    this.id_treballador,
+    required this.estat,
   });
 
   factory SolRecurs.fromMap(Map<String, dynamic> map) {
@@ -48,6 +52,7 @@ class SolRecurs {
       dataEntrega: _asDate(map['data_entrega']),
       dataCreacio: _asDateTime(map['data_creacio']),
       proveidor: _asString(map['proveidor']),
+      estat: _asString(map['estat']) ?? 'pendent',
       obra: obraRef?.hasAnyValue == true ? obraRef : null,
       recurs: recursRef?.hasAnyValue == true ? recursRef : null,
     );
@@ -85,6 +90,19 @@ class SolRecurs {
 
   String get estatLabel => hasEntrega ? 'Entregat' : 'Pendent';
 
+
+
+  String get estatAprovacioLabel {
+    switch (estat) {
+      case 'aprovada':
+        return 'Aprovada';
+      case 'rebutjada':
+        return 'Rebutjada';
+      default:
+        return 'Pendent';
+    }
+  }
+  
   String get recursLabel {
     final nom = recurs?.nom?.trim();
     if (nom != null && nom.isNotEmpty) return nom;
@@ -109,6 +127,10 @@ class SolRecurs {
     final value = proveidor?.trim();
     return (value == null || value.isEmpty) ? 'Sense proveïdor' : value;
   }
+
+  bool get esPendentAprovacio => estat == 'pendent';
+  bool get esAprovada => estat == 'aprovada';
+  bool get esRebutjada => estat == 'rebutjada';
 }
 
 class SolRecursListData {

@@ -194,7 +194,61 @@ class TreballadorService extends AppApiService {
       ),
     );
   }
+  
+   /// Permisos del treballador autenticat.
+  /// Crida GET /treballadors/me/permisos/.
+  /// Cada element retorna lectura/escriptura/edicio + permis_info.clau_funcional.
+  Future<List<Map<String, dynamic>>> fetchMyPermisos() {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/me/permisos/',
+        fallback: 'Error carregant els permisos',
+        invalidResponseMessage: 'La resposta dels permisos no és vàlida.',
+      ),
+    );
+  }
 
+  
+  /// Documents d'una obra on participa el treballador autenticat.
+  /// Crida GET /treballadors/me/obres/<obraId>/documents/.
+  Future<List<Map<String, dynamic>>> fetchObraDocuments(int obraId) {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/me/obres/$obraId/documents/',
+        fallback: 'Error carregant els documents',
+        invalidResponseMessage: 'La resposta dels documents no és vàlida.',
+      ),
+    );
+  }
+
+  /// Catàleg complet de recursos per al formulari de sol·licitud.
+  /// Crida GET /treballadors/me/recursos/.
+  Future<List<Map<String, dynamic>>> fetchCatalogRecursos() {
+    return _runMapped(
+      () => getJsonList(
+        '/treballadors/me/recursos/',
+        fallback: 'Error carregant el catàleg de recursos',
+        invalidResponseMessage: 'La resposta del catàleg de recursos no és vàlida.',
+      ),
+    );
+  }
+
+  /// Crea una sol·licitud de recurs per al treballador autenticat.
+  /// Crida POST /treballadors/me/sol_recurs/.
+  /// [payload] ha de contenir: id_obra, id_recurs, quantitat, data_necessitat.
+  /// id_empresa es resol automàticament al backend.
+  Future<Map<String, dynamic>> createMySolRecurs(
+    Map<String, dynamic> payload,
+  ) {
+    return _runMapped(
+      () => postJsonMap(
+        '/treballadors/me/sol_recurs/',
+        body: payload,
+        fallback: 'Error creant la sol·licitud de recurs',
+        invalidResponseMessage: 'La resposta de creació no és vàlida.',
+      ),
+    );
+  }
 
   // =========================
   // TREBALLADORS EMPRESA
@@ -242,7 +296,7 @@ class TreballadorService extends AppApiService {
 
       if (primaryResponse.statusCode == 401 ||
           primaryResponse.statusCode == 403) {
-        await clearStoredSession();
+      
         throw TreballadorServiceException(
           extractErrorMessage(
             primaryResponse,

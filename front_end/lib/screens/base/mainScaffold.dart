@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:front_end/screens/documents_obra_screen.dart';
 import 'package:front_end/screens/empresa/home_empresa.dart';
 import 'package:front_end/screens/empresa/obra_screens/obra_form.dart';
 import 'package:front_end/screens/empresa/recursos/sol_recurs_list_screen.dart';
 import 'package:front_end/screens/empresa/tasca_screens/tasca_form.dart';
 import 'package:front_end/screens/empresa/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/recursos/solicRec_form.dart';
-import 'package:front_end/screens/empresa/doc_form.dart';
 import 'package:front_end/screens/empresa/treballador%20Empresa/treballador_form.dart';
 import 'package:front_end/screens/empresa/treballador%20Empresa/treballadors_empresa_list_screen.dart';
 import 'package:front_end/screens/empresa/incidencia/incidencia_list_screen.dart';
@@ -15,7 +15,7 @@ class MainScaffold extends StatefulWidget {
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
-}
+} 
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
@@ -102,7 +102,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         break;
       case _FabItem.document:
         // TODO: passa l'obraId real
-        Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentObraScreen(obraId: 1)));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentsObraScreen(obraId: 1)));
         break;
       case _FabItem.treballador:
         // TODO: passa l'obraId real

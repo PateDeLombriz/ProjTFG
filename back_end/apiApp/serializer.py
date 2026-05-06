@@ -8,7 +8,7 @@
 from django.db import transaction
 from django.utils import timezone
 import secrets
-
+from pathlib import Path
 from rest_framework import serializers
 from django.contrib.auth.hashers import check_password,make_password
 from .models import (Usuari, Empresa, Contrasenya, Verificacio, Obra, ObraEmpresa, Treballador, Empresa, Contrasenya,
@@ -61,6 +61,32 @@ class PermisTreballadorSerializer(serializers.ModelSerializer):
         model = PermisTreballador
         fields = '__all__'
 
+class PermisInfoSerializer(serializers.ModelSerializer):
+    """Serialitza Permis amb clau_funcional i descripcio (llegit per AppCapabilities)."""
+    class Meta:
+        model = Permis
+        fields = ['id', 'clau_funcional', 'descripcio']
+
+
+class PermisTreballadorDetailSerializer(serializers.ModelSerializer):
+    """
+    Serialitza PermisTreballador amb el Permis anidat com `permis_info`.
+    Estructura de sortida per a cada element:
+    {
+      "id": 1,
+      "lectura": true,
+      "escriptura": false,
+      "edicio": false,
+      "permis_info": { "id": 2, "clau_funcional": "tasques.completar", "descripcio": "..." }
+    }
+    """
+    permis_info = PermisInfoSerializer(source='id_permis', read_only=True)
+
+    class Meta:
+        model = PermisTreballador
+        fields = ['id', 'lectura', 'escriptura', 'edicio', 'permis_info']
+
+
 class LogDeSessioSerializer(serializers.ModelSerializer):
     class Meta:
         model = LogDeSessio
@@ -80,6 +106,84 @@ class DocumentObraSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentObra
         fields = '__all__'
+
+class DocumentObraUploadSerializer(serializers.ModelSerializer):
+    MAX_FILE_SIZE_MB = 10
+
+    ALLOWED_EXTENSIONS = {
+        'pdf',
+        'jpg',
+        'jpeg',
+        'png',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+    }
+
+    class Meta:
+        model = DocumentObra
+        fields = [
+            'id',
+            'id_obra',
+            'id_creador',
+            'path_doc',
+            'format',
+            'mida',
+            'comentari',
+            'data_pujada',
+            'tipus',
+        ]
+        read_only_fields = [
+            'id',
+            'id_creador',
+            'format',
+            'mida',
+            'data_pujada',
+        ]
+
+    def validate_path_doc(self, uploaded_file):
+        if uploaded_file is None:
+            raise serializers.ValidationError(
+                "Has d'adjuntar un fitxer."
+            )
+
+        size_mb = uploaded_file.size / (1024 * 1024)
+
+        if size_mb > self.MAX_FILE_SIZE_MB:
+            raise serializers.ValidationError(
+                f"El fitxer supera el límit de {self.MAX_FILE_SIZE_MB} MB."
+            )
+
+        extension = Path(uploaded_file.name).suffix.lower().replace('.', '')
+
+        if not extension:
+            raise serializers.ValidationError(
+                "El fitxer ha de tenir extensió."
+            )
+
+        if extension not in self.ALLOWED_EXTENSIONS:
+            allowed = ', '.join(sorted(self.ALLOWED_EXTENSIONS))
+            raise serializers.ValidationError(
+                f"Format no permès. Formats admesos: {allowed}."
+            )
+
+        return uploaded_file
+
+    def validate_tipus(self, value):
+        value = (value or '').strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Has d'indicar el tipus de document."
+            )
+
+        if len(value) > 40:
+            raise serializers.ValidationError(
+                "El tipus no pot superar els 40 caràcters."
+            )
+
+        return value
 
 class ContracteTreballadorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -120,12 +224,18 @@ class RecursRefSerializer(serializers.ModelSerializer):
 class SolRecursSerializer(serializers.ModelSerializer):
     obra = ObraRefSerializer(source='id_obra', read_only=True)
     recurs = RecursRefSerializer(source='id_recurs', read_only=True)
-    
+
     class Meta:
         model = SolRecurs
-        fields = ['id', 'id_empresa', 'id_obra', 'id_recurs', 'quantitat', 
-                  'data_necessitat', 'comentari', 'data_entrega', 'data_creacio', 
-                  'proveidor', 'obra', 'recurs']
+        fields = [
+            'id', 'id_obra', 'id_recurs', 'quantitat', 'data_necessitat',
+            'comentari', 'data_entrega', 'data_creacio', 'obra', 'recurs',
+            'estat'
+        ]
+        read_only_fields = ['id', 'data_creacio', 'data_entrega', 'obra', 'recurs', 'estat']
+        extra_kwargs = {
+            'comentari': {'required': False, 'allow_null': True, 'allow_blank': True},
+        }
 
 class ResponsableObraSerializer(serializers.ModelSerializer):
     class Meta:

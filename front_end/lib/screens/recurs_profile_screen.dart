@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../shared/Constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 
 class RecursDetail extends StatefulWidget {
   
@@ -46,7 +47,7 @@ class _RecursDetailState extends State<RecursDetail> {
   }
 
   Future<void> _carregarSolRecursos(int idRecurs) async {
-    final url = Uri.parse('$baseUrl/api/sol_recurs/?id_recurs=$idRecurs');
+    final url = Uri.parse('$baseUrl/sol_recurs/?id_recurs=$idRecurs');
     try {
       final res = await http.get(url);
       if (res.statusCode == 200) {
@@ -76,7 +77,7 @@ class _RecursDetailState extends State<RecursDetail> {
   Widget build(BuildContext context) {
     if (recurs == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: AppLoadingIndicator(),
       );
     }
 

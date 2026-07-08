@@ -138,29 +138,26 @@ SELECT setval('treballador_id_seq', (SELECT MAX(id) FROM treballador));
    OBRA (igual)
    ─────────── */
 INSERT INTO obra (nom, ubicacio_id, data_inici, data_prev_fi, data_fi, descripcio, pressupost, estat) VALUES
-  ('Reforma Casa Serra',      4, '2024-07-01', '2024-10-01', NULL, 'Reforma integral habitatge',            50000,  'EN CURS'),
-  ('Construcció Xalet',      5,    '2024-05-20', '2024-11-30', NULL, 'Nova construcció de xalet unifamiliar', 150000, 'EN CURS'),
-  ('Pavimentació Pl. Espanya',6,'2024-04-01', '2024-07-31', '2024-07-15', 'Reforma paviment plaça',         90000,  'FINALITZADA'),
-  ('Reforma Hotel Port de Pollença',       13, '2024-06-15', '2024-12-20', NULL,         'Reforma interior i millora d’instal·lacions d’un hotel',              280000, 'EN CURS'),
-  ('Adequació Escola de Manacor',          14, '2024-07-01', '2024-09-15', NULL,         'Millora d’aules, banys i accessibilitat',                             120000, 'EN CURS'),
-  ('Rehabilitació Façana a Inca',          15, '2024-05-10', '2024-08-30', '2024-08-20', 'Rehabilitació completa de façana i coberta',                           76000, 'FINALITZADA'),
-  ('Nou Centre Cívic a Llucmajor',         16, '2024-09-01', '2025-05-30', NULL,         'Construcció d’un equipament municipal polivalent',                    450000, 'EN CURS'),
-  ('Millora Xarxa Pluvial a Maó',          17, '2024-06-05', '2024-10-10', NULL,         'Renovació de canalitzacions i embornals',                             98000, 'EN CURS'),
-  ('Reforma Apartaments a Ciutadella',     18, '2024-04-20', '2024-09-01', '2024-08-28', 'Actualització integral de 8 apartaments turístics',                 132000, 'FINALITZADA'),
-  ('Ampliació Nau Industrial a Marratxí',  19, '2024-08-12', '2025-01-20', NULL,         'Ampliació d’espai logístic i zona de càrrega',                        210000, 'EN CURS'),
-  ('Condicionament Camí Rural a Artà',     20, '2024-03-18', '2024-06-30', '2024-06-25', 'Millora de ferm i drenatge de camí rural',                             64000, 'FINALITZADA'),
-  ('Reforma Local Comercial a Palma',      21, '2024-07-22', '2024-10-22', NULL,         'Adequació interior per a obertura de comerç',                          58000, 'EN CURS'),
-  ('Urbanització zona verda a Calvià',     22, '2024-05-27', '2024-11-15', NULL,         'Creació d’espais enjardinats i recorreguts accessibles',             175000, 'EN CURS'),
-  ('Rehabilitació habitatge a Sóller',     23, '2024-06-03', '2024-09-25', NULL,         'Reforma estructural i acabats interiors d’habitatge antic',           87000, 'EN CURS'),
-  ('Nou aparcament municipal a Eivissa',   24, '2024-09-15', '2025-04-15', NULL,         'Execució d’aparcament exterior amb paviment i il·luminació',         320000, 'EN CURS'),
-  ('Millora passeig marítim de Sant Antoni',25,'2024-10-01', '2025-03-01', NULL,         'Renovació de paviments, bancs i enllumenat',                          265000, 'EN CURS'),
-  ('Reforma centre sanitari a Formentera', 26, '2024-05-14', '2024-10-01', '2024-09-18', 'Millora de consultes, accessos i climatització',                     143000, 'FINALITZADA'),
-  ('Adequació biblioteca municipal a Alcúdia',27,'2024-08-01','2024-12-10', NULL,        'Redistribució interior, mobiliari fix i eficiència energètica',      110000, 'EN CURS');
+  ('Reforma Casa Serra',      4, '2024-07-01', '2024-10-01', NULL, 'Reforma integral habitatge',            50000,  'planificacio'),
+  ('Construcció Xalet',      5,    '2024-05-20', '2024-11-30', NULL, 'Nova construcció de xalet unifamiliar', 150000, 'en curs'),
+  ('Pavimentació Pl. Espanya',6,'2024-04-01', '2024-07-31', '2024-07-15', 'Reforma paviment plaça',         90000,  'finalitzada'),
+  ('Reforma Hotel Port de Pollença',       13, '2024-06-15', '2024-12-20', NULL,         'Reforma interior i millora d’instal·lacions d’un hotel',              280000, 'planificacio'),
+  ('Adequació Escola de Manacor',          14, '2024-07-01', '2024-09-15', NULL,         'Millora d’aules, banys i accessibilitat',                             120000, 'en curs'),
+  ('Rehabilitació Façana a Inca',          15, '2024-05-10', '2024-08-30', '2024-08-20', 'Rehabilitació completa de façana i coberta',                           76000, 'aturada'),
+  ('Millora Xarxa Pluvial a Maó',          17, '2024-06-05', '2024-10-10', NULL,         'Renovació de canalitzacions i embornals',                             98000, 'en curs'),
+  ('Reforma Apartaments a Ciutadella',     18, '2024-04-20', '2024-09-01', '2024-08-28', 'Actualització integral de 8 apartaments turístics',                 132000, 'finalitzada'),
+  ('Ampliació Nau Industrial a Marratxí',  19, '2024-08-12', '2025-01-20', NULL,         'Ampliació d’espai logístic i zona de càrrega',                        210000, 'en curs'),
+  ('Condicionament Camí Rural a Artà',     20, '2024-03-18', '2024-06-30', '2024-06-25', 'Millora de ferm i drenatge de camí rural',                             64000, 'finalitzada'),
+  ('Reforma Local Comercial a Palma',      21, '2024-07-22', '2024-10-22', NULL,         'Adequació interior per a obertura de comerç',                          58000, 'en curs'),
+  ('Urbanització zona verda a Calvià',     22, '2024-05-27', '2024-11-15', NULL,         'Creació d’espais enjardinats i recorreguts accessibles',             175000, 'en curs'),
+  ('Rehabilitació habitatge a Sóller',     23, '2024-06-03', '2024-09-25', NULL,         'Reforma estructural i acabats interiors d’habitatge antic',           87000, 'aturada'),
+  ('Nou aparcament municipal a Eivissa',   24, '2024-09-15', '2025-04-15', NULL,         'Execució d’aparcament exterior amb paviment i il·luminació',         320000, 'en curs'),
+  ('Millora passeig marítim de Sant Antoni',25,'2024-10-01', '2025-03-01', NULL,         'Renovació de paviments, bancs i enllumenat',                          265000, 'en curs'),
+  ('Reforma centre sanitari a Formentera', 26, '2024-05-14', '2024-10-01', '2024-09-18', 'Millora de consultes, accessos i climatització',                     143000, 'finalitzada'),
+  ('Adequació biblioteca municipal a Alcúdia',27,'2024-08-01','2024-12-10', NULL,        'Redistribució interior, mobiliari fix i eficiència energètica',      110000, 'en curs');
 
 
-INSERT INTO obra_empresa
-(id, id_empresa, id_obra, data_i, data_f)
-VALUES
+INSERT INTO obra_empresa (id, id_empresa, id_obra, data_i, data_f) VALUES
   (1,  1,  1, '2024-07-01 08:00:00', NULL),
   (2,  3,  1, '2024-07-05 09:00:00', NULL),
   (3,  2,  2, '2024-05-20 08:00:00', NULL),
@@ -198,6 +195,8 @@ VALUES
   (35, 4, 17, '2024-05-16 08:00:00', '2024-09-18 17:00:00'),
   (36, 3, 18, '2024-08-01 08:00:00', NULL),
   (37, 1, 18, '2024-08-03 08:00:00', NULL);
+
+SELECT setval('obra_empresa_id_seq', (SELECT MAX(id) FROM obra_empresa));
 
 /* ────────────────
    TASCA (igual)
@@ -464,7 +463,7 @@ VALUES
    ──────────────── */
 INSERT INTO incidencia (id_obra, id_tasca, descripcio, data_inici, data_fi, criticitat, prioritat, categoria, estat) VALUES
   (1, 1,   'Retard subministrament formigó', '2024-07-04', NULL,          3, 2, 1, 'OBERTA'),
-  (2, 2,'Problema humitat parets',        '2024-06-20', NULL,          4, 1, 2, 'OBERTA'),
+  (2, 2,   'Problema humitat parets',        '2024-06-20', NULL,          4, 1, 2, 'OBERTA'),
   (3, 3,   'Endarreriment subministrament totxos', '2024-04-17', '2024-04-20', 2, 1, 3, 'TANCADA'),
   (1, 6,   'Tall temporal de subministrament elèctric a zona d’obra',      '2024-07-10', NULL,         3, 2, 2, 'OBERTA'),
   (1, 4,   'Excés de runa acumulada a l’accés principal',                   '2024-07-06', '2024-07-07', 2, 3, 4, 'TANCADA'),
@@ -790,3 +789,35 @@ INSERT INTO contracte_treballador
   (33, 33, 3, '2024-06-27', NULL,       18000.00, 'Peó', 'Obrer', 'SS0033', 'Formació bàsica', 'actiu');
 -- Sincronitza la seqüència
 SELECT setval('contracte_treballador_id_seq', (SELECT MAX(id) FROM contracte_treballador));
+
+INSERT INTO notificacio (id_treballador, id_empresa, tipus, titol, missatge, entitat_id, entitat_tipus) VALUES
+(1, NULL, 'nova_tasca', 'Nova tasca assignada', 'T’han assignat una nova tasca.', 101, 'tasca'),
+(2, NULL, 'nova_tasca', 'Nova tasca assignada', 'T’han assignat una nova tasca a l’obra.', 102, 'tasca'),
+(3, NULL, 'tasca_actualitzada', 'Tasca actualitzada', 'S’ha actualitzat una tasca assignada.', 103, 'tasca'),
+(1, NULL, 'tasca_cancelada', 'Tasca cancel·lada', 'Una tasca assignada ha estat cancel·lada.', 104, 'tasca'),
+(2, NULL, 'tasca_finalitzada', 'Tasca finalitzada', 'Una tasca s’ha marcat com a finalitzada.', 105, 'tasca'),
+(3, NULL, 'tasca_validada', 'Tasca validada', 'L’empresa ha validat una tasca finalitzada.', 106, 'tasca'),
+(1, NULL, 'tasca_rebutjada', 'Tasca retornada', 'Una tasca ha estat retornada per revisió.', 107, 'tasca'),
+(2, NULL, 'sol_recurs_creada', 'Sol·licitud creada', 'S’ha creat una nova sol·licitud de recurs.', 201, 'sol_recurs'),
+(3, NULL, 'sol_recurs_assignada', 'Recurs assignat', 'S’ha assignat un recurs a la teva sol·licitud.', 202, 'sol_recurs'),
+(1, NULL, 'sol_recurs_aprovada', 'Sol·licitud aprovada', 'La teva sol·licitud de recurs ha estat aprovada.', 203, 'sol_recurs'),
+(2, NULL, 'sol_recurs_rebutjada', 'Sol·licitud rebutjada', 'La teva sol·licitud de recurs ha estat rebutjada.', 204, 'sol_recurs'),
+(3, NULL, 'recurs_entrega_propera', 'Entrega propera', 'Tens una entrega de recurs propera.', 205, 'recurs'),
+(1, NULL, 'nova_incidencia', 'Nova incidència', 'S’ha registrat una nova incidència relacionada.', 301, 'incidencia'),
+(2, NULL, 'incidencia_actualitzada', 'Incidència actualitzada', 'S’ha actualitzat una incidència existent.', 302, 'incidencia'),
+(3, NULL, 'incidencia_tancada', 'Incidència tancada', 'Una incidència ha estat tancada.', 303, 'incidencia'),
+(NULL, 1, 'nova_obra_assignada', 'Nova obra assignada', 'S’ha assignat una nova obra a l’empresa.', 401, 'obra'),
+(NULL, 2, 'responsable_obra_assignat', 'Responsable assignat', 'S’ha assignat un responsable d’obra.', 402, 'obra'),
+(NULL, 3, 'document_pujat', 'Document pujat', 'S’ha pujat un nou document a una obra.', 501, 'document'),
+(NULL, 1, 'sortida_pendent', 'Sortida pendent', 'Hi ha una sortida pendent de gestionar.', 601, 'sortida'),
+(NULL, 2, 'contracte_finalitza_properament', 'Contracte proper a finalitzar', 'Un contracte finalitza properament.', 701, 'contracte'),
+(1, NULL, 'nova_tasca', 'Nova tasca assignada', 'Tens una nova tasca pendent de revisar.', 108, 'tasca'),
+(2, NULL, 'tasca_actualitzada', 'Tasca modificada', 'La informació d’una tasca ha canviat.', 109, 'tasca'),
+(3, NULL, 'tasca_validada', 'Tasca aprovada', 'La tasca enviada ha estat aprovada.', 110, 'tasca'),
+(1, NULL, 'sol_recurs_aprovada', 'Recurs aprovat', 'S’ha aprovat el recurs sol·licitat.', 206, 'sol_recurs'),
+(2, NULL, 'sol_recurs_rebutjada', 'Recurs rebutjat', 'No s’ha aprovat el recurs sol·licitat.', 207, 'sol_recurs'),
+(NULL, 3, 'nova_incidencia', 'Nova incidència registrada', 'Una nova incidència requereix revisió.', 304, 'incidencia'),
+(NULL, 1, 'incidencia_actualitzada', 'Incidència modificada', 'S’han actualitzat dades d’una incidència.', 305, 'incidencia'),
+(NULL, 2, 'document_pujat', 'Nou document disponible', 'S’ha afegit un document nou al sistema.', 502, 'document'),
+(NULL, 3, 'nova_obra_assignada', 'Nova obra disponible', 'Una nova obra ha estat vinculada a l’empresa.', 403, 'obra'),
+(3, NULL, 'contracte_finalitza_properament', 'Contracte proper a finalitzar', 'El teu contracte finalitza properament.', 702, 'contracte');

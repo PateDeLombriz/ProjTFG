@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/models/obra_models.dart';
 
-import 'package:front_end/screens/treballador/treballador_obra_info_screen.dart';
+import 'package:front_end/screens/treballador/obra/treballador_obra_info_screen.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/shared/models/app_capabilities.dart';
@@ -33,9 +33,10 @@ class _TreballadorObresScreenState extends State<TreballadorObresScreen> {
 
   static const _estatOptions = [
     ('totes', 'Totes'),
-    ('res_firmat', 'Res firmat'),
-    ('en_curs', 'En execució'),
+    ('planificacio', 'Planificació'),
+    ('en_curs', 'En curs'),
     ('finalitzada', 'Finalitzades'),
+    ('aturada', 'Aturades'),
   ];
 
   @override
@@ -105,20 +106,6 @@ class _TreballadorObresScreenState extends State<TreballadorObresScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        title: const Text('Les meves obres'),
-        automaticallyImplyLeading: false,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'Actualitza',
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _reload,
-          ),
-        ],
-      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (context, snapshot) {
@@ -271,7 +258,7 @@ class _ObresHeaderCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: _HeaderMetric(
-                  label: 'En execució',
+                  label: 'En curs',
                   value: summary.enCurs.toString(),
                 ),
               ),
@@ -726,14 +713,11 @@ String _normalizeEstat(String? value) {
       .replaceAll('-', ' ');
 
   switch (normalized) {
-    case 'res firmat':
-      return 'res_firmat';
-    case 'en curs':
-    case 'en execucio':
-    case 'en execució':
+    case 'planificacio':
+      return 'planificacio';
+    case 'en curs' :
       return 'en_curs';
-    case 'finalitzada':
-    case 'finalitzat':
+    case 'finalitzada' || 'finalitzat':
       return 'finalitzada';
     case 'pendent':
       return 'pendent';
@@ -744,14 +728,14 @@ String _normalizeEstat(String? value) {
 
 String _estatLabel(String normalized, {String? fallback}) {
   switch (normalized) {
-    case 'res_firmat':
-      return 'Res firmat';
+    case 'planificacio':
+      return 'Planificació';
     case 'en_curs':
-      return 'En execució';
+      return 'En curs';
     case 'finalitzada':
       return 'Finalitzada';
-    case 'pendent':
-      return 'Pendent';
+    case 'aturada':
+      return 'Aturada';
     case 'sense_estat':
       return 'Sense estat';
     default:

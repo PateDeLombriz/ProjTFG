@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:front_end/dialogs/notifications_dropdown.dart';
+import 'package:front_end/dialogs/notifications_modal.dart';
 
 import 'package:front_end/models/tasca_models.dart';
-import 'package:front_end/screens/treballador/treballador_tasca_detail_screen.dart';
+import 'package:front_end/screens/treballador/tasca/treballador_tasca_detail_screen.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/shared/models/app_capabilities.dart';
@@ -29,6 +31,7 @@ class _TreballadorTasquesScreenState extends State<TreballadorTasquesScreen> {
 
   String _filterEstat = 'tots';
   String _filterPrioritat = 'totes';
+  late List<NotificationItem> _notifications;
 
   static const _estats = [
     ('tots', 'Totes'),
@@ -51,6 +54,7 @@ class _TreballadorTasquesScreenState extends State<TreballadorTasquesScreen> {
     super.initState();
     _service = TreballadorService(baseUrl: ApiConstants.baseUrl);
     _future = _service.fetchMyTasques();
+    _notifications = [];
   }
 
   Future<void> _reload() async {
@@ -107,20 +111,6 @@ class _TreballadorTasquesScreenState extends State<TreballadorTasquesScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        title: const Text('Les meves tasques'),
-        automaticallyImplyLeading: false,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'Actualitza',
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _reload,
-          ),
-        ],
-      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
         builder: (context, snapshot) {
@@ -207,6 +197,32 @@ class _TreballadorTasquesScreenState extends State<TreballadorTasquesScreen> {
       icon: Icons.filter_list_off_rounded,
       title: 'Sense resultats',
       message: 'No hi ha tasques que coincideixin amb els filtres seleccionats.',
+    );
+    
+  }
+
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+
+  void _showNotificationsDropdown() {
+    showNotificationsDropdown(
+      context,
+      notifications: _notifications,
+      onMarkAllAsRead: () {
+        setState(() {
+          for (var notification in _notifications) {
+            notification.isRead = true;
+          }
+        });
+        _snack('Totes les notificacions marcades com a llegides');
+      },
+      onNotificationTap: (notification) {
+        setState(() {
+          notification.isRead = true;
+        });
+        _snack('Notificació marcada com a llegida');
+      },
     );
   }
 }

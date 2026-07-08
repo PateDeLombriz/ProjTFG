@@ -261,6 +261,55 @@ class TreballadorService extends AppApiService {
     return TreballadorListData.fromEmpresaDetailMap(raw);
   }
 
+
+
+  /// Actualitza les dades bàsiques d'un treballador.
+  /// Pensat per al formulari d'edició de la llista d'empresa.
+  Future<Map<String, dynamic>> updateTreballadorBasic(
+    int treballadorId,
+    Map<String, dynamic> payload,
+  ) {
+    return _runMapped(
+      () => patchJsonMap(
+        '/treballadors/$treballadorId/',
+        body: payload,
+        expectedStatus: 200,
+        fallback: 'Error actualitzant el treballador',
+        invalidResponseMessage:
+            'La resposta d’actualització del treballador no és vàlida.',
+      ),
+    );
+  }
+
+  /// Elimina un treballador de l'empresa.
+  Future<void> deleteTreballador(int treballadorId) async {
+    try {
+      final token = await requireAuthenticatedSession();
+      final response = await client.delete(
+        buildUri('/treballadors/$treballadorId/'),
+        headers: authHeaders(token),
+      );
+
+      if (response.statusCode == 200 ||
+          response.statusCode == 202 ||
+          response.statusCode == 204) {
+        return;
+      }
+
+      throw TreballadorServiceException(
+        extractErrorMessage(
+          response,
+          fallback: 'Error eliminant el treballador',
+        ),
+        statusCode: response.statusCode,
+      );
+    } on AppApiException catch (e) {
+      throw TreballadorServiceException(
+        e.message,
+        statusCode: e.statusCode,
+      );
+    }
+  }
   Future<List<TreballadorListItem>> fetchTreballadorsEmpresa(
     int empresaId,
   ) async {

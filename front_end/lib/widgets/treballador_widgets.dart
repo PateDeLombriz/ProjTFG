@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/models/treballador_models.dart';
+import 'package:front_end/utils/date_formatter.dart';
+import 'package:front_end/shared/widgets/app_avatar_fallback.dart';
+import 'package:front_end/shared/widgets/app_card_action_button.dart';
+import 'package:front_end/utils/status_color_helper.dart';
+import 'package:front_end/shared/widgets/app_info_pill.dart';
+import 'package:front_end/shared/widgets/app_status_chip.dart';
+import 'package:front_end/shared/widgets/app_expandable_section.dart';
+import 'package:front_end/shared/widgets/app_form_header_card.dart';
+import 'package:front_end/shared/widgets/app_tag.dart';
 
 class TreballadorHeaderCard extends StatelessWidget {
   final TreballadorProfileData profile;
@@ -12,7 +21,7 @@ class TreballadorHeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final statusColor = _statusAccentColor(profile.estatKey);
+    final statusColor = colorForTreballadorEstat(profile.estatKey);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -64,15 +73,15 @@ class TreballadorHeaderCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _TreballadorTag(
+                    AppTag(
                       icon: Icons.badge_outlined,
                       label: profile.carrecLabel,
                     ),
-                    _TreballadorTag(
+                    AppTag(
                       icon: Icons.business_outlined,
                       label: profile.empresaLabel,
                     ),
-                    _TreballadorTag(
+                    AppTag(
                       icon: Icons.verified_user_outlined,
                       label: profile.estatLabel,
                       accent: statusColor,
@@ -107,146 +116,26 @@ class TreballadorListHeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: scheme.outline.withOpacity(0.10)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+    return AppFormHeaderCard(
+      title: title,
+      subtitle: subtitle,
+      icon: Icons.groups_rounded,
+      iconContainerSize: 72,
+      badges: [
+        AppTag(icon: Icons.badge_outlined, label: count == 1 ? '1 treballador' : '$count treballadors'),
+        if (activeCount != null)
+          AppTag(
+            icon: Icons.filter_alt_outlined,
+            label: activeCount == 1 ? '1 visible' : '$activeCount visibles',
+            accent: scheme.tertiary,
           ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: scheme.primary.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Icon(
-              Icons.groups_rounded,
-              size: 34,
-              color: scheme.primary,
-            ),
+        if (actiusCount != null)
+          AppTag(
+            icon: Icons.verified_user_outlined,
+            label: actiusCount == 1 ? '1 actiu' : '$actiusCount actius',
+            accent: colorForTreballadorEstat('actiu'),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
-                  ),
-                ),
-                if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle!,
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _TreballadorTag(
-                      icon: Icons.badge_outlined,
-                      label: count == 1 ? '1 treballador' : '$count treballadors',
-                    ),
-                    if (activeCount != null)
-                      _TreballadorTag(
-                        icon: Icons.filter_alt_outlined,
-                        label: activeCount == 1
-                            ? '1 visible'
-                            : '$activeCount visibles',
-                        accent: scheme.tertiary,
-                      ),
-                    if (actiusCount != null)
-                      _TreballadorTag(
-                        icon: Icons.verified_user_outlined,
-                        label: actiusCount == 1
-                            ? '1 actiu'
-                            : '$actiusCount actius',
-                        accent: _statusAccentColor('actiu'),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class TreballadorSearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback? onClear;
-
-  const TreballadorSearchField({
-    super.key,
-    required this.controller,
-    required this.onChanged,
-    this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final hasValue = controller.text.trim().isNotEmpty;
-
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Cerca per nom, àlies, càrrec o estat',
-        prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: hasValue
-            ? IconButton(
-                tooltip: 'Neteja cerca',
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
-              )
-            : null,
-        filled: true,
-        fillColor: scheme.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.outline.withOpacity(0.12)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.outline.withOpacity(0.12)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.primary, width: 1.2),
-        ),
-      ),
+      ],
     );
   }
 }
@@ -311,7 +200,7 @@ class TreballadorListFilterBar extends StatelessWidget {
                 ),
               ),
               if (activeFiltersCount > 0)
-                _TreballadorTag(
+                AppTag(
                   icon: Icons.filter_alt_outlined,
                   label: '$activeFiltersCount actius',
                   accent: scheme.tertiary,
@@ -502,15 +391,15 @@ class TreballadorSummaryCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _TreballadorInfoPill(
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
                 label: 'Estat',
                 value: profile.estatLabel,
               ),
-              _TreballadorInfoPill(
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
                 label: 'Tasques',
                 value: profile.tasquesCount.toString(),
               ),
-              _TreballadorInfoPill(
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
                 label: 'Obres',
                 value: profile.obresCount.toString(),
               ),
@@ -522,33 +411,195 @@ class TreballadorSummaryCard extends StatelessWidget {
   }
 }
 
-class TreballadorListItemCard extends StatelessWidget {
-  final TreballadorListItem treballador;
-  final VoidCallback? onTap;
 
-  const TreballadorListItemCard({
+class TreballadorOverviewAdminCard extends StatelessWidget {
+  final TreballadorProfileData profile;
+  final Map<String, dynamic> detail;
+
+  const TreballadorOverviewAdminCard({
     super.key,
-    required this.treballador,
-    this.onTap,
+    required this.profile,
+    required this.detail,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final accent = _statusAccentColor(treballador.estatKey);
+    final accent = colorForTreballadorEstat(profile.estatKey);
+    final comentaris = _textOrFallback(
+      detail['comentaris'],
+      fallback: 'Sense comentaris.',
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accent.withOpacity(0.24)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.analytics_outlined,
+                  color: accent,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Resum i informació administrativa',
+                      style: TextStyle(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Dades principals del treballador',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+                label: 'Estat',
+                value: profile.estatLabel,
+              ),
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+                label: 'Tasques',
+                value: profile.tasquesCount.toString(),
+              ),
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+                label: 'Obres',
+                value: profile.obresCount.toString(),
+              ),
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+                label: 'DNI / NIE',
+                value: _textOrFallback(detail['dni_nie_passaport']),
+              ),
+              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+                label: 'Naixement',
+                value: formatDateDynamic(detail['data_naixement']),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withOpacity(0.30),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Comentaris',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  comentaris,
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    height: 1.35,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TreballadorListItemCard extends StatelessWidget {
+  final TreballadorListItem treballador;
+  final VoidCallback? onTap;
+  final VoidCallback? onView;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final bool nameOnly;
+
+  const TreballadorListItemCard({
+    super.key,
+    required this.treballador,
+    this.onTap,
+    this.onView,
+    this.onEdit,
+    this.onDelete,
+    this.nameOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = colorForTreballadorEstat(treballador.estatKey);
     final statusLabel = treballador.estatLabel;
+
+    final cardRadius = BorderRadius.circular(nameOnly ? 16 : 22);
+    final cardPadding = nameOnly
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+        : const EdgeInsets.all(16);
+    final avatarSize = nameOnly ? 38.0 : 58.0;
+    final hasActions =
+        !nameOnly && (onView != null || onEdit != null || onDelete != null);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: cardRadius,
         child: Ink(
-          padding: const EdgeInsets.all(16),
+          padding: cardPadding,
           decoration: BoxDecoration(
             color: scheme.surface,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: accent.withOpacity(0.40), width: 2),
+            borderRadius: cardRadius,
+            border: Border.all(
+              color: accent.withOpacity(nameOnly ? 0.24 : 0.40),
+              width: nameOnly ? 1 : 2,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.03),
@@ -558,14 +609,15 @@ class TreballadorListItemCard extends StatelessWidget {
             ],
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                nameOnly ? CrossAxisAlignment.center : CrossAxisAlignment.start,
             children: [
               _TreballadorAvatar(
                 imageUrl: treballador.fotoUrl,
                 fullName: treballador.nomComplet,
-                size: 58,
+                size: avatarSize,
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: nameOnly ? 10 : 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -574,50 +626,80 @@ class TreballadorListItemCard extends StatelessWidget {
                       treballador.nomComplet,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: nameOnly ? 14.5 : 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      treballador.carrecLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 13.5,
-                        height: 1.3,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (treballador.hasNickname) ...[
-                      const SizedBox(height: 4),
+                    if (!nameOnly) ...[
+                      const SizedBox(height: 10),
                       Text(
-                        '@${treballador.nickname!.trim()}',
+                        treballador.carrecLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: scheme.primary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 13.5,
+                          height: 1.3,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
+                      if (treballador.hasNickname) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '@${treballador.nickname!.trim()}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: nameOnly ? 8 : 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _TreballadorStatusChip(
-                    label: statusLabel,
-                    color: accent,
-                  ),
-                  if (onTap != null)
+                  if (!nameOnly)
+                    AppStatusChip(
+                      label: statusLabel,
+                      color: accent,
+                    ),
+                  if (hasActions) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (onView != null)
+                          AppCardActionButton(borderRadius: 10, size: 34, padding: const EdgeInsets.only(left: 4),
+                            tooltip: 'Veure detall',
+                            icon: Icons.visibility_outlined,
+                            onPressed: onView!,
+                          ),
+                        if (onEdit != null)
+                          AppCardActionButton(borderRadius: 10, size: 34, padding: const EdgeInsets.only(left: 4),
+                            tooltip: 'Editar treballador',
+                            icon: Icons.edit_outlined,
+                            onPressed: onEdit!,
+                          ),
+                        if (onDelete != null)
+                          AppCardActionButton(borderRadius: 10, size: 34, padding: const EdgeInsets.only(left: 4),
+                            tooltip: 'Eliminar treballador',
+                            icon: Icons.delete_outline,
+                            onPressed: onDelete!,
+                            isDanger: true,
+                          ),
+                      ],
+                    ),
+                  ] else if (onTap != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 12),
+                      padding: EdgeInsets.only(top: nameOnly ? 0 : 12),
                       child: Icon(
                         Icons.chevron_right_rounded,
                         color: scheme.onSurfaceVariant,
@@ -633,58 +715,6 @@ class TreballadorListItemCard extends StatelessWidget {
   }
 }
 
-class TreballadorListEmptyState extends StatelessWidget {
-  final String title;
-  final String message;
-
-  const TreballadorListEmptyState({
-    super.key,
-    this.title = 'No hi ha treballadors',
-    this.message = 'Encara no hi ha cap treballador disponible per mostrar.',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outline.withOpacity(0.08)),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.group_off_outlined,
-            size: 42,
-            color: scheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              height: 1.35,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class TreballadorLoadingCard extends StatelessWidget {
   const TreballadorLoadingCard({super.key});
@@ -924,90 +954,13 @@ class _TreballadorAvatar extends StatelessWidget {
           ? Image.network(
               url,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _AvatarFallback(
+              errorBuilder: (_, __, ___) => AppAvatarFallback(
                 initials: initials,
               ),
             )
-          : _AvatarFallback(
+          : AppAvatarFallback(
               initials: initials,
             ),
-    );
-  }
-}
-
-class _AvatarFallback extends StatelessWidget {
-  final String initials;
-
-  const _AvatarFallback({
-    required this.initials,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    if (initials.isEmpty) {
-      return Icon(
-        Icons.person,
-        color: scheme.primary,
-        size: 34,
-      );
-    }
-
-    return Center(
-      child: Text(
-        initials,
-        style: TextStyle(
-          color: scheme.primary,
-          fontWeight: FontWeight.w800,
-          fontSize: 22,
-        ),
-      ),
-    );
-  }
-}
-
-class _TreballadorTag extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? accent;
-
-  const _TreballadorTag({
-    required this.icon,
-    required this.label,
-    this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = accent ?? scheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 16,
-            color: color,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1050,34 +1003,6 @@ class _TreballadorMetaChip extends StatelessWidget {
   }
 }
 
-class _TreballadorStatusChip extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _TreballadorStatusChip({
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
 
 class _TreballadorContactRow extends StatelessWidget {
   final IconData icon;
@@ -1139,50 +1064,6 @@ class _TreballadorContactRow extends StatelessWidget {
   }
 }
 
-class _TreballadorInfoPill extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _TreballadorInfoPill({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      constraints: const BoxConstraints(minWidth: 104),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _TreballadorEmptyInline extends StatelessWidget {
   final String text;
@@ -1210,17 +1091,10 @@ class _TreballadorEmptyInline extends StatelessWidget {
   }
 }
 
-Color _statusAccentColor(String statusKey) {
-  switch (statusKey) {
-    case 'actiu':
-      return Colors.green;
-    case 'baixa':
-      return Colors.orange;
-    case 'acomiadat':
-      return Colors.red;
-    default:
-      return Colors.grey;
-  }
+String _textOrFallback(dynamic value, {String fallback = '—'}) {
+  if (value == null) return fallback;
+  final text = value.toString().trim();
+  return text.isEmpty ? fallback : text;
 }
 
 String _initialsFromName(String value) {
@@ -1239,4 +1113,506 @@ String _initialsFromName(String value) {
   final first = parts.first.isEmpty ? '' : parts.first.substring(0, 1);
   final second = parts[1].isEmpty ? '' : parts[1].substring(0, 1);
   return '$first$second'.toUpperCase();
+}
+class TreballadorFormHeaderCard extends StatelessWidget {
+  final bool editing;
+  final String fullName;
+  final String documentLabel;
+  final String carrecLabel;
+  final String estatLabel;
+  final String contactLabel;
+
+  const TreballadorFormHeaderCard({
+    super.key,
+    required this.editing,
+    required this.fullName,
+    required this.documentLabel,
+    required this.carrecLabel,
+    required this.estatLabel,
+    required this.contactLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final accent = editing ? scheme.tertiary : scheme.primary;
+    final displayName = fullName.trim().isEmpty
+        ? (editing ? 'Editar treballador' : 'Nou treballador')
+        : fullName.trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withOpacity(0.18),
+            scheme.primaryContainer.withOpacity(0.28),
+            scheme.surface,
+          ],
+        ),
+        border: Border.all(color: accent.withOpacity(0.24), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withOpacity(0.10),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: accent.withOpacity(0.20)),
+                ),
+                child: Center(
+                  child: Text(
+                    _initialsFromName(displayName).isEmpty
+                        ? 'T'
+                        : _initialsFromName(displayName),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      editing ? 'Edició de treballador' : 'Alta de treballador',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      displayName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                        height: 1.16,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      contactLabel.trim().isEmpty ? 'Sense contacte indicat' : contactLabel.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _TreballadorFormBadge(
+                icon: Icons.credit_card_rounded,
+                label: documentLabel.trim().isEmpty ? 'Document pendent' : documentLabel.trim(),
+                color: scheme.primary,
+              ),
+              _TreballadorFormBadge(
+                icon: Icons.work_outline_rounded,
+                label: carrecLabel.trim().isEmpty ? 'Sense càrrec' : carrecLabel.trim(),
+                color: scheme.tertiary,
+              ),
+              _TreballadorFormBadge(
+                icon: Icons.verified_user_outlined,
+                label: estatLabel.trim().isEmpty ? 'Actiu' : estatLabel.trim(),
+                color: colorForTreballadorEstat(estatLabel.toLowerCase()),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TreballadorFormDateTile extends StatelessWidget {
+  final String title;
+  final DateTime? date;
+  final VoidCallback onTap;
+  final bool isRequired;
+  final String emptyText;
+
+  const TreballadorFormDateTile({
+    super.key,
+    required this.title,
+    required this.date,
+    required this.onTap,
+    this.isRequired = false,
+    this.emptyText = 'Selecciona una data',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final accent = isRequired ? scheme.primary : scheme.secondary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: accent.withOpacity(0.055),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: accent.withOpacity(0.16)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.calendar_today_outlined,
+                  color: accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      date == null ? emptyText : formatDate(date),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.edit_calendar_rounded, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TreballadorFormInfoNotice extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  final Color? accent;
+
+  const TreballadorFormInfoNotice({
+    super.key,
+    required this.text,
+    this.icon = Icons.info_outline_rounded,
+    this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final effectiveAccent = accent ?? scheme.primary;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: effectiveAccent.withOpacity(0.055),
+        border: Border.all(color: effectiveAccent.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: effectiveAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TreballadorFormEmptyState extends StatelessWidget {
+  final String text;
+  final IconData icon;
+
+  const TreballadorFormEmptyState({
+    super.key,
+    required this.text,
+    this.icon = Icons.info_outline_rounded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outline.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TreballadorFormPermissionCard extends StatelessWidget {
+  final String title;
+  final String? description;
+  final bool selected;
+  final ValueChanged<bool> onSelectedChanged;
+  final Widget? child;
+  final Color? accent;
+
+  const TreballadorFormPermissionCard({
+    super.key,
+    required this.title,
+    required this.selected,
+    required this.onSelectedChanged,
+    this.description,
+    this.child,
+    this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final effectiveAccent = accent ?? scheme.primary;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: selected
+            ? effectiveAccent.withOpacity(0.07)
+            : scheme.surfaceContainerHighest.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: selected
+              ? effectiveAccent.withOpacity(0.22)
+              : scheme.outline.withOpacity(0.10),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: effectiveAccent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  selected ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+                  color: effectiveAccent,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title.trim().isEmpty ? 'Permís sense nom' : title.trim(),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (description != null && description!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        description!.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Switch(
+                value: selected,
+                onChanged: onSelectedChanged,
+              ),
+            ],
+          ),
+          if (selected && child != null) ...[
+            const SizedBox(height: 12),
+            child!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class TreballadorFormPermissionFlagChip extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Color color;
+
+  const TreballadorFormPermissionFlagChip({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => onChanged(!value),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: color.withOpacity(value ? 0.18 : 0.08),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: color.withOpacity(value ? 0.22 : 0.12)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                value ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 17,
+                color: color,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TreballadorFormBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _TreballadorFormBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.11),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

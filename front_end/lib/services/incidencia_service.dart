@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 
 import 'package:front_end/models/incidencia_models.dart';
+import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/shared/services/app_api_service.dart';
 
 class IncidenciaServiceException implements Exception {
@@ -118,4 +119,124 @@ class IncidenciaService extends AppApiService {
     
 
 
+
+
+  // ──────────────────── FORMULARI INCIDÈNCIA / SOLUCIONS ────────────────────
+
+  Future<List<ObraOption>> fetchObresOptions() async {
+    final empresaId = await requireEmpresaId();
+
+    final raw = await getJsonList(
+      '/obresEmpresa/$empresaId/',
+      fallback: 'Error carregant les obres',
+      invalidResponseMessage: 'La resposta de les obres no és vàlida.',
+    );
+
+    final options = <ObraOption>[];
+    for (final item in raw) {
+      final obraInfo = item['obra_info'];
+      if (obraInfo is Map<String, dynamic>) {
+        final id = _asInt(obraInfo['id']);
+        if (id != null && id != 0) {
+          options.add(
+            ObraOption(
+              id: id,
+              nom: (obraInfo['nom'] ?? 'Obra #$id').toString(),
+            ),
+          );
+        }
+      }
+    }
+
+    options.sort((a, b) => a.nom.toLowerCase().compareTo(b.nom.toLowerCase()));
+    return options;
+  }
+
+  Future<List<TascaOption>> fetchTasquesOptions({int? obraId}) async {
+    final raw = await getJsonList(
+      '/tasques/',
+      queryParameters: {
+        if (obraId != null) 'id_obra': obraId.toString(),
+      },
+      fallback: 'Error carregant les tasques',
+      invalidResponseMessage: 'La resposta de les tasques no és vàlida.',
+    );
+
+    return raw
+        .map(
+          (item) => TascaOption(
+            id: _asInt(item['id']) ?? 0,
+            desc: (item['descripcio'] ?? 'Tasca').toString(),
+          ),
+        )
+        .where((item) => item.id != 0)
+        .toList()
+      ..sort((a, b) => a.desc.toLowerCase().compareTo(b.desc.toLowerCase()));
+  }
+
+  Future<List<IncidenciaSolucioItem>> fetchSolucionsByIncidencia(
+    int incidenciaId,
+  ) async {
+    final raw = await getJsonList(
+      '/solucions/',
+      queryParameters: {'id_incidencia': incidenciaId.toString()},
+      fallback: 'Error carregant les solucions',
+      invalidResponseMessage: 'La resposta de les solucions no és vàlida.',
+    );
+
+    return raw.map(IncidenciaSolucioItem.fromMap).toList();
+  }
+
+  Future<IncidenciaSolucioItem> createSolucio(
+    Map<String, dynamic> payload,
+  ) async {
+    final raw = await postJsonMap(
+      '/solucions/',
+      body: payload,
+      expectedStatus: 201,
+      fallback: 'Error creant la solució',
+      invalidResponseMessage: 'La resposta de creació de la solució no és vàlida.',
+    );
+
+    return IncidenciaSolucioItem.fromMap(raw);
+  }
+
+  Future<IncidenciaSolucioItem> updateSolucio(
+    int solucioId,
+    Map<String, dynamic> payload,
+  ) async {
+    final raw = await putJsonMap(
+      '/solucions/$solucioId/',
+      body: payload,
+      fallback: 'Error actualitzant la solució',
+      invalidResponseMessage:
+          'La resposta d’actualització de la solució no és vàlida.',
+    );
+
+    return IncidenciaSolucioItem.fromMap(raw);
+  }
+
+  Future<void> deleteSolucio(int solucioId) {
+    return deleteExpectNoContent(
+      '/solucions/$solucioId/',
+      fallback: 'Error eliminant la solució',
+    );
+  }
+
+  Future<void> bulkDeleteSolucions(int incidenciaId) {
+    return deleteExpectNoContent(
+      '/solucions/$incidenciaId/bulk_delete/',
+      fallback: 'Error eliminant les solucions de la incidència',
+    );
+  }
+
+
+}
+
+
+int? _asInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
 }

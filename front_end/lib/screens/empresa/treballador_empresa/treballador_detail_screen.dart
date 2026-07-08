@@ -2,9 +2,12 @@
 //quant mira la informacio d'un treballador, es mostra el perfil del treballador, amb les seves dades i les seves obres associades
 import 'package:flutter/material.dart';
 
+import 'package:front_end/models/sol_recurs_models.dart';
+import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/models/treballador_models.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/Constants/api_constants.dart';
+import 'package:front_end/widgets/obra_widgets.dart';
 import 'package:front_end/widgets/treballador_widgets.dart';
 
 class TreballadorDetailScreen extends StatefulWidget {
@@ -58,6 +61,7 @@ class _TreballadorDetailScreenState extends State<TreballadorDetailScreen> {
       detail: detail,
       tasques: tasques,
       obres: obres,
+      solRecursos: _buildSolRecursosFromDetail(detail),
     );
   }
 
@@ -73,7 +77,7 @@ class _TreballadorDetailScreenState extends State<TreballadorDetailScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: scheme.primaryContainer.withOpacity(0.06),
       appBar: AppBar(
         title: const Text('Detall del treballador'),
         actions: [
@@ -108,6 +112,8 @@ class _TreballadorDetailScreenState extends State<TreballadorDetailScreen> {
 
           final detail = data.detail;
           final contractes = _asMapList(detail['contractes']);
+          final tasques = _buildTasquesFromMaps(data.tasques);
+          final solRecursos = data.solRecursos;
 
           return RefreshIndicator(
             onRefresh: _reload,
@@ -119,45 +125,24 @@ class _TreballadorDetailScreenState extends State<TreballadorDetailScreen> {
                 const SizedBox(height: 16),
                 TreballadorContactCard(profile: data.profile),
                 const SizedBox(height: 16),
-                TreballadorSummaryCard(profile: data.profile),
-                const SizedBox(height: 16),
-                _TreballadorAdminInfoCard(detail: detail),
-                const SizedBox(height: 16),
-                _TreballadorSectionBlock(
-                  title: 'Contractes',
-                  icon: Icons.badge_outlined,
-                  count: contractes.length,
-                  initiallyExpanded: true,
-                  child: contractes.isEmpty
-                      ? const _TreballadorEmptyPanel(
-                          text: 'No hi ha contractes disponibles.',
-                        )
-                      : Column(
-                          children: [
-                            for (int i = 0; i < contractes.length; i++) ...[
-                              _TreballadorContracteCard(
-                                contracte: contractes[i],
-                              ),
-                              if (i != contractes.length - 1)
-                                const SizedBox(height: 10),
-                            ],
-                          ],
-                        ),
+                TreballadorOverviewAdminCard(
+                  profile: data.profile,
+                  detail: detail,
                 ),
                 const SizedBox(height: 16),
                 _TreballadorSectionBlock(
                   title: 'Tasques assignades',
                   icon: Icons.task_alt_outlined,
-                  count: data.tasques.length,
-                  child: data.tasques.isEmpty
+                  count: tasques.length,
+                  child: tasques.isEmpty
                       ? const _TreballadorEmptyPanel(
                           text: 'No hi ha tasques assignades.',
                         )
                       : Column(
                           children: [
-                            for (int i = 0; i < data.tasques.length; i++) ...[
-                              _TreballadorTascaCard(tasca: data.tasques[i]),
-                              if (i != data.tasques.length - 1)
+                            for (int i = 0; i < tasques.length; i++) ...[
+                              ObraTascaCard(tasca: tasques[i]),
+                              if (i != tasques.length - 1)
                                 const SizedBox(height: 10),
                             ],
                           ],
@@ -182,6 +167,47 @@ class _TreballadorDetailScreenState extends State<TreballadorDetailScreen> {
                           ],
                         ),
                 ),
+                const SizedBox(height: 16),
+                _TreballadorSectionBlock(
+                  title: 'Sol·licituds de recursos',
+                  icon: Icons.inventory_2_outlined,
+                  count: solRecursos.length,
+                  child: solRecursos.isEmpty
+                      ? const _TreballadorEmptyPanel(
+                          text: 'No hi ha sol·licituds de recursos disponibles.',
+                        )
+                      : Column(
+                          children: [
+                            for (int i = 0; i < solRecursos.length; i++) ...[
+                              ObraSolRecursCard(item: solRecursos[i]),
+                              if (i != solRecursos.length - 1)
+                                const SizedBox(height: 10),
+                            ],
+                          ],
+                        ),
+                ),
+                const SizedBox(height: 16),
+                _TreballadorSectionBlock(
+                  title: 'Contractes',
+                  icon: Icons.badge_outlined,
+                  count: contractes.length,
+                  initiallyExpanded: false,
+                  child: contractes.isEmpty
+                      ? const _TreballadorEmptyPanel(
+                          text: 'No hi ha contractes disponibles.',
+                        )
+                      : Column(
+                          children: [
+                            for (int i = 0; i < contractes.length; i++) ...[
+                              _TreballadorContracteCard(
+                                contracte: contractes[i],
+                              ),
+                              if (i != contractes.length - 1)
+                                const SizedBox(height: 10),
+                            ],
+                          ],
+                        ),
+                ),
               ],
             ),
           );
@@ -196,12 +222,14 @@ class _TreballadorDetailBundle {
   final Map<String, dynamic> detail;
   final List<Map<String, dynamic>> tasques;
   final List<Map<String, dynamic>> obres;
+  final List<SolRecurs> solRecursos;
 
   const _TreballadorDetailBundle({
     required this.profile,
     required this.detail,
     required this.tasques,
     required this.obres,
+    required this.solRecursos,
   });
 }
 
@@ -244,6 +272,91 @@ Map<String, dynamic>? _selectContracteActual(
   }
 
   return contractes.first;
+}
+
+List<Tasca> _buildTasquesFromMaps(List<Map<String, dynamic>> rawTasques) {
+  return rawTasques
+      .map(_tascaFromMap)
+      .whereType<Tasca>()
+      .toList(growable: false);
+}
+
+Tasca? _tascaFromMap(Map<String, dynamic> raw) {
+  final nested = _asMap(raw['tasca']) ??
+      _asMap(raw['tasca_info']) ??
+      _asMap(raw['task']) ??
+      _asMap(raw['task_info']);
+
+  final source = nested ?? raw;
+  final normalized = <String, dynamic>{...source};
+
+  normalized['id'] ??= raw['id_tasca'] ?? raw['tasca_id'];
+  normalized['descripcio'] ??= raw['descripcio_tasca'] ??
+      raw['descripcion'] ??
+      raw['description'] ??
+      raw['nom'] ??
+      raw['title'];
+  normalized['prioritat'] ??= raw['prioritat'] ?? raw['priority'] ?? 0;
+  normalized['data_inici'] ??= raw['data_inici'] ?? raw['inici'];
+  normalized['data_fi'] ??= raw['data_fi'] ?? raw['fi'];
+
+  try {
+    return Tasca.fromMap(normalized);
+  } catch (_) {
+    return null;
+  }
+}
+
+List<SolRecurs> _buildSolRecursosFromDetail(Map<String, dynamic> detail) {
+  final raw = _firstListValue(detail, const [
+    'sol_recursos',
+    'sollicituds_recursos',
+    'solicituds_recursos',
+    'sol_recurs',
+    'recursos_solicitats',
+  ]);
+
+  return raw
+      .map(_solRecursFromMap)
+      .whereType<SolRecurs>()
+      .toList(growable: false);
+}
+
+List<Map<String, dynamic>> _firstListValue(
+  Map<String, dynamic> source,
+  List<String> keys,
+) {
+  for (final key in keys) {
+    final value = source[key];
+    final list = _asMapList(value);
+    if (list.isNotEmpty) return list;
+  }
+  return const [];
+}
+
+SolRecurs? _solRecursFromMap(Map<String, dynamic> raw) {
+  final nested = _asMap(raw['sol_recurs']) ??
+      _asMap(raw['sollicitud']) ??
+      _asMap(raw['solicitud']) ??
+      _asMap(raw['request']);
+
+  final source = nested ?? raw;
+  final normalized = <String, dynamic>{...source};
+
+  normalized['id'] ??= raw['id_sol_recurs'] ?? raw['sol_recurs_id'];
+  normalized['id_obra'] ??= raw['id_obra'] ?? raw['obra_id'];
+  normalized['id_recurs'] ??= raw['id_recurs'] ?? raw['recurs_id'];
+  normalized['quantitat'] ??= raw['quantitat'] ?? raw['cantidad'] ?? 0;
+  normalized['data_necessitat'] ??= raw['data_necessitat'] ?? raw['necessitat'];
+  normalized['data_entrega'] ??= raw['data_entrega'] ?? raw['entrega'];
+  normalized['recurs'] ??= raw['recurs'] ?? raw['recurs_info'];
+  normalized['obra'] ??= raw['obra'] ?? raw['obra_info'];
+
+  try {
+    return SolRecurs.fromMap(normalized);
+  } catch (_) {
+    return null;
+  }
 }
 
 class _TreballadorDetailLoadingView extends StatelessWidget {

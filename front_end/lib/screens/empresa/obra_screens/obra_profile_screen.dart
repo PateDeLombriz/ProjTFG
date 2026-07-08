@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/models/document_models.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/responsable_models.dart';
 import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/screens/documents_obra_screen.dart';
-import 'package:front_end/screens/empresa/inc_sol_form.dart';
+import 'package:front_end/screens/empresa/incidencia/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/recursos/solicRec_form.dart';
 import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
 import 'package:front_end/screens/empresa/obra_screens/obra_edit_screen.dart';
@@ -306,11 +307,8 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _profileData?.obra.nom ?? _fallbackTitle;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -346,7 +344,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingIndicator();
     }
 
     if (_errorMessage != null) {
@@ -381,6 +379,12 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
     }
 
     final obra = data.obra;
+    final incidencies = [...data.incidencies]
+      ..sort((a, b) =>
+          _priorityRank(b.prioritat).compareTo(_priorityRank(a.prioritat)));
+    final tasques = [...data.tasques]
+      ..sort((a, b) =>
+          _priorityRank(b.prioritat).compareTo(_priorityRank(a.prioritat)));
 
     return RefreshIndicator(
       onRefresh: _fetchDetails,
@@ -409,7 +413,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
             onAdd: _openAddIncidencia,
             addTooltip: 'Afegir incidència',
             child: ObraSectionContent<Incidencia>(
-              items: data.incidencies,
+              items: incidencies,
               emptyText: 'No hi ha incidències registrades.',
               itemBuilder: (item) => ObraIncidenciaCard(
                 incidencia: item,
@@ -443,7 +447,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
             onAdd: _openAddTasca,
             addTooltip: 'Afegir tasca',
             child: ObraSectionContent<Tasca>(
-              items: data.tasques,
+              items: tasques,
               emptyText: 'No hi ha tasques assignades.',
               itemBuilder: (item) => ObraTascaCard(
                 tasca: item,
@@ -500,5 +504,28 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
         backgroundColor: success ? Colors.green : null,
       ),
     );
+  }
+}
+
+int _priorityRank(dynamic value) {
+  if (value is num) return value.toInt();
+
+  final text = value?.toString().trim().toLowerCase() ?? '';
+  switch (text) {
+    case 'urgent':
+    case 'urgente':
+    case 'alta':
+    case 'high':
+      return 3;
+    case 'mitjana':
+    case 'media':
+    case 'medium':
+      return 2;
+    case 'baixa':
+    case 'baja':
+    case 'low':
+      return 1;
+    default:
+      return int.tryParse(text) ?? 0;
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/incidencia_models.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
+import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
 import 'package:front_end/services/incidencia_service.dart';
-import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_search_field.dart';
 import 'package:front_end/widgets/incidencia_widgets.dart';
 
 class IncidenciesListScreen extends StatefulWidget {
@@ -23,7 +25,7 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
   String? _selectedEstat;
   int? _selectedPrioritat;
   String? _selectedCriticitat;
-  String _selectedSort = _IncidenciaListSort.mesRecents;
+  String _selectedSort = IncidenciaSortValues.mesRecents;
 
   @override
   void initState() {
@@ -53,6 +55,15 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
     await nextFuture;
   }
 
+  bool get _hasActiveFilters {
+    return _query.trim().isNotEmpty ||
+        _selectedObraId != null ||
+        (_selectedEstat?.trim().isNotEmpty == true) ||
+        _selectedPrioritat != null ||
+        (_selectedCriticitat?.trim().isNotEmpty == true) ||
+        _selectedSort != IncidenciaSortValues.mesRecents;
+  }
+
   void _clearFilters() {
     setState(() {
       _query = '';
@@ -60,7 +71,7 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
       _selectedEstat = null;
       _selectedPrioritat = null;
       _selectedCriticitat = null;
-      _selectedSort = _IncidenciaListSort.mesRecents;
+      _selectedSort = IncidenciaSortValues.mesRecents;
       _searchController.clear();
     });
   }
@@ -83,22 +94,17 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return true;
 
-    final descripcio = item.descripcio.toLowerCase();
-    final obraNom = (item.obraNom ?? '').toLowerCase();
-   
-    final estat = (item.estat ?? '').toLowerCase();
-    final categoria = (item.categoria?.toString() ?? '');
-    final id = item.id.toString();
-    final idObra = item.idObra.toString();
-    final idTasca = item.idTasca?.toString() ?? '';
+    final values = <String>[
+      item.descripcio,
+      item.obraNom ?? '',
+      item.estat ?? '',
+      item.categoria?.toString() ?? '',
+      item.id.toString(),
+      item.idObra.toString(),
+      item.idTasca?.toString() ?? '',
+    ];
 
-    return descripcio.contains(query) ||
-        obraNom.contains(query) ||
-        estat.contains(query) ||
-        categoria.contains(query) ||
-        id.contains(query) ||
-        idObra.contains(query) ||
-        idTasca.contains(query);
+    return values.any((value) => value.toLowerCase().contains(query));
   }
 
   bool _matchesObra(IncidenciaListItem item) {
@@ -139,11 +145,11 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
 
   void _sortItems(List<IncidenciaListItem> items) {
     switch (_selectedSort) {
-      case _IncidenciaListSort.mesAntigues:
+      case IncidenciaSortValues.mesAntigues:
         items.sort((a, b) => _compareDateAsc(a.dataInici, b.dataInici));
         return;
 
-      case _IncidenciaListSort.criticitatDesc:
+      case IncidenciaSortValues.criticitatDesc:
         items.sort((a, b) {
           final criticitat = b.criticitat.compareTo(a.criticitat);
           if (criticitat != 0) return criticitat;
@@ -151,7 +157,7 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
         });
         return;
 
-      case _IncidenciaListSort.prioritatDesc:
+      case IncidenciaSortValues.prioritatDesc:
         items.sort((a, b) {
           final prioritat = b.prioritat.compareTo(a.prioritat);
           if (prioritat != 0) return prioritat;
@@ -159,15 +165,25 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
         });
         return;
 
-      case _IncidenciaListSort.obraAsc:
+      case IncidenciaSortValues.obraAsc:
         items.sort((a, b) {
-          final obra = (a.obraNom ?? '').toLowerCase().compareTo((b.obraNom ?? '').toLowerCase());
+          final obra = (a.obraNom ?? '')
+              .toLowerCase()
+              .compareTo((b.obraNom ?? '').toLowerCase());
           if (obra != 0) return obra;
           return _compareDateDesc(a.dataInici, b.dataInici);
         });
         return;
 
-      case _IncidenciaListSort.mesRecents:
+      case IncidenciaSortValues.estatAsc:
+        items.sort((a, b) {
+          final estat = _normalizeEstat(a.estat).compareTo(_normalizeEstat(b.estat));
+          if (estat != 0) return estat;
+          return _compareDateDesc(a.dataInici, b.dataInici);
+        });
+        return;
+
+      case IncidenciaSortValues.mesRecents:
       default:
         items.sort((a, b) => _compareDateDesc(a.dataInici, b.dataInici));
         return;
@@ -194,19 +210,23 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
     return value;
   }
 
+  int _criticalCount(List<IncidenciaListItem> items) {
+    return items.where((item) => item.criticitat >= 7).length;
+  }
+
+  int _pendingCount(List<IncidenciaListItem> items) {
+    return items.where((item) => _normalizeEstat(item.estat) == 'pendent').length;
+  }
+
   Future<void> _handleCardTap(IncidenciaListItem item) async {
-    // Aquí pots connectar directament amb el teu detail screen existent.
-    //
-    // Exemple quan vulguis activar-ho:
-    //
-    // await Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (_) => IncidenciaDetailScreen(
-    //       incidenciaId: item.id,
-    //     ),
-    //   ),
-    // );
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IncidenciaProfileScreen(
+          incidenciaId: item.id,
+        ),
+      ),
+    );
   }
 
   @override
@@ -228,7 +248,7 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
           ),
           IconButton(
             tooltip: 'Neteja filtres',
-            onPressed: _clearFilters,
+            onPressed: _hasActiveFilters ? _clearFilters : null,
             icon: const Icon(Icons.filter_alt_off_outlined),
           ),
         ],
@@ -237,9 +257,7 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const AppLoadingIndicator();
           }
 
           if (snapshot.hasError) {
@@ -258,6 +276,7 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
           }
 
           final filtered = _applyFilters(data.incidencies);
+          final allItems = data.incidencies;
 
           return RefreshIndicator(
             onRefresh: _reload,
@@ -268,12 +287,16 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
                 IncidenciaListHeaderCard(
                   title: 'Problemes i incidències',
                   subtitle:
-                      'Vista resumida de les incidències vinculades a les obres de l’empresa, amb filtres per localitzar ràpidament els casos més rellevants.',
-                  count: filtered.length,
+                      'Revisa i localitza ràpidament les incidències vinculades a les obres de l’empresa.',
+                  count: allItems.length,
+                  activeCount: filtered.length,
+                  criticalCount: _criticalCount(allItems),
+                  pendingCount: _pendingCount(allItems),
                 ),
                 const SizedBox(height: 16),
-                IncidenciaSearchField(
+                AppSearchField(
                   controller: _searchController,
+                  hintText: 'Cerca incidències...',
                   onChanged: (value) {
                     setState(() {
                       _query = value;
@@ -319,32 +342,20 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
                       _selectedSort = value;
                     });
                   },
-                  onClearFilters: _clearFilters,
+                  onClearFilters: _hasActiveFilters ? _clearFilters : null,
                 ),
                 const SizedBox(height: 18),
                 if (filtered.isEmpty)
                   IncidenciaListEmptyState(
-                    title: _query.trim().isEmpty &&
-                            _selectedObraId == null &&
-                            _selectedEstat == null &&
-                            _selectedPrioritat == null &&
-                            _selectedCriticitat == null
-                        ? 'No hi ha incidències disponibles'
-                        : 'Cap incidència coincideix amb els filtres',
-                    message: _query.trim().isEmpty &&
-                            _selectedObraId == null &&
-                            _selectedEstat == null &&
-                            _selectedPrioritat == null &&
-                            _selectedCriticitat == null
-                        ? 'Quan l’empresa tengui incidències registrades, apareixeran aquí.'
-                        : 'Prova de canviar la cerca o llevar algun filtre.',
-                    icon: _query.trim().isEmpty &&
-                            _selectedObraId == null &&
-                            _selectedEstat == null &&
-                            _selectedPrioritat == null &&
-                            _selectedCriticitat == null
-                        ? Icons.inbox_outlined
-                        : Icons.search_off_rounded,
+                    title: _hasActiveFilters
+                        ? 'Cap incidència coincideix amb els filtres'
+                        : 'No hi ha incidències disponibles',
+                    message: _hasActiveFilters
+                        ? 'Prova de canviar la cerca o llevar algun filtre.'
+                        : 'Quan l’empresa tengui incidències registrades, apareixeran aquí.',
+                    icon: _hasActiveFilters
+                        ? Icons.search_off_rounded
+                        : Icons.inbox_outlined,
                   )
                 else
                   ...List.generate(filtered.length, (index) {
@@ -356,6 +367,7 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
                       ),
                       child: IncidenciaListItemCard(
                         item: item,
+                        onTap: () => _handleCardTap(item),
                       ),
                     );
                   }),
@@ -366,12 +378,4 @@ class _IncidenciesListScreenState extends State<IncidenciesListScreen> {
       ),
     );
   }
-}
-
-abstract final class _IncidenciaListSort {
-  static const String mesRecents = 'mes_recents';
-  static const String mesAntigues = 'mes_antigues';
-  static const String criticitatDesc = 'criticitat_desc';
-  static const String prioritatDesc = 'prioritat_desc';
-  static const String obraAsc = 'obra_asc';
 }

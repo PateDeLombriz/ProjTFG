@@ -434,6 +434,7 @@ CREATE TABLE incidencia (
     prioritat    INTEGER NOT NULL,          -- 1-5
     categoria    INTEGER NOT NULL,          -- Enumeración libre
     estat        VARCHAR(40) NOT NULL,      -- Abierta, cerrada…
+
     CONSTRAINT fk_inc_obra
         FOREIGN KEY (id_obra) REFERENCES obra(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
@@ -547,3 +548,110 @@ CREATE TABLE registre_horari (
         ON DELETE SET NULL
         ON UPDATE CASCADE
 );
+
+CREATE TABLE notificacio (
+  id SERIAL PRIMARY KEY,
+  id_treballador INTEGER NULL,
+  id_empresa INTEGER NULL,
+  tipus VARCHAR(40) NOT NULL,
+  titol VARCHAR(120) NOT NULL,
+  missatge TEXT NOT NULL DEFAULT '',
+  llegida BOOLEAN NOT NULL DEFAULT FALSE,
+  data_creacio TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  entitat_id INTEGER NULL,
+  entitat_tipus VARCHAR(40) NULL,
+
+  CONSTRAINT chk_notif_subjecte CHECK (
+    (id_treballador IS NOT NULL AND id_empresa IS NULL) OR
+    (id_treballador IS NULL AND id_empresa IS NOT NULL)
+  ),
+
+  CONSTRAINT chk_notif_tipus CHECK (
+    tipus IN (
+      'nova_tasca',
+      'tasca_actualitzada',
+      'tasca_cancelada',
+      'tasca_finalitzada',
+      'tasca_validada',
+      'tasca_rebutjada',
+
+      'sol_recurs_creada',
+      'sol_recurs_assignada',
+      'sol_recurs_aprovada',
+      'sol_recurs_rebutjada',
+      'recurs_entrega_propera',
+
+      'nova_incidencia',
+      'incidencia_actualitzada',
+      'incidencia_tancada',
+
+      'nova_obra_assignada',
+      'responsable_obra_assignat',
+      'document_pujat',
+
+      'sortida_pendent',
+      'contracte_finalitza_properament'
+    )
+  ),
+
+  CONSTRAINT fk_notificacio_treballador
+    FOREIGN KEY (id_treballador) REFERENCES treballador(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_notificacio_empresa
+    FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa)
+    ON DELETE CASCADE
+);
+/*
+'nova_tasca',
+'tasca_actualitzada',
+'tasca_cancelada',
+'tasca_finalitzada',
+'tasca_validada',
+'tasca_rebutjada',
+'tasca_data_propera',
+
+'sol_recurs_creada',
+'sol_recurs_assignada',
+'sol_recurs_aprovada',
+'sol_recurs_rebutjada',
+'recurs_entrega_propera',
+'recurs_stock_baix',
+
+'nova_incidencia',
+'incidencia_actualitzada',
+'incidencia_tancada',
+
+'solucio_creada',
+'solucio_assigna_tasca',
+
+'nova_obra_assignada',
+'obra_actualitzada',
+'obra_finalitzada',
+'obra_data_fi_propera',
+
+'responsable_obra_assignat',
+'responsable_obra_finalitzat',
+
+'document_pujat',
+'document_important_pujat',
+
+'entrada_registrada',
+'sortida_registrada',
+'sortida_pendent',
+'registre_horari_incomplet',
+
+'contracte_creat',
+'contracte_finalitza_properament',
+'treballador_baixa',
+'treballador_acomiadat',
+
+'login_nou',
+'contrasenya_canviada',
+'configuracio_actualitzada',
+'permis_assignat',
+'permis_modificat',
+
+'empresa_verificada',
+'empresa_verificacio_rebutjada'
+*/

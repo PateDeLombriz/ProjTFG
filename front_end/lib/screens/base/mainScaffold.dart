@@ -4,10 +4,10 @@ import 'package:front_end/screens/empresa/home_empresa.dart';
 import 'package:front_end/screens/empresa/obra_screens/obra_form.dart';
 import 'package:front_end/screens/empresa/recursos/sol_recurs_list_screen.dart';
 import 'package:front_end/screens/empresa/tasca_screens/tasca_form.dart';
-import 'package:front_end/screens/empresa/inc_sol_form.dart';
+import 'package:front_end/screens/empresa/incidencia/inc_sol_form.dart';
 import 'package:front_end/screens/empresa/recursos/solicRec_form.dart';
-import 'package:front_end/screens/empresa/treballador%20Empresa/treballador_form.dart';
-import 'package:front_end/screens/empresa/treballador%20Empresa/treballadors_empresa_list_screen.dart';
+import 'package:front_end/screens/empresa/treballador_empresa/treballador_form.dart';
+import 'package:front_end/screens/empresa/treballador_empresa/treballadors_empresa_list_screen.dart';
 import 'package:front_end/screens/empresa/incidencia/incidencia_list_screen.dart';
 
 class MainScaffold extends StatefulWidget {

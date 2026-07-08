@@ -110,26 +110,6 @@ class _TreballadorProfileScreenState extends State<TreballadorProfileScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        title: Text(_isOwnProfile ? 'El meu perfil' : 'Perfil del treballador'),
-        automaticallyImplyLeading: !_isOwnProfile,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'Actualitza',
-            onPressed: _reload,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          if (_isOwnProfile)
-            IconButton(
-              tooltip: 'Tanca sessió',
-              onPressed: _logout,
-              icon: const Icon(Icons.logout_rounded),
-            ),
-        ],
-      ),
       body: FutureBuilder<TreballadorProfileData>(
         future: _futureProfile,
         builder: (context, snapshot) {

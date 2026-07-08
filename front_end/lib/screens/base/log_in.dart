@@ -52,9 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final rawBody = utf8.decode(response.bodyBytes);
-      debugPrint('LOGIN status=${response.statusCode}');
-      debugPrint('LOGIN body=$rawBody');
-      debugPrint('LOGIN headers=${response.headers}');
+      
 
       Map<String, dynamic>? data;
       try {
@@ -180,8 +178,6 @@ class _LoginScreenState extends State<LoginScreen> {
     await sp.setString('refresh', refresh);
     await sp.setString('tipus', tipus);
     await sp.setInt('subject_id', subjectId);
-
-    debugPrint('SESSION saved -> tipus=$tipus, subject_id=$subjectId');
   }
 
   Future<String> getToken() async {

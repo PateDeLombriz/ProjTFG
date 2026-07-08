@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/utils/date_formatter.dart';
+import 'package:front_end/shared/widgets/app_badge.dart';
+import 'package:front_end/shared/widgets/app_expandable_section.dart';
+import 'package:front_end/shared/widgets/app_form_header_card.dart';
 
 class TascaHeroCard extends StatelessWidget {
   final TascaProfileData data;
@@ -14,23 +18,31 @@ class TascaHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final accent = _priorityAccent(scheme, data.tasca.prioritat);
+    final visibilityAccent =
+        data.tasca.visibilitatTasca ? Colors.green : scheme.outline;
+    final description = data.tasca.descripcio.trim().isEmpty
+        ? 'Sense descripció de tasca'
+        : data.tasca.descripcio.trim();
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            scheme.primaryContainer,
-            scheme.primaryContainer.withOpacity(0.82),
+            accent.withOpacity(0.18),
+            scheme.primaryContainer.withOpacity(0.28),
+            scheme.surface,
           ],
         ),
+        border: Border.all(color: accent.withOpacity(0.24), width: 1.4),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withOpacity(0.10),
+            color: accent.withOpacity(0.10),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -39,51 +51,93 @@ class TascaHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _HeroBadge(
-                icon: Icons.tag_outlined,
-                label: 'Tasca #${data.tasca.id}',
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: accent.withOpacity(0.20)),
+                ),
+                child: Icon(
+                  Icons.task_alt_rounded,
+                  color: accent,
+                  size: 30,
+                ),
               ),
-              _HeroBadge(
-                icon: Icons.flag_outlined,
-                label: 'Prioritat ${formatNullableInt(data.tasca.prioritat)}',
-              ),
-              _HeroBadge(
-                icon: data.tasca.visibilitatTasca
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                label: data.tasca.visibilitatTasca ? 'Visible' : 'Oculta',
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Perfil de tasca',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                        height: 1.16,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            data.tasca.descripcio.trim().isEmpty
-                ? 'Sense descripció de tasca'
-                : data.tasca.descripcio.trim(),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: scheme.onPrimaryContainer,
-              fontWeight: FontWeight.w800,
-              height: 1.18,
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              AppBadge(
+                icon: Icons.tag_outlined,
+                label: 'Tasca #${data.tasca.id}',
+                color: scheme.primary,
+              ),
+              AppBadge(
+                icon: Icons.flag_outlined,
+                label: 'Prioritat ${formatNullableInt(data.tasca.prioritat)}',
+                color: accent,
+              ),
+              AppBadge(
+                icon: data.tasca.visibilitatTasca
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                label: data.tasca.visibilitatTasca ? 'Visible' : 'Oculta',
+                color: visibilityAccent,
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: _HeroInfoTile(
+                  icon: Icons.play_arrow_rounded,
                   label: 'Data inici',
                   value: formatDate(data.tasca.dataInici),
+                  color: scheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _HeroInfoTile(
+                  icon: Icons.flag_circle_rounded,
                   label: 'Data fi',
                   value: formatDate(data.tasca.dataFi),
+                  color: accent,
                 ),
               ),
             ],
@@ -106,17 +160,35 @@ class TascaObraSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TascaSectionCard(
+    final scheme = Theme.of(context).colorScheme;
+    final accent = scheme.primary;
+
+    return AppExpandableSection(accentBorder: true,
       title: 'Obra vinculada',
       icon: Icons.business_center_outlined,
+      count: obra == null ? 0 : 1,
+      accent: accent,
       child: obra == null
-          ? const TascaSectionPlaceholder(
+          ? TascaSectionPlaceholder(
               message: 'Aquesta tasca no té informació d’obra ampliada.',
+              accent: accent,
             )
           : TascaLinkedTile(
               title: obra!.nom,
-              subtitle: 'Obre el perfil de l’obra',
-              onTap: onOpenObra == null ? null : () => onOpenObra!(obra!.toObraMap()),
+              subtitle: (obra!.descripcio ?? '').trim().isNotEmpty
+                  ? obra!.descripcio!.trim()
+                  : 'Obre el perfil de l’obra',
+              icon: Icons.apartment_rounded,
+              accent: accent,
+              metadata: [
+                if ((obra!.estat ?? '').trim().isNotEmpty)
+                  'Estat: ${obra!.estat!.trim()}',
+                'Inici: ${formatDate(obra!.dataInici)}',
+                'Fi prev.: ${formatDate(obra!.dataPrevFi)}',
+              ],
+              onTap: onOpenObra == null
+                  ? null
+                  : () => onOpenObra!(obra!.toObraMap()),
             ),
     );
   }
@@ -134,19 +206,28 @@ class TascaPareSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TascaSectionCard(
+    final scheme = Theme.of(context).colorScheme;
+    final accent = scheme.secondary;
+
+    return AppExpandableSection(accentBorder: true,
       title: 'Tasca pare',
       icon: Icons.account_tree_outlined,
+      count: tascaPare == null ? 0 : 1,
+      accent: accent,
       child: tascaPare == null
-          ? const TascaSectionPlaceholder(
+          ? TascaSectionPlaceholder(
               message: 'Aquesta tasca no depèn de cap tasca pare.',
+              accent: accent,
             )
           : TascaLinkedTile(
-              title: 'Tasca #${tascaPare!.id}',
-              subtitle: tascaPare!.descripcioCurta,
+              title: tascaPare!.descripcioCurta,
+              subtitle: 'Obre la tasca pare vinculada',
+              icon: Icons.account_tree_rounded,
+              accent: accent,
               metadata: [
-                'Prioritat ${formatNullableInt(tascaPare!.prioritat)}',
-                'Inici ${formatDate(tascaPare!.dataInici)}',
+                'Prioritat: ${formatNullableInt(tascaPare!.prioritat)}',
+                'Inici: ${formatDate(tascaPare!.dataInici)}',
+                'Fi: ${formatDate(tascaPare!.dataFi)}',
               ],
               onTap: onOpenTascaPare == null
                   ? null
@@ -168,21 +249,31 @@ class TascaAssignacioSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TascaSectionCard(
+    final scheme = Theme.of(context).colorScheme;
+    final accent = scheme.tertiary;
+
+    return AppExpandableSection(accentBorder: true,
       title: 'Treballador assignat',
       icon: Icons.person_outline,
+      count: assignacio == null ? 0 : 1,
+      accent: accent,
       child: assignacio == null
-          ? const TascaSectionPlaceholder(
+          ? TascaSectionPlaceholder(
               message: 'No hi ha cap assignació principal retornada per l’API.',
+              accent: accent,
             )
           : TascaLinkedTile(
               title: assignacio!.usuari.nomComplet,
               subtitle: _buildAssignacioSubtitle(assignacio!),
+              icon: Icons.person_rounded,
+              accent: accent,
               metadata: [
                 if ((assignacio!.usuari.nickname ?? '').trim().isNotEmpty)
                   '@${assignacio!.usuari.nickname!.trim()}',
                 if ((assignacio!.usuari.email ?? '').trim().isNotEmpty)
                   assignacio!.usuari.email!.trim(),
+                if ((assignacio!.usuari.telefon ?? '').trim().isNotEmpty)
+                  'Tel.: ${assignacio!.usuari.telefon!.trim()}',
               ],
               onTap: assignacio!.usuari.id == null || onOpenTreballador == null
                   ? null
@@ -220,24 +311,34 @@ class TascaIncidenciesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TascaSectionCard(
-      title: 'Incidències relacionades',
+    final scheme = Theme.of(context).colorScheme;
+    final sectionAccent = _incidenciesAccent(scheme, incidencies);
+
+    return AppExpandableSection(accentBorder: true,
+      title: 'Incidències causades per aquesta tasca',
       icon: Icons.report_problem_outlined,
+      count: incidencies.length,
+      accent: sectionAccent,
       child: incidencies.isEmpty
-          ? const TascaSectionPlaceholder(
+          ? TascaSectionPlaceholder(
               message: 'Aquesta tasca no té incidències associades.',
+              accent: sectionAccent,
             )
           : Column(
               children: [
                 for (var i = 0; i < incidencies.length; i++) ...[
                   TascaLinkedTile(
-                    title: 'Incidència #${incidencies[i].id}',
-                    subtitle: incidencies[i].descripcioCurta,
+                    title: incidencies[i].descripcioCurta,
+                    subtitle: 'Incidència associada a aquesta tasca',
+                    icon: Icons.warning_amber_rounded,
+                    accent:
+                        _criticitatAccent(scheme, incidencies[i].criticitat),
                     metadata: [
                       if ((incidencies[i].estat ?? '').trim().isNotEmpty)
-                        incidencies[i].estat!.trim(),
-                      'Prioritat ${formatNullableInt(incidencies[i].prioritat)}',
-                      'Criticitat ${formatNullableInt(incidencies[i].criticitat)}',
+                        'Estat: ${incidencies[i].estat!.trim()}',
+                      'Prioritat: ${formatNullableInt(incidencies[i].prioritat)}',
+                      'Criticitat: ${formatNullableInt(incidencies[i].criticitat)}',
+                      'Inici: ${formatDate(incidencies[i].dataInici)}',
                     ],
                     onTap: onOpenIncidencia == null
                         ? null
@@ -251,118 +352,13 @@ class TascaIncidenciesSection extends StatelessWidget {
   }
 }
 
-class TascaSolucionsSection extends StatelessWidget {
-  final List<TascaSolucioItem> solucions;
-  final ValueChanged<int>? onOpenSolucio;
-
-  const TascaSolucionsSection({
-    super.key,
-    required this.solucions,
-    this.onOpenSolucio,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TascaSectionCard(
-      title: 'Solucions relacionades',
-      icon: Icons.build_circle_outlined,
-      child: solucions.isEmpty
-          ? const TascaSectionPlaceholder(
-              message: 'Aquesta tasca no té solucions associades.',
-            )
-          : Column(
-              children: [
-                for (var i = 0; i < solucions.length; i++) ...[
-                  TascaLinkedTile(
-                    title: 'Solució #${solucions[i].id}',
-                    subtitle: solucions[i].descripcioCurta,
-                    metadata: [
-                      'Ef. ${formatNullableInt(solucions[i].eficacia)}',
-                      'Impacte ${formatNullableInt(solucions[i].impacte)}',
-                      'Cost ${formatMoney(solucions[i].costMonetari)}',
-                    ],
-                    onTap: onOpenSolucio == null
-                        ? null
-                        : () => onOpenSolucio!(solucions[i].id),
-                  ),
-                  if (i != solucions.length - 1) const SizedBox(height: 12),
-                ],
-              ],
-            ),
-    );
-  }
-}
-
-class TascaSectionCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Widget child;
-
-  const TascaSectionCard({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outlineVariant.withOpacity(0.7)),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: scheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
 class TascaLinkedTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final List<String> metadata;
   final VoidCallback? onTap;
+  final IconData? icon;
+  final Color? accent;
 
   const TascaLinkedTile({
     super.key,
@@ -370,77 +366,113 @@ class TascaLinkedTile extends StatelessWidget {
     required this.subtitle,
     this.metadata = const [],
     this.onTap,
+    this.icon,
+    this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final effectiveAccent = accent ?? scheme.primary;
+    final visibleMetadata =
+        metadata.where((item) => item.trim().isNotEmpty).toList();
 
-    final content = Container(
+    final content = Ink(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: scheme.surfaceContainerHighest.withOpacity(0.35),
+        color: effectiveAccent.withOpacity(0.055),
+        border: Border.all(color: effectiveAccent.withOpacity(0.18)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: 5,
+                decoration: BoxDecoration(
+                  color: effectiveAccent,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-                if (metadata.any((item) => item.trim().isNotEmpty)) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: metadata
-                        .where((item) => item.trim().isNotEmpty)
-                        .map(
-                          (item) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(999),
-                              color: scheme.surface,
-                              border: Border.all(color: scheme.outlineVariant),
-                            ),
-                            child: Text(
-                              item,
-                              style: theme.textTheme.labelMedium,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
-          const SizedBox(width: 10),
-          Icon(
-            onTap == null ? Icons.circle_outlined : Icons.chevron_right_rounded,
-            color: onTap == null ? scheme.outline : scheme.primary,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: effectiveAccent.withOpacity(0.13),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    icon ?? Icons.link_rounded,
+                    color: effectiveAccent,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title.trim().isEmpty ? 'Sense títol' : title.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (subtitle.trim().isNotEmpty) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          subtitle.trim(),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.32,
+                          ),
+                        ),
+                      ],
+                      if (visibleMetadata.isNotEmpty) ...[
+                        const SizedBox(height: 9),
+                        Wrap(
+                          spacing: 7,
+                          runSpacing: 7,
+                          children: visibleMetadata
+                              .map(
+                                (item) => _TascaInfoPill(
+                                  label: item,
+                                  accent: effectiveAccent,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  onTap == null
+                      ? Icons.circle_outlined
+                      : Icons.chevron_right_rounded,
+                  color: onTap == null ? scheme.outline : effectiveAccent,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -463,29 +495,43 @@ class TascaLinkedTile extends StatelessWidget {
 
 class TascaSectionPlaceholder extends StatelessWidget {
   final String message;
+  final Color? accent;
 
   const TascaSectionPlaceholder({
     super.key,
     required this.message,
+    this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final effectiveAccent = accent ?? scheme.primary;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: scheme.surfaceContainerHighest.withOpacity(0.30),
+        color: effectiveAccent.withOpacity(0.055),
+        border: Border.all(color: effectiveAccent.withOpacity(0.15)),
       ),
-      child: Text(
-        message,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: scheme.onSurfaceVariant,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: effectiveAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -577,54 +623,17 @@ class TascaEmptyState extends StatelessWidget {
   }
 }
 
-class _HeroBadge extends StatelessWidget {
+class _HeroInfoTile extends StatelessWidget {
   final IconData icon;
   final String label;
-
-  const _HeroBadge({
-    required this.icon,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: scheme.onPrimaryContainer.withOpacity(0.08),
-        border: Border.all(
-          color: scheme.onPrimaryContainer.withOpacity(0.10),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: scheme.onPrimaryContainer),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: scheme.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroInfoTile extends StatelessWidget {
-  final String label;
   final String value;
+  final Color color;
 
   const _HeroInfoTile({
+    required this.icon,
     required this.label,
     required this.value,
+    required this.color,
   });
 
   @override
@@ -636,24 +645,42 @@ class _HeroInfoTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: scheme.surface.withOpacity(0.45),
+        color: scheme.surface.withOpacity(0.68),
+        border: Border.all(color: color.withOpacity(0.16)),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: Icon(icon, size: 18, color: color),
           ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: scheme.onSurface,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -662,12 +689,58 @@ class _HeroInfoTile extends StatelessWidget {
   }
 }
 
-String formatDate(DateTime? value) {
-  if (value == null) return '—';
-  final day = value.day.toString().padLeft(2, '0');
-  final month = value.month.toString().padLeft(2, '0');
-  final year = value.year.toString();
-  return '$day/$month/$year';
+class _TascaInfoPill extends StatelessWidget {
+  final String label;
+  final Color accent;
+
+  const _TascaInfoPill({
+    required this.label,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: accent.withOpacity(0.10),
+        border: Border.all(color: accent.withOpacity(0.16)),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: accent,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+Color _priorityAccent(ColorScheme scheme, int? priority) {
+  if (priority == null) return scheme.primary;
+  if (priority <= 2) return Colors.green;
+  if (priority <= 4) return Colors.orange;
+  return Colors.redAccent;
+}
+
+Color _criticitatAccent(ColorScheme scheme, int? criticitat) {
+  if (criticitat == null) return scheme.primary;
+  if (criticitat >= 7) return Colors.redAccent;
+  if (criticitat >= 4) return Colors.orange;
+  return Colors.green;
+}
+
+Color _incidenciesAccent(
+    ColorScheme scheme, List<TascaIncidenciaItem> incidencies) {
+  if (incidencies.isEmpty) return scheme.error;
+  final maxCriticitat = incidencies
+      .map((item) => item.criticitat ?? 0)
+      .fold<int>(0, (max, value) => value > max ? value : max);
+  return _criticitatAccent(scheme, maxCriticitat);
 }
 
 String formatNullableInt(int? value) {
@@ -694,8 +767,7 @@ class SelectTreballadorsDialog extends StatefulWidget {
       _SelectTreballadorsDialogState();
 }
 
-class _SelectTreballadorsDialogState
-    extends State<SelectTreballadorsDialog> {
+class _SelectTreballadorsDialogState extends State<SelectTreballadorsDialog> {
   late List<UsuariOption> _temp;
   String _filter = '';
 
@@ -710,9 +782,7 @@ class _SelectTreballadorsDialogState
     final scheme = Theme.of(context).colorScheme;
 
     final filtrats = widget.tots.where((u) {
-      return u.nomComplet
-          .toLowerCase()
-          .contains(_filter.toLowerCase());
+      return u.nomComplet.toLowerCase().contains(_filter.toLowerCase());
     }).toList();
 
     return AlertDialog(
@@ -758,8 +828,7 @@ class _SelectTreballadorsDialogState
                         return CheckboxListTile(
                           value: selected,
                           title: Text(usuari.nomComplet),
-                          controlAffinity:
-                              ListTileControlAffinity.leading,
+                          controlAffinity: ListTileControlAffinity.leading,
                           onChanged: (value) {
                             setState(() {
                               if (value == true) {
@@ -994,7 +1063,6 @@ String _formatRawDate(dynamic value) {
   return text.isEmpty ? 'N/D' : text;
 }
 
-
 class TascaWorkerCard extends StatelessWidget {
   final Map<String, dynamic> tasca;
   final VoidCallback? onTap;
@@ -1122,6 +1190,7 @@ class TascaWorkerCard extends StatelessWidget {
     );
   }
 }
+
 //Classe per contrlar el color de les tasques del treballador segons el seu estat. Es pot ampliar fàcilment per nous estats o canviar colors.
 class _EstatConfig {
   final String label;
@@ -1163,10 +1232,362 @@ _EstatConfig _estatWorkerConfig(String estat, ColorScheme scheme) {
     case 'pendent':
     default:
       return _EstatConfig(
-        label: estat == 'pendent' ? 'Pendent' : (estat.isEmpty ? 'Desconegut' : estat),
+        label: estat == 'pendent'
+            ? 'Pendent'
+            : (estat.isEmpty ? 'Desconegut' : estat),
         badgeColor: const Color(0xFFFBF1DE),
         textColor: const Color(0xFFB7791F),
         borderColor: const Color(0xFFB7791F).withOpacity(0.25),
       );
   }
 }
+
+class TascaFormHeaderCard extends StatelessWidget {
+  final bool editing;
+  final String description;
+  final String obraLabel;
+  final int prioritat;
+  final bool visible;
+
+  const TascaFormHeaderCard({
+    super.key,
+    required this.editing,
+    required this.description,
+    required this.obraLabel,
+    required this.prioritat,
+    required this.visible,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = _priorityAccent(scheme, prioritat);
+    final cleanDescription = description.trim();
+    return AppFormHeaderCard(
+      title: editing ? 'Editar tasca' : 'Nova tasca',
+      subtitle: cleanDescription.isEmpty
+          ? 'Defineix les dades principals, la planificació i els treballadors assignats.'
+          : cleanDescription,
+      icon: editing ? Icons.edit_note_rounded : Icons.add_task_rounded,
+      accent: accent,
+      accentBorder: true,
+      iconContainerSize: 54,
+      badges: [
+        AppBadge(icon: Icons.apartment_rounded, label: obraLabel, color: scheme.primary),
+        AppBadge(icon: Icons.flag_outlined, label: 'Prioritat $prioritat', color: accent),
+        AppBadge(
+          icon: visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          label: visible ? 'Visible' : 'Oculta',
+          color: visible ? Colors.green : scheme.outline,
+        ),
+      ],
+    );
+  }
+}
+
+class TascaFormDateTile extends StatelessWidget {
+  final String title;
+  final DateTime? date;
+  final VoidCallback onTap;
+  final bool isRequired;
+
+  const TascaFormDateTile({
+    super.key,
+    required this.title,
+    required this.date,
+    required this.onTap,
+    this.isRequired = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final accent = isRequired ? scheme.primary : scheme.secondary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: accent.withOpacity(0.055),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: accent.withOpacity(0.16)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.calendar_today_outlined, color: accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      date == null ? 'Selecciona una data' : formatDate(date),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.edit_calendar_rounded, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TascaFormReadOnlyTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const TascaFormReadOnlyTile({
+    super.key,
+    required this.label,
+    required this.value,
+    this.icon = Icons.info_outline_rounded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final accent = scheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: accent.withOpacity(0.055),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withOpacity(0.14)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: accent, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TascaFormMetricSlider extends StatelessWidget {
+  final String label;
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChanged;
+  final IconData icon;
+
+  const TascaFormMetricSlider({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.min = 1,
+    this.max = 5,
+    this.icon = Icons.flag_outlined,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final accent = _priorityAccent(scheme, value);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withOpacity(0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: accent, size: 19),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              AppBadge(
+                icon: Icons.tag_rounded,
+                label: '$value',
+                color: accent,
+              ),
+            ],
+          ),
+          Slider(
+            value: value.toDouble(),
+            min: min.toDouble(),
+            max: max.toDouble(),
+            divisions: max - min,
+            label: '$value',
+            onChanged: (next) => onChanged(next.toInt()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TascaAssignedWorkerCard extends StatelessWidget {
+  final UsuariOption usuari;
+  final VoidCallback? onRemove;
+
+  const TascaAssignedWorkerCard({
+    super.key,
+    required this.usuari,
+    this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final accent = scheme.tertiary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: accent.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: accent.withOpacity(0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.person_outline_rounded, size: 17, color: accent),
+          const SizedBox(width: 6),
+          Text(
+            usuari.nomComplet,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (onRemove != null) ...[
+            const SizedBox(width: 4),
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onRemove,
+              child: Icon(Icons.close_rounded, size: 17, color: scheme.error),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class TascaFormEmptyState extends StatelessWidget {
+  final String text;
+  final IconData icon;
+
+  const TascaFormEmptyState({
+    super.key,
+    required this.text,
+    this.icon = Icons.info_outline_rounded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outline.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

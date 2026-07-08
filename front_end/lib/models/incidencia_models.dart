@@ -240,6 +240,7 @@ List<T> _mapList<T>(
 
 class IncidenciaSolucioItem {
   final int id;
+  final int? idTasca;
   final String descripcio;
   final int? eficacia;
   final int? costMonetari;
@@ -248,6 +249,7 @@ class IncidenciaSolucioItem {
 
   const IncidenciaSolucioItem({
     required this.id,
+    this.idTasca,
     required this.descripcio,
     required this.eficacia,
     required this.costMonetari,
@@ -258,6 +260,7 @@ class IncidenciaSolucioItem {
   factory IncidenciaSolucioItem.fromMap(Map<String, dynamic> map) {
     return IncidenciaSolucioItem(
       id: _asInt(map['id']),
+      idTasca: _asIntOrNull(map['id_tasca']),
       descripcio: _asString(map['descripcio']) ?? '',
       eficacia: _asIntOrNull(map['eficacia']),
       costMonetari: _asIntOrNull(map['cost_monetari']),
@@ -265,7 +268,145 @@ class IncidenciaSolucioItem {
       impacte: _asIntOrNull(map['impacte']),
     );
   }
+
+  IncidenciaSolucioDraft toDraft() {
+    return IncidenciaSolucioDraft(
+      id: id,
+      idTasca: idTasca,
+      descripcio: descripcio,
+      costMonetari: costMonetari ?? 0,
+      eficacia: eficacia ?? 0,
+      costTemporal: costTemporal ?? 0,
+      impacte: impacte ?? 1,
+    );
+  }
 }
+
+class IncidenciaSolucioDraft {
+  final int? id;
+  final int? idTasca;
+  final String descripcio;
+  final int costMonetari;
+  final int eficacia;
+  final int costTemporal;
+  final int impacte;
+
+  const IncidenciaSolucioDraft({
+    this.id,
+    this.idTasca,
+    required this.descripcio,
+    required this.costMonetari,
+    required this.eficacia,
+    required this.costTemporal,
+    required this.impacte,
+  });
+
+  bool get isPersisted => id != null && id! > 0;
+
+  IncidenciaSolucioDraft copyWith({
+    int? id,
+    int? idTasca,
+    String? descripcio,
+    int? costMonetari,
+    int? eficacia,
+    int? costTemporal,
+    int? impacte,
+  }) {
+    return IncidenciaSolucioDraft(
+      id: id ?? this.id,
+      idTasca: idTasca ?? this.idTasca,
+      descripcio: descripcio ?? this.descripcio,
+      costMonetari: costMonetari ?? this.costMonetari,
+      eficacia: eficacia ?? this.eficacia,
+      costTemporal: costTemporal ?? this.costTemporal,
+      impacte: impacte ?? this.impacte,
+    );
+  }
+
+  IncidenciaSolucioItem toItem({required int temporaryId}) {
+    return IncidenciaSolucioItem(
+      id: id ?? temporaryId,
+      idTasca: idTasca,
+      descripcio: descripcio,
+      costMonetari: costMonetari,
+      eficacia: eficacia,
+      costTemporal: costTemporal,
+      impacte: impacte,
+    );
+  }
+
+  Map<String, dynamic> toPayload({required int incidenciaId}) {
+    return {
+      'id_incidencia': incidenciaId,
+      'id_tasca': idTasca,
+      'descripcio': descripcio.trim(),
+      'cost_monetari': costMonetari,
+      'eficacia': eficacia,
+      'cost_temporal': costTemporal,
+      'impacte': impacte,
+    };
+  }
+}
+
+class IncidenciaDTO {
+  final int id;
+  final int idObra;
+  final int? idTasca;
+  final String descripcio;
+  final DateTime dataInici;
+  final DateTime? dataFi;
+  final int criticitat;
+  final int prioritat;
+  final int categoria;
+  final String estat;
+
+  const IncidenciaDTO({
+    required this.id,
+    required this.idObra,
+    this.idTasca,
+    required this.descripcio,
+    required this.dataInici,
+    this.dataFi,
+    required this.criticitat,
+    required this.prioritat,
+    required this.categoria,
+    required this.estat,
+  });
+
+  factory IncidenciaDTO.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(dynamic value) =>
+        value == null ? null : DateTime.tryParse(value.toString());
+    return IncidenciaDTO(
+      id: _asInt(json['id']),
+      idObra: _asInt(json['id_obra']),
+      idTasca: _asIntOrNull(json['id_tasca']),
+      descripcio: _asString(json['descripcio']) ?? '',
+      dataInici: parseDate(json['data_inici']) ?? DateTime.now(),
+      dataFi: parseDate(json['data_fi']),
+      criticitat: _asIntOrNull(json['criticitat']) ?? 1,
+      prioritat: _asIntOrNull(json['prioritat']) ?? 1,
+      categoria: _asIntOrNull(json['categoria']) ?? 0,
+      estat: _asString(json['estat']) ?? 'pendent',
+    );
+  }
+
+  factory IncidenciaDTO.fromIncidencia(Incidencia incidencia) {
+    return IncidenciaDTO(
+      id: incidencia.id,
+      idObra: incidencia.idObra,
+      idTasca: incidencia.idTasca,
+      descripcio: incidencia.descripcio,
+      dataInici: incidencia.dataInici ?? DateTime.now(),
+      dataFi: incidencia.dataFi,
+      criticitat: incidencia.criticitat,
+      prioritat: incidencia.prioritat,
+      categoria: incidencia.categoria ?? 0,
+      estat: incidencia.estat ?? 'pendent',
+    );
+  }
+}
+
+
 
 class IncidenciaProfileData {
   final Incidencia incidencia;

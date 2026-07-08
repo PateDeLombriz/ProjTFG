@@ -88,7 +88,7 @@ class ObraService extends AppApiService {
   Future<List<Map<String, dynamic>>> fetchObresEmpresa(int empresaId) async {
     try {
       return await getJsonList(
-        '/obresEmpresa/$empresaId',
+        '/obresEmpresa/$empresaId/',
         fallback: 'Error carregant les obres de l’empresa',
         invalidResponseMessage: 'La resposta de les obres no és vàlida.',
       );
@@ -169,40 +169,136 @@ class ObraService extends AppApiService {
     }
   }
 
-  /// Crea la relació mínima obra-empresa.
-  ///
-  /// ATENCIÓ:
-  /// El backend actual no crea una obra completa des d'aquest endpoint.
-  /// Només vincula una obra existent (`id_obra`) amb una empresa.
-  Future<ObraCreateResult> createMinimalObra({
-    required ObraCreateRequest request,
-    int? empresaId,
-  }) async {
+    Future<ObraUbicacioInfo> createUbicacio(
+    ObraUbicacioInfo ubicacio,
+  ) async {
     try {
-      final resolvedEmpresaId = empresaId ?? await requireEmpresaId();
-      final obraId = _extractObraIdFromRequest(request);
-
-      if (obraId == null) {
-        throw const ObraServiceException(
-          'El backend actual no exposa cap endpoint per crear una obra completa. '
-          'Només es pot crear la relació ObraEmpresa si ja existeix un id_obra.',
-        );
-      }
-
       final json = await postJsonMap(
-        '/obresEmpresa/$resolvedEmpresaId',
-        body: <String, dynamic>{
-          'id_obra': obraId,
-        },
+        '/ubicacio/',
+        body: _ubicacioCreatePayload(ubicacio),
         expectedStatus: 201,
-        fallback: 'No s’ha pogut vincular l’obra a l’empresa.',
-        invalidResponseMessage: 'La resposta de creació no és vàlida.',
+        fallback: 'No s’ha pogut crear la ubicació.',
+        invalidResponseMessage:
+            'La resposta de creació de la ubicació no és vàlida.',
       );
 
-      return ObraCreateResult.fromJson(json);
+      return ObraUbicacioInfo.fromJson(json);
     } on AppApiException catch (e) {
       throw _mapAppApiException(e);
     }
+  }
+
+  Future<ObraUbicacioInfo> ensureUbicacioPersistida(
+    ObraUbicacioInfo ubicacio,
+  ) async {
+    if (ubicacio.idUbicacio > 0) {
+      return ubicacio;
+    }
+
+    return createUbicacio(ubicacio);
+  }
+
+  Future<Obra> createObra(
+    ObraCreateRequest request,
+  ) async {
+    try {
+      final json = await postJsonMap(
+        '/obres/',
+        body: request.toJson(),
+        expectedStatus: 201,
+        fallback: 'No s’ha pogut crear l’obra.',
+        invalidResponseMessage:
+            'La resposta de creació de l’obra no és vàlida.',
+      );
+
+      return Obra.fromMap(json);
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
+    }
+  }
+
+  Future<ObraCreateResult> createObraEmpresa({
+    required int obraId,
+    int? empresaId,
+    DateTime? dataIniciRelacio,
+  }) async {
+    try {
+      final resolvedEmpresaId = empresaId ?? await requireEmpresaId();
+
+      final json = await postJsonMap(
+        '/obresEmpresa/$resolvedEmpresaId/',
+        body: <String, dynamic>{
+          'id_obra': obraId,
+          'data_i': (dataIniciRelacio ?? DateTime.now())
+              .toUtc()
+              .toIso8601String(),
+        },
+        expectedStatus: 201,
+        fallback: 'No s’ha pogut vincular l’obra a l’empresa.',
+        invalidResponseMessage:
+            'La resposta de creació de la relació obra-empresa no és vàlida.',
+      );
+
+      return ObraCreateResult(
+        obraId: obraId,
+        relacioId: _asIntOrNull(json['id']),
+      );
+    } on AppApiException catch (e) {
+      throw _mapAppApiException(e);
+    }
+  }
+
+  Future<ObraCreateResult> createObraAmbUbicacio({
+    required ObraCreateRequest request,
+    required ObraUbicacioInfo ubicacio,
+    int? empresaId,
+  }) async {
+    final ubicacioPersistida = await ensureUbicacioPersistida(ubicacio);
+
+    final obra = await createObra(
+      request.copyWith(
+        ubicacioId: ubicacioPersistida.idUbicacio,
+      ),
+    );
+
+    final relacio = await createObraEmpresa(
+      obraId: obra.id,
+      empresaId: empresaId,
+      dataIniciRelacio: DateTime.now(),
+    );
+
+    return ObraCreateResult(
+      ubicacioId: ubicacioPersistida.idUbicacio,
+      obraId: obra.id,
+      relacioId: relacio.relacioId,
+    );
+  }
+
+  Map<String, dynamic> _ubicacioCreatePayload(
+    ObraUbicacioInfo ubicacio,
+  ) {
+    return <String, dynamic>{
+      'adreca': _cleanNullableText(ubicacio.adreca),
+      'ciutat': _cleanNullableText(ubicacio.ciutat),
+      'codi_postal': _cleanNullableText(ubicacio.codiPostal),
+      'provincia': _cleanNullableText(ubicacio.provincia),
+      'pais': _cleanNullableText(ubicacio.pais) ?? 'Espanya',
+      'latitud': ubicacio.latitud,
+      'longitud': ubicacio.longitud,
+    };
+  }
+
+  String? _cleanNullableText(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
+  }
+
+  int? _asIntOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString().trim());
   }
 
   /// Actualitza una obra.

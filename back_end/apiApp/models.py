@@ -445,9 +445,10 @@ class Solucio(models.Model):
 
 class Tasca(models.Model):
     ESTAT_TASCA = [
-        ('pendent', 'Pendent'),
         ('en_curs', 'En curs'),
         ('pendent_revisio', 'Pendent de revisió'),
+        ('cancelada', 'Cancel·lada'),
+        ('aprovada', 'Aprovada'),
         ('finalitzada', 'Finalitzada'),
     ]
 
@@ -462,7 +463,7 @@ class Tasca(models.Model):
     estat = models.CharField(
         max_length=40,
         choices=ESTAT_TASCA,
-        default='pendent',
+        default='pendent_revisio',
     )
 
     class Meta:
@@ -515,3 +516,66 @@ class Verificacio(models.Model):
     class Meta:
         managed = True
         db_table = 'verificacio'
+
+
+
+class Notificacio(models.Model):
+    TIPUS_CHOICES = [
+        ('nova_tasca', 'Nova tasca'),
+        ('tasca_actualitzada', 'Tasca actualitzada'),
+        ('tasca_cancelada', 'Tasca cancel·lada'),
+        ('tasca_finalitzada', 'Tasca finalitzada'),
+        ('tasca_validada', 'Tasca validada'),
+        ('tasca_rebutjada', 'Tasca rebutjada'),
+
+        ('sol_recurs_creada', 'Sol·licitud de recurs creada'),
+        ('sol_recurs_assignada', 'Sol·licitud de recurs assignada'),
+        ('sol_recurs_aprovada', 'Sol·licitud de recurs aprovada'),
+        ('sol_recurs_rebutjada', 'Sol·licitud de recurs rebutjada'),
+        ('recurs_entrega_propera', 'Entrega de recurs propera'),
+
+        ('nova_incidencia', 'Nova incidència'),
+        ('incidencia_actualitzada', 'Incidència actualitzada'),
+        ('incidencia_tancada', 'Incidència tancada'),
+
+        ('nova_obra_assignada', 'Nova obra assignada'),
+        ('responsable_obra_assignat', 'Responsable d’obra assignat'),
+        ('document_pujat', 'Document pujat'),
+
+        ('sortida_pendent', 'Sortida pendent'),
+        ('contracte_finalitza_properament', 'Contracte finalitza properament'),
+    ]
+
+    id              = models.AutoField(primary_key=True)
+    id_treballador  = models.ForeignKey(
+        'Treballador', on_delete=models.CASCADE,
+        null=True, blank=True, db_column='id_treballador',
+        related_name='notificacions',
+    )
+    id_empresa      = models.ForeignKey(
+        'Empresa', on_delete=models.CASCADE,
+        null=True, blank=True, db_column='id_empresa',
+        related_name='notificacions',
+    )
+    tipus           = models.CharField(max_length=40, choices=TIPUS_CHOICES)
+    titol           = models.CharField(max_length=120)
+    missatge        = models.TextField(blank=True, default='')
+    llegida         = models.BooleanField(default=False)
+    data_creacio    = models.DateTimeField(auto_now_add=True)
+    # Referència genèrica a l'entitat que ha generat la notificació
+    entitat_id      = models.IntegerField(null=True, blank=True)
+    entitat_tipus   = models.CharField(max_length=40, null=True, blank=True)
+
+    class Meta:
+        managed = True
+        db_table = 'notificacio'
+        ordering = ['-data_creacio']
+        constraints = [
+            models.CheckConstraint(
+                name='chk_notif_subjecte',
+                check=(
+                    Q(id_treballador__isnull=False, id_empresa__isnull=True) |
+                    Q(id_treballador__isnull=True,  id_empresa__isnull=False)
+                ),
+            )
+        ]

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/treballador_models.dart';
-import 'package:front_end/screens/empresa/treballador%20Empresa/treballador_detail_screen.dart';
+import 'package:front_end/screens/empresa/treballador_empresa/treballador_detail_screen.dart';
+import 'package:front_end/screens/empresa/treballador_empresa/treballador_form.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_empty_state.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
+import 'package:front_end/shared/widgets/app_search_field.dart';
 import 'package:front_end/widgets/treballador_widgets.dart';
 
 class TreballadorsListScreen extends StatefulWidget {
@@ -56,6 +60,117 @@ class _TreballadorsListScreenState extends State<TreballadorsListScreen> {
     });
 
     await nextFuture;
+  }
+
+
+  Future<void> _openTreballador(TreballadorListItem treballador) async {
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TreballadorDetailScreen(
+          treballadorId: treballador.id,
+        ),
+      ),
+    );
+
+    if (updated == true) {
+      await _reload();
+    }
+  }
+
+  Future<void> _editTreballador(TreballadorListItem treballador) async {
+    Map<String, dynamic> initialData;
+
+    try {
+      initialData = await _service.fetchTreballadorDetail(treballador.id);
+    } on TreballadorServiceException catch (e) {
+      initialData = _fallbackInitialData(treballador);
+      _showSnack(
+        'No s’ha pogut carregar tot el detall. S’obrirà l’edició amb les dades disponibles. ${e.message}',
+      );
+    } catch (e) {
+      initialData = _fallbackInitialData(treballador);
+      _showSnack(
+        'No s’ha pogut carregar tot el detall. S’obrirà l’edició amb les dades disponibles.',
+      );
+    }
+
+    if (!mounted) return;
+
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TreballadorForm(
+          treballadorId: treballador.id,
+          initialData: initialData,
+        ),
+      ),
+    );
+
+    if (updated == true) {
+      await _reload();
+    }
+  }
+
+  Future<void> _deleteTreballador(TreballadorListItem treballador) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Eliminar treballador'),
+          content: Text(
+            'Vols eliminar "${treballador.nomComplet}"? Aquesta acció és irreversible.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel·la'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Elimina'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _service.deleteTreballador(treballador.id);
+      if (!mounted) return;
+      _showSnack('Treballador eliminat correctament', success: true);
+      await _reload();
+    } on TreballadorServiceException catch (e) {
+      _showSnack(e.message);
+    } catch (e) {
+      _showSnack('Error eliminant el treballador: $e');
+    }
+  }
+
+  Map<String, dynamic> _fallbackInitialData(TreballadorListItem treballador) {
+    return <String, dynamic>{
+      'id': treballador.id,
+      'nom': treballador.nom,
+      'cognoms': treballador.cognoms,
+      'nickname': treballador.nickname,
+      'email': null,
+      'telefon': null,
+      'comentaris': null,
+      'carrec': treballador.carrec,
+      'estat': treballador.estat,
+    };
+  }
+
+  void _showSnack(String message, {bool success = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: success ? Colors.green : null,
+      ),
+    );
   }
 
   bool get _hasActiveFilters {
@@ -181,9 +296,7 @@ class _TreballadorsListScreenState extends State<TreballadorsListScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const AppLoadingIndicator();
           }
 
           if (snapshot.hasError) {
@@ -220,8 +333,9 @@ class _TreballadorsListScreenState extends State<TreballadorsListScreen> {
                   actiusCount: data.totalActius,
                 ),
                 const SizedBox(height: 16),
-                TreballadorSearchField(
+                AppSearchField(
                   controller: _searchController,
+                  hintText: 'Cerca per nom, àlies, càrrec o estat',
                   onChanged: (value) {
                     setState(() {
                       _query = value;
@@ -260,7 +374,8 @@ class _TreballadorsListScreenState extends State<TreballadorsListScreen> {
                 ),
                 const SizedBox(height: 18),
                 if (filtered.isEmpty)
-                  TreballadorListEmptyState(
+                  AppEmptyState(
+                    icon: Icons.group_off_outlined,
                     title: _hasActiveFilters
                         ? 'Cap treballador coincideix amb els filtres'
                         : 'No hi ha treballadors',
@@ -278,17 +393,10 @@ class _TreballadorsListScreenState extends State<TreballadorsListScreen> {
                       ),
                       child: TreballadorListItemCard(
                         treballador: treballador,
-                        onTap: () {
-                          
-                           Navigator.push(
-                             context,
-                             MaterialPageRoute(
-                               builder: (_) => TreballadorDetailScreen(
-                                 treballadorId: treballador.id,
-                               ),
-                             ),
-                           );
-                        },
+                        onTap: () => _openTreballador(treballador),
+                        onView: () => _openTreballador(treballador),
+                        onEdit: () => _editTreballador(treballador),
+                        onDelete: () => _deleteTreballador(treballador),
                       ),
                     );
                   }),

@@ -1,35 +1,16 @@
-//FET
-
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
-/// Pantalla de **Sol·licituds de Recursos (SolRecurs)** amb el mateix nivell de detall
-/// que les pantalles d'Obra, Tasca i Incidència.
-///
-/// Funcionalitats:
-/// - Crear/editar UNA sol·licitud o bé un lot (batch) de sol·licituds per a la mateixa obra.
-/// - Selecció d'Obra i Recurs amb informació contextual (unitats, stock disponible).
-/// - Validacions personalitzades (quantitat > 0, dates, etc.).
-/// - Camps opcionals: comentari, proveïdor, data_entrega.
-/// - Confirmació abans de desar, SnackBars, overlay de càrrega i control de canvis (_dirty).
-/// - Possibilitat d'esborrar o editar cada línia del lot abans d'enviar.
-///
-/// **Endpoints a adaptar** (placeholders):
-/// - POST   /sol_recurs/
-/// - PUT    /sol_recurs/{id}/
-/// - DELETE /sol_recurs/{id}/
-/// - GET    /sol_recurs/?id_obra=XX
-/// - GET    /recursos/
-/// - GET    /obres/
+import 'package:front_end/models/sol_recurs_models.dart';
+import 'package:front_end/services/obra_service.dart';
+import 'package:front_end/services/sol_recurs_service.dart';
+import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_empty_state.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
+import 'package:front_end/widgets/sol_recurs_widgets.dart';
+
 class SolRecursFormScreen extends StatefulWidget {
-  /// Obra ja seleccionada (si null, es mostrarà dropdown)
   final int? obraId;
-
-  /// Si vols editar una sol·licitud concreta
   final SolRecursDTO? initial;
-
-  /// Mode lot: permet afegir múltiples línies i enviar-les de cop (només creació)
   final bool batchMode;
 
   const SolRecursFormScreen({
@@ -44,19 +25,17 @@ class SolRecursFormScreen extends StatefulWidget {
 }
 
 class _SolRecursFormScreenState extends State<SolRecursFormScreen> {
-  //==================== CONFIG ====================
-  static const String baseUrl = 'http://localhost:8000/api';
-
+  late final SolRecursService _service;
+  late final ObraService _obraService;
   final _formKey = GlobalKey<FormState>();
+  bool _loadingOptions = true;
   bool _saving = false;
   bool _dirty = false;
 
-  //==================== Obra / Recursos ====================
   int? _obraSeleccionada;
-  List<ObraOption> _obres = [];
-  List<RecursOption> _recursos = [];
+  List<ObraOption> _obres = const [];
+  List<RecursOption> _recursos = const [];
 
-  //==================== Una sol·licitud (mode single) ====================
   RecursOption? _recursSel;
   final _quantCtrl = TextEditingController();
   DateTime? _dataNecessitat;
@@ -64,12 +43,15 @@ class _SolRecursFormScreenState extends State<SolRecursFormScreen> {
   final _comentCtrl = TextEditingController();
   final _provCtrl = TextEditingController();
 
-  //==================== Lot de sol·licituds ====================
   final List<SolRecursDraft> _batch = [];
+
+  bool get _editing => widget.initial != null;
 
   @override
   void initState() {
     super.initState();
+    _service = SolRecursService(baseUrl: ApiConstants.baseUrl);
+    _obraService = ObraService(baseUrl: ApiConstants.baseUrl);
     _initFromInitial();
     _loadOptions();
   }
@@ -79,134 +61,91 @@ class _SolRecursFormScreenState extends State<SolRecursFormScreen> {
     _quantCtrl.dispose();
     _comentCtrl.dispose();
     _provCtrl.dispose();
+    _service.dispose();
+    _obraService.dispose();
     super.dispose();
   }
 
   void _initFromInitial() {
     _obraSeleccionada = widget.obraId ?? widget.initial?.idObra;
-    if (widget.initial != null) {
-      final i = widget.initial!;
-      _recursSel = RecursOption(
-        id: i.idRecurs,
-        nom: i.recursNom ?? 'Recurs',
-        unitat: i.unitat ?? '',
-        stock: null,
-        tipus: null,
-      );
-      _quantCtrl.text = i.quantitat.toString();
-      _dataNecessitat = i.dataNecessitat;
-      _dataEntrega = i.dataEntrega;
-      _comentCtrl.text = i.comentari ?? '';
-      _provCtrl.text = i.proveidor ?? '';
-    }
+    final initial = widget.initial;
+    if (initial == null) return;
+
+    _recursSel = RecursOption(
+      id: initial.idRecurs,
+      nom: initial.recursNom ?? 'Recurs #${initial.idRecurs}',
+      unitat: initial.unitat ?? '',
+    );
+    _quantCtrl.text = initial.quantitat.toString();
+    _dataNecessitat = initial.dataNecessitat;
+    _dataEntrega = initial.dataEntrega;
+    _comentCtrl.text = initial.comentari ?? '';
+    _provCtrl.text = initial.proveidor ?? '';
   }
 
   Future<void> _loadOptions() async {
+    if (!mounted) return;
+
+    setState(() => _loadingOptions = true);
+
     try {
-      if (_obraSeleccionada == null) {
-        _obres = await _fetchObres();
-      }
-      _recursos = await _fetchRecursos();
-      if (mounted) setState(() {});
-    } catch (e) {
-      if (mounted) _snack('Error carregant opcions: $e');
+      final obresFuture = _obraService.fetchMyEmpresaObres();
+      final recursosFuture = _service.fetchRecursOptions();
+
+      final obres = await obresFuture;
+      final recursos = await recursosFuture;
+
+      if (!mounted) return;
+
+      setState(() {
+        _obres = obres.map(ObraOption.fromMap).toList();
+        _recursos = recursos;
+        _recursSel = _resolveInitialRecurs(_recursSel, recursos);
+        _loadingOptions = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() => _loadingOptions = false);
+      _snack('Error carregant opcions: $error');
     }
   }
 
-  //==================== API ====================
-  Future<List<ObraOption>> _fetchObres() async {
-    final res = await http.get(Uri.parse('$baseUrl/obres/'));
-    if (res.statusCode == 200) {
-      final l = jsonDecode(res.body) as List<dynamic>;
-      return l.map((e) => ObraOption(id: e['id'], nom: e['nom'] ?? '—')).toList();
+  RecursOption? _resolveInitialRecurs(
+    RecursOption? current,
+    List<RecursOption> recursos,
+  ) {
+    if (current == null) return null;
+    for (final recurs in recursos) {
+      if (recurs.id == current.id) return recurs;
     }
-    throw Exception('No s\'han pogut carregar les obres');
+    return current;
   }
 
-  Future<List<RecursOption>> _fetchRecursos() async {
-    final res = await http.get(Uri.parse('$baseUrl/recursos/'));
-    if (res.statusCode == 200) {
-      final l = jsonDecode(res.body) as List<dynamic>;
-      return l
-          .map((e) => RecursOption(
-                id: e['id'],
-                nom: e['nom'] ?? '—',
-                unitat: e['unitats_mesura'] ?? '',
-                stock: (e['quantitat_stock'] is num) ? (e['quantitat_stock'] as num).toDouble() : null,
-                tipus: e['tipus_recurs'],
-              ))
-          .toList();
-    }
-    throw Exception('No s\'han pogut carregar els recursos');
-  }
-
-  Future<int> _createSol(SolRecursDraft draft) async {
-    final payload = {
-      'id_obra': _obraSeleccionada,
-      'id_recurs': draft.recurs.id,
-      'quantitat': draft.quantitat,
-      'data_necessitat': _fmtDate(draft.dataNecessitat),
-      'comentari': draft.comentari,
-      'proveidor': draft.proveidor,
-      'data_entrega': draft.dataEntrega != null ? _fmtDate(draft.dataEntrega!) : null,
-    };
-
-    final res = await http.post(
-      Uri.parse('$baseUrl/sol_recurs/'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    );
-    if (res.statusCode == 201) {
-      final map = jsonDecode(res.body) as Map<String, dynamic>;
-      return map['id'] as int;
-    }
-    throw Exception('Error creant sol·licitud (${res.statusCode}) ${res.body}');
-  }
-
-  Future<void> _updateSol(int id, SolRecursDraft draft) async {
-    final payload = {
-      'id_obra': _obraSeleccionada,
-      'id_recurs': draft.recurs.id,
-      'quantitat': draft.quantitat,
-      'data_necessitat': _fmtDate(draft.dataNecessitat),
-      'comentari': draft.comentari,
-      'proveidor': draft.proveidor,
-      'data_entrega': draft.dataEntrega != null ? _fmtDate(draft.dataEntrega!) : null,
-    };
-
-    final res = await http.put(
-      Uri.parse('$baseUrl/sol_recurs/$id/'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    );
-    if (res.statusCode != 200) {
-      throw Exception('Error actualitzant sol·licitud (${res.statusCode}) ${res.body}');
-    }
-  }
-
-  //==================== SUBMIT ====================
   Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+
     if (widget.batchMode) {
       if (_obraSeleccionada == null) {
-        _snack('⚠️ Selecciona una obra');
+        _snack('Selecciona una obra.');
         return;
       }
       if (_batch.isEmpty) {
-        _snack('Afegeix almenys una línia');
+        _snack('Afegeix almenys una línia.');
         return;
       }
     } else {
       if (!_formKey.currentState!.validate()) return;
       if (_obraSeleccionada == null) {
-        _snack('⚠️ Selecciona una obra');
+        _snack('Selecciona una obra.');
         return;
       }
       if (_recursSel == null) {
-        _snack('⚠️ Selecciona un recurs');
+        _snack('Selecciona un recurs.');
         return;
       }
       if (_dataNecessitat == null) {
-        _snack('⚠️ Selecciona la data de necessitat');
+        _snack('Selecciona la data de necessitat.');
         return;
       }
     }
@@ -218,487 +157,127 @@ class _SolRecursFormScreenState extends State<SolRecursFormScreen> {
     try {
       if (widget.batchMode) {
         for (final draft in _batch) {
-          await _createSol(draft);
+          await _service.createSolRecursDraft(
+            obraId: _obraSeleccionada!,
+            draft: draft,
+          );
         }
       } else {
         final draft = SolRecursDraft(
           recurs: _recursSel!,
-          quantitat: int.parse(_quantCtrl.text),
+          quantitat: int.parse(_quantCtrl.text.trim()),
           dataNecessitat: _dataNecessitat!,
-          comentari: _comentCtrl.text.isEmpty ? null : _comentCtrl.text,
-          proveidor: _provCtrl.text.isEmpty ? null : _provCtrl.text,
           dataEntrega: _dataEntrega,
+          comentari:
+              _comentCtrl.text.trim().isEmpty ? null : _comentCtrl.text.trim(),
+          proveidor:
+              _provCtrl.text.trim().isEmpty ? null : _provCtrl.text.trim(),
+          // Si l'edites i venia d'un treballador, es conserva.
+          // Si la crea una empresa, queda null.
+          idTreballador: widget.initial?.idTreballador,
+          // El formulari no canvia aprovació; conserva o crea pendent.
+          estat: widget.initial?.estat ?? 'pendent',
         );
+
         if (widget.initial == null) {
-          await _createSol(draft);
+          await _service.createSolRecursDraft(
+            obraId: _obraSeleccionada!,
+            draft: draft,
+          );
         } else {
-          await _updateSol(widget.initial!.id, draft);
+          await _service.updateSolRecursDraft(
+            widget.initial!.id,
+            obraId: _obraSeleccionada!,
+            draft: draft,
+          );
         }
       }
 
-      if (mounted) {
-        _dirty = false;
-        _snack('✅ Sol·licitud(es) desades correctament!', success: true);
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) _snack('❌ Error: $e');
+      if (!mounted) return;
+      _dirty = false;
+      _snack('Sol·licitud desada correctament.', success: true);
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      _snack('Error desant la sol·licitud: $error');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  //==================== HELPERS ====================
-  void _snack(String msg, {bool success = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: success ? Colors.green : null),
-    );
-  }
-
-  String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  Future<DateTime?> _pickDate(DateTime? current) async {
-    return showDatePicker(
-      context: context,
-      initialDate: current ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-  }
-
-  Future<bool?> _confirmDesar() async {
+  Future<bool?> _confirmDesar() {
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirmació'),
-        content: Text(widget.batchMode
-            ? 'Vols desar totes les sol·licituds?'
-            : 'Vols desar la sol·licitud?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel·la')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Desa')),
-        ],
-      ),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Desar sol·licitud'),
+          content: Text(
+            widget.batchMode
+                ? 'Vols desar totes les línies del lot?'
+                : _editing
+                    ? 'Vols guardar els canvis de la sol·licitud?'
+                    : 'Vols crear aquesta sol·licitud de recurs?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel·la'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Desa'),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Future<bool> _onWillPop() async {
-    if (_dirty && !_saving) {
-      final leave = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
+    if (!_dirty || _saving) return true;
+
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
           title: const Text('Canvis sense desar'),
-          content: const Text('Vols sortir sense desar?'),
+          content: const Text('Vols sortir sense desar els canvis?'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel·la')),
-            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sortir')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel·la'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Sortir'),
+            ),
           ],
-        ),
-      );
-      return leave ?? false;
-    }
-    return true;
+        );
+      },
+    );
+
+    return leave ?? false;
   }
 
   void _markDirty() {
     if (!_dirty) setState(() => _dirty = true);
   }
 
-  //==================== BUILD ====================
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.batchMode
-              ? 'Sol·licituds de Recursos (lot)'
-              : widget.initial == null
-                  ? 'Nova Sol·licitud de Recurs'
-                  : 'Editar Sol·licitud'),
-        ),
-        body: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: widget.batchMode ? _buildBatchBody() : _buildSingleBody(),
-            ),
-            if (_saving)
-              Container(
-                color: Colors.black45,
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _saving ? null : _submit,
-          icon: const Icon(Icons.save),
-          label: const Text('Desa'),
-        ),
-      ),
-    );
+  Future<void> _pickNeedDate() async {
+    final picked = await _pickDate(_dataNecessitat);
+    if (picked == null) return;
+    _markDirty();
+    setState(() => _dataNecessitat = picked);
   }
 
-  //==================== SINGLE MODE BODY ====================
-  Widget _buildSingleBody() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Dades de l\'obra'),
-          if (_obraSeleccionada == null)
-            DropdownButtonFormField<int>(
-              decoration: _inputDecoration('Obra *', icon: Icons.business_outlined),
-              items: _obres
-                  .map((o) => DropdownMenuItem<int>(value: o.id, child: Text(o.nom)))
-                  .toList(),
-              onChanged: (v) {
-                _markDirty();
-                setState(() => _obraSeleccionada = v);
-              },
-              validator: (v) => v == null ? 'Selecciona una obra' : null,
-            )
-          else
-            _readOnlyTile('Obra', _obres.firstWhere((o) => o.id == _obraSeleccionada, orElse: () => ObraOption(id: _obraSeleccionada!, nom: 'Obra #${_obraSeleccionada!}')).nom),
-
-          const Divider(height: 32),
-          _sectionTitle('Recurs i quantitat'),
-          DropdownButtonFormField<RecursOption>(
-            decoration: _inputDecoration('Recurs *', icon: Icons.inventory_2_outlined),
-            value: _recursSel,
-            items: _recursos
-                .map((r) => DropdownMenuItem(
-                      value: r,
-                      child: Text('${r.nom} (${r.unitat})'),
-                    ))
-                .toList(),
-            onChanged: (v) {
-              _markDirty();
-              setState(() => _recursSel = v);
-            },
-            validator: (v) => v == null ? 'Selecciona un recurs' : null,
-          ),
-          _gap(),
-          TextFormField(
-            controller: _quantCtrl,
-            keyboardType: TextInputType.number,
-            decoration: _inputDecoration('Quantitat *', icon: Icons.numbers),
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Obligatori';
-              final n = int.tryParse(v);
-              if (n == null || n <= 0) return 'Entra un enter > 0';
-              return null;
-            },
-            onChanged: (_) => _markDirty(),
-          ),
-          if (_recursSel?.stock != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6.0),
-              child: Text('Stock disponible: ${_recursSel!.stock} ${_recursSel!.unitat}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ),
-
-          const Divider(height: 32),
-          _sectionTitle('Dates i informació extra'),
-          _dateTile(
-            title: 'Data necessitat *',
-            date: _dataNecessitat,
-            onTap: () async {
-              final d = await _pickDate(_dataNecessitat);
-              if (d != null) {
-                _markDirty();
-                setState(() => _dataNecessitat = d);
-              }
-            },
-          ),
-          _dateTile(
-            title: 'Data entrega (opcional)',
-            date: _dataEntrega,
-            onTap: () async {
-              final d = await _pickDate(_dataEntrega);
-              if (d != null) {
-                _markDirty();
-                setState(() => _dataEntrega = d);
-              }
-            },
-          ),
-
-          _gap(),
-          TextFormField(
-            controller: _provCtrl,
-            decoration: _inputDecoration('Proveïdor'),
-            onChanged: (_) => _markDirty(),
-          ),
-          _gap(),
-          TextFormField(
-            controller: _comentCtrl,
-            decoration: _inputDecoration('Comentari'),
-            maxLines: 3,
-            onChanged: (_) => _markDirty(),
-          ),
-
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 90),
-        ],
-      ),
-    );
+  Future<void> _pickDeliveryDate() async {
+    final picked = await _pickDate(_dataEntrega);
+    if (picked == null) return;
+    _markDirty();
+    setState(() => _dataEntrega = picked);
   }
 
-  //==================== BATCH MODE BODY ====================
-  Widget _buildBatchBody() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle('Dades de l\'obra'),
-        if (_obraSeleccionada == null)
-          DropdownButtonFormField<int>(
-            decoration: _inputDecoration('Obra *', icon: Icons.business_outlined),
-            items: _obres
-                .map((o) => DropdownMenuItem<int>(value: o.id, child: Text(o.nom)))
-                .toList(),
-            onChanged: (v) {
-              _markDirty();
-              setState(() => _obraSeleccionada = v);
-            },
-            validator: (v) => v == null ? 'Selecciona una obra' : null,
-          )
-        else
-          _readOnlyTile('Obra', _obres.firstWhere((o) => o.id == _obraSeleccionada, orElse: () => ObraOption(id: _obraSeleccionada!, nom: 'Obra #${_obraSeleccionada!}')).nom),
-
-        const Divider(height: 32),
-        _sectionTitle('Línies de sol·licitud'),
-        if (_batch.isEmpty)
-          Text('No hi ha línies', style: TextStyle(color: Colors.grey[600]))
-        else
-          ...List.generate(_batch.length, (i) => _lineItem(_batch[i], i)),
-
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: _addLineDialog,
-            icon: const Icon(Icons.add_box_outlined),
-            label: const Text('Afegeix línia'),
-          ),
-        ),
-
-        SizedBox(height: MediaQuery.of(context).padding.bottom + 90),
-      ],
-    );
-  }
-
-  Widget _lineItem(SolRecursDraft draft, int index) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        title: Text('${draft.recurs.nom}  x${draft.quantitat} ${draft.recurs.unitat}'),
-        subtitle: Text('Necessitat: ${_fmtDate(draft.dataNecessitat)}\nProveïdor: ${draft.proveidor ?? '—'}'),
-        isThreeLine: true,
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline),
-          onPressed: () {
-            _markDirty();
-            setState(() => _batch.removeAt(index));
-          },
-        ),
-        onTap: () async {
-          final edited = await showDialog<SolRecursDraft>(
-            context: context,
-            builder: (ctx) => _LineDialog(
-              recursos: _recursos,
-              initial: draft,
-            ),
-          );
-          if (edited != null) {
-            _markDirty();
-            setState(() => _batch[index] = edited);
-          }
-        },
-      ),
-    );
-  }
-
-  Future<void> _addLineDialog() async {
-    final draft = await showDialog<SolRecursDraft>(
-      context: context,
-      builder: (ctx) => _LineDialog(recursos: _recursos),
-    );
-    if (draft != null) {
-      _markDirty();
-      setState(() => _batch.add(draft));
-    }
-  }
-
-  //==================== SMALL UI BUILDERS ====================
-  Widget _sectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8.0),
-        child: Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      );
-
-  Widget _gap([double h = 12]) => SizedBox(height: h);
-
-  InputDecoration _inputDecoration(String label, {IconData? icon}) => InputDecoration(
-        labelText: label,
-        prefixIcon: icon != null ? Icon(icon) : null,
-        filled: true,
-        fillColor: Theme.of(context).colorScheme.surface,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      );
-
-  Widget _dateTile({required String title, required DateTime? date, required VoidCallback onTap}) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title),
-      subtitle: Text(date == null ? 'Selecciona una data' : _fmtDate(date)),
-      trailing: const Icon(Icons.calendar_today),
-      onTap: onTap,
-    );
-  }
-
-  Widget _readOnlyTile(String label, String value) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label),
-      subtitle: Text(value),
-    );
-  }
-}
-
-//==================== DIALOG PER UNA LÍNIA (batch) ====================
-class _LineDialog extends StatefulWidget {
-  final List<RecursOption> recursos;
-  final SolRecursDraft? initial;
-  const _LineDialog({required this.recursos, this.initial});
-
-  @override
-  State<_LineDialog> createState() => _LineDialogState();
-}
-
-class _LineDialogState extends State<_LineDialog> {
-  final _formKey = GlobalKey<FormState>();
-  RecursOption? _recurs;
-  final _quantCtrl = TextEditingController();
-  DateTime? _dataNec;
-  DateTime? _dataEnt;
-  final _comentCtrl = TextEditingController();
-  final _provCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.initial != null) {
-      final i = widget.initial!;
-      _recurs = i.recurs;
-      _quantCtrl.text = i.quantitat.toString();
-      _dataNec = i.dataNecessitat;
-      _dataEnt = i.dataEntrega;
-      _comentCtrl.text = i.comentari ?? '';
-      _provCtrl.text = i.proveidor ?? '';
-    }
-  }
-
-  @override
-  void dispose() {
-    _quantCtrl.dispose();
-    _comentCtrl.dispose();
-    _provCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.initial == null ? 'Nova línia' : 'Editar línia'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<RecursOption>(
-                value: _recurs,
-                decoration: const InputDecoration(labelText: 'Recurs *'),
-                items: widget.recursos
-                    .map((r) => DropdownMenuItem(value: r, child: Text('${r.nom} (${r.unitat})')))
-                    .toList(),
-                onChanged: (v) => setState(() => _recurs = v),
-                validator: (v) => v == null ? 'Obligatori' : null,
-              ),
-              TextFormField(
-                controller: _quantCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Quantitat *'),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Obligatori';
-                  final n = int.tryParse(v);
-                  if (n == null || n <= 0) return 'Enter > 0';
-                  return null;
-                },
-              ),
-              _dateTile(
-                context,
-                title: 'Data necessitat *',
-                date: _dataNec,
-                onTap: () async {
-                  final d = await _pickDate(context, _dataNec);
-                  if (d != null) setState(() => _dataNec = d);
-                },
-              ),
-              _dateTile(
-                context,
-                title: 'Data entrega',
-                date: _dataEnt,
-                onTap: () async {
-                  final d = await _pickDate(context, _dataEnt);
-                  if (d != null) setState(() => _dataEnt = d);
-                },
-              ),
-              TextFormField(
-                controller: _provCtrl,
-                decoration: const InputDecoration(labelText: 'Proveïdor'),
-              ),
-              TextFormField(
-                controller: _comentCtrl,
-                decoration: const InputDecoration(labelText: 'Comentari'),
-                maxLines: 2,
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel·la')),
-        ElevatedButton(
-          onPressed: () {
-            if (!_formKey.currentState!.validate()) return;
-            if (_dataNec == null) return; // assegura data necessitat
-            Navigator.pop(
-              context,
-              SolRecursDraft(
-                recurs: _recurs!,
-                quantitat: int.parse(_quantCtrl.text),
-                dataNecessitat: _dataNec!,
-                comentari: _comentCtrl.text.isEmpty ? null : _comentCtrl.text,
-                proveidor: _provCtrl.text.isEmpty ? null : _provCtrl.text,
-                dataEntrega: _dataEnt,
-              ),
-            );
-          },
-          child: const Text('Desa'),
-        ),
-      ],
-    );
-  }
-
-  Widget _dateTile(BuildContext context, {required String title, required DateTime? date, required VoidCallback onTap}) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title),
-      subtitle: Text(date == null ? 'Selecciona una data' : _fmtDate(date)),
-      trailing: const Icon(Icons.calendar_today),
-      onTap: onTap,
-    );
-  }
-
-  Future<DateTime?> _pickDate(BuildContext context, DateTime? current) async {
+  Future<DateTime?> _pickDate(DateTime? current) {
     return showDatePicker(
       context: context,
       initialDate: current ?? DateTime.now(),
@@ -707,81 +286,386 @@ class _LineDialogState extends State<_LineDialog> {
     );
   }
 
-  String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-}
-
-//==================== DTOs & Drafts ====================
-class SolRecursDTO {
-  final int id;
-  final int idObra;
-  final int idRecurs;
-  final int quantitat;
-  final DateTime dataNecessitat;
-  final DateTime? dataEntrega;
-  final String? comentari;
-  final String? proveidor;
-  final String? recursNom;
-  final String? unitat;
-
-  SolRecursDTO({
-    required this.id,
-    required this.idObra,
-    required this.idRecurs,
-    required this.quantitat,
-    required this.dataNecessitat,
-    this.dataEntrega,
-    this.comentari,
-    this.proveidor,
-    this.recursNom,
-    this.unitat,
-  });
-
-  factory SolRecursDTO.fromJson(Map<String, dynamic> json) {
-    DateTime? parseDate(String? s) => s == null ? null : DateTime.parse(s);
-    return SolRecursDTO(
-      id: json['id'],
-      idObra: json['id_obra'],
-      idRecurs: json['id_recurs'],
-      quantitat: json['quantitat'] ?? 0,
-      dataNecessitat: DateTime.parse(json['data_necessitat']),
-      dataEntrega: parseDate(json['data_entrega']),
-      comentari: json['comentari'],
-      proveidor: json['proveidor'],
-      recursNom: json['recurs_nom'],
-      unitat: json['unitats_mesura'],
+  Future<void> _addLine() async {
+    final draft = await showModalBottomSheet<SolRecursDraft>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SolRecursDraftEditorSheet(recursos: _recursos),
     );
+
+    if (draft == null) return;
+    _markDirty();
+    setState(() => _batch.add(draft));
+  }
+
+  Future<void> _editLine(int index) async {
+    final draft = await showModalBottomSheet<SolRecursDraft>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SolRecursDraftEditorSheet(
+        recursos: _recursos,
+        initial: _batch[index],
+      ),
+    );
+
+    if (draft == null) return;
+    _markDirty();
+    setState(() => _batch[index] = draft);
+  }
+
+  void _removeLine(int index) {
+    _markDirty();
+    setState(() => _batch.removeAt(index));
+  }
+
+  void _snack(String message, {bool success = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: success ? Colors.green : null,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: scheme.primaryContainer.withOpacity(0.06),
+        appBar: AppBar(
+          title: Text(
+            widget.batchMode
+                ? 'Sol·licituds de recursos'
+                : _editing
+                    ? 'Editar sol·licitud'
+                    : 'Nova sol·licitud',
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Recarrega opcions',
+              onPressed: _saving ? null : _loadOptions,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            RefreshIndicator(
+              onRefresh: _loadOptions,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                children: [
+                  SolRecursFormHeaderCard(
+                    batchMode: widget.batchMode,
+                    editing: _editing,
+                    lineCount: widget.batchMode ? _batch.length : null,
+                  ),
+                  const SizedBox(height: 14),
+                  if (_loadingOptions)
+                    const SolRecursLoadingCard()
+                  else if (widget.batchMode)
+                    _buildBatchBody()
+                  else
+                    _buildSingleBody(),
+                ],
+              ),
+            ),
+            if (_saving)
+              Container(
+                color: Colors.black.withOpacity(0.26),
+                child: const AppLoadingIndicator(),
+              ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _saving || _loadingOptions ? null : _submit,
+          icon: const Icon(Icons.save_outlined),
+          label: Text(_saving ? 'Desant...' : 'Desa'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleBody() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          SolRecursFormSectionCard(
+            title: 'Obra i recurs',
+            icon: Icons.inventory_2_outlined,
+            child: Column(
+              children: [
+                if (widget.obraId == null)
+                  DropdownButtonFormField<int>(
+                    value: _obraSeleccionada,
+                    decoration:
+                        _inputDecoration('Obra *', Icons.apartment_rounded),
+                    items: _obres
+                        .map(
+                          (obra) => DropdownMenuItem<int>(
+                            value: obra.id,
+                            child: Text(obra.nom),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      _markDirty();
+                      setState(() => _obraSeleccionada = value);
+                    },
+                    validator: (value) =>
+                        value == null ? 'Selecciona una obra' : null,
+                  )
+                else
+                  _ReadOnlyInfoTile(
+                    icon: Icons.apartment_rounded,
+                    label: 'Obra',
+                    value: _obraLabel(_obraSeleccionada),
+                  ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<RecursOption>(
+                  value: _recursSel,
+                  decoration:
+                      _inputDecoration('Recurs *', Icons.inventory_2_outlined),
+                  items: _recursos
+                      .map(
+                        (recurs) => DropdownMenuItem<RecursOption>(
+                          value: recurs,
+                          child: Text(
+                              '${recurs.nom}${recurs.unitat.isEmpty ? '' : ' (${recurs.unitat})'}'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    _markDirty();
+                    setState(() => _recursSel = value);
+                  },
+                  validator: (value) =>
+                      value == null ? 'Selecciona un recurs' : null,
+                ),
+                if (_recursSel?.stock != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Stock disponible: ${_recursSel!.stock} ${_recursSel!.unitat}',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SolRecursFormSectionCard(
+            title: 'Quantitat i dates',
+            icon: Icons.event_note_rounded,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _quantCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      _inputDecoration('Quantitat *', Icons.numbers_rounded),
+                  validator: (value) {
+                    final number = int.tryParse(value?.trim() ?? '');
+                    if (number == null || number <= 0)
+                      return 'Entra un enter > 0';
+                    return null;
+                  },
+                  onChanged: (_) => _markDirty(),
+                ),
+                const SizedBox(height: 12),
+                SolRecursFormDateTile(
+                  label: 'Data necessitat',
+                  date: _dataNecessitat,
+                  requiredField: true,
+                  onTap: _pickNeedDate,
+                ),
+                const SizedBox(height: 12),
+                SolRecursFormDateTile(
+                  label: 'Data entrega',
+                  date: _dataEntrega,
+                  onTap: _pickDeliveryDate,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SolRecursFormSectionCard(
+            title: 'Informació addicional',
+            icon: Icons.notes_rounded,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _provCtrl,
+                  decoration:
+                      _inputDecoration('Proveïdor', Icons.storefront_outlined),
+                  onChanged: (_) => _markDirty(),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _comentCtrl,
+                  decoration:
+                      _inputDecoration('Comentari', Icons.notes_rounded),
+                  maxLines: 3,
+                  onChanged: (_) => _markDirty(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBatchBody() {
+    return Column(
+      children: [
+        SolRecursFormSectionCard(
+          title: 'Obra',
+          icon: Icons.apartment_rounded,
+          child: widget.obraId == null
+              ? DropdownButtonFormField<int>(
+                  value: _obraSeleccionada,
+                  decoration:
+                      _inputDecoration('Obra *', Icons.apartment_rounded),
+                  items: _obres
+                      .map(
+                        (obra) => DropdownMenuItem<int>(
+                          value: obra.id,
+                          child: Text(obra.nom),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    _markDirty();
+                    setState(() => _obraSeleccionada = value);
+                  },
+                )
+              : _ReadOnlyInfoTile(
+                  icon: Icons.apartment_rounded,
+                  label: 'Obra',
+                  value: _obraLabel(_obraSeleccionada),
+                ),
+        ),
+        const SizedBox(height: 14),
+        SolRecursFormSectionCard(
+          title: 'Línies de sol·licitud',
+          icon: Icons.format_list_bulleted_rounded,
+          count: _batch.length,
+          onAdd: _addLine,
+          addTooltip: 'Afegir línia',
+          child: _batch.isEmpty
+              ? const AppEmptyState(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'No hi ha línies',
+                  message: 'Fes servir el botó + per afegir una línia al lot.',
+                )
+              : Column(
+                  children: List.generate(_batch.length, (index) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == _batch.length - 1 ? 0 : 10,
+                      ),
+                      child: SolRecursDraftCard(
+                        draft: _batch[index],
+                        onTap: () => _editLine(index),
+                        onDelete: () => _removeLine(index),
+                      ),
+                    );
+                  }),
+                ),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    final scheme = Theme.of(context).colorScheme;
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      filled: true,
+      fillColor: scheme.surface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.outline.withOpacity(0.10)),
+      ),
+    );
+  }
+
+  String _obraLabel(int? id) {
+    if (id == null) return 'Sense obra';
+    for (final obra in _obres) {
+      if (obra.id == id) return obra.nom;
+    }
+    return 'Obra #$id';
   }
 }
 
-class SolRecursDraft {
-  final RecursOption recurs;
-  final int quantitat;
-  final DateTime dataNecessitat;
-  final DateTime? dataEntrega;
-  final String? comentari;
-  final String? proveidor;
+class _ReadOnlyInfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
 
-  SolRecursDraft({
-    required this.recurs,
-    required this.quantitat,
-    required this.dataNecessitat,
-    this.dataEntrega,
-    this.comentari,
-    this.proveidor,
+  const _ReadOnlyInfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
   });
-}
 
-class ObraOption {
-  final int id;
-  final String nom;
-  ObraOption({required this.id, required this.nom});
-}
-
-class RecursOption {
-  final int id;
-  final String nom;
-  final String unitat;
-  final double? stock;
-  final String? tipus;
-  RecursOption({required this.id, required this.nom, required this.unitat, this.stock, this.tipus});
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withOpacity(0.22),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outline.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: scheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

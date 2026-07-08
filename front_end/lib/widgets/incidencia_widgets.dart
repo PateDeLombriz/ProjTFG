@@ -3,7 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/tasca_models.dart';
-import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
+import 'package:front_end/utils/date_formatter.dart';
+import 'package:front_end/shared/widgets/app_card_action_button.dart';
+import 'package:front_end/utils/status_color_helper.dart';
+import 'package:front_end/shared/widgets/app_info_pill.dart';
+import 'package:front_end/shared/widgets/app_status_chip.dart';
+import 'package:front_end/shared/widgets/app_form_header_card.dart';
+import 'package:front_end/shared/widgets/app_tag.dart';
+
+abstract final class IncidenciaSortValues {
+  static const String mesRecents = 'mes_recents';
+  static const String mesAntigues = 'mes_antigues';
+  static const String criticitatDesc = 'criticitat_desc';
+  static const String prioritatDesc = 'prioritat_desc';
+  static const String obraAsc = 'obra_asc';
+  static const String estatAsc = 'estat_asc';
+}
 
 /* ─────────────────────── LLISTAT / FILTRES ─────────────────────── */
 
@@ -11,139 +26,38 @@ class IncidenciaListHeaderCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final int count;
+  final int? activeCount;
+  final int? criticalCount;
+  final int? pendingCount;
 
   const IncidenciaListHeaderCard({
     super.key,
     required this.title,
     required this.subtitle,
     required this.count,
+    this.activeCount,
+    this.criticalCount,
+    this.pendingCount,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: scheme.outline.withOpacity(0.10)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: scheme.primary.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.warning_amber_rounded,
-              color: scheme.primary,
-              size: 32,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _IncidenciaTag(
-                      icon: Icons.list_alt_outlined,
-                      label: count == 1 ? '1 incidència' : '$count incidències',
-                    ),
-                    _IncidenciaTag(
-                      icon: Icons.business_outlined,
-                      label: 'Context empresa',
-                      accent: scheme.tertiary,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class IncidenciaSearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback? onClear;
-
-  const IncidenciaSearchField({
-    super.key,
-    required this.controller,
-    required this.onChanged,
-    this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Cerca per descripció, obra, estat o categoria',
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: controller.text.trim().isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Neteja cerca',
-                onPressed: onClear,
-                icon: const Icon(Icons.close),
-              ),
-        filled: true,
-        fillColor: scheme.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.outline.withOpacity(0.10)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.primary.withOpacity(0.55)),
-        ),
-      ),
+    return AppFormHeaderCard(
+      title: title,
+      subtitle: subtitle,
+      icon: Icons.warning_amber_rounded,
+      accent: scheme.error,
+      iconContainerSize: 72,
+      badges: [
+        AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.format_list_bulleted_rounded, label: count == 1 ? '1 incidència' : '$count incidències'),
+        if (activeCount != null)
+          AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.filter_alt_outlined, label: activeCount == 1 ? '1 visible' : '$activeCount visibles', accent: scheme.tertiary),
+        if (criticalCount != null)
+          AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.crisis_alert_outlined, label: criticalCount == 1 ? '1 crítica' : '$criticalCount crítiques', accent: Colors.red),
+        if (pendingCount != null)
+          AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.schedule_rounded, label: pendingCount == 1 ? '1 pendent' : '$pendingCount pendents', accent: Colors.orange),
+      ],
     );
   }
 }
@@ -186,7 +100,7 @@ class IncidenciaFilterBar extends StatelessWidget {
     if (selectedCriticitat != null && selectedCriticitat!.trim().isNotEmpty) {
       count++;
     }
-    if (selectedSort != _IncidenciaSortValues.mesRecents) count++;
+    if (selectedSort != IncidenciaSortValues.mesRecents) count++;
     return count;
   }
 
@@ -206,10 +120,7 @@ class IncidenciaFilterBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.tune_rounded,
-                color: scheme.primary,
-              ),
+              Icon(Icons.tune_rounded, color: scheme.primary),
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
@@ -221,7 +132,7 @@ class IncidenciaFilterBar extends StatelessWidget {
                 ),
               ),
               if (activeFiltersCount > 0)
-                _IncidenciaTag(
+                AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   icon: Icons.filter_alt_outlined,
                   label: '$activeFiltersCount actius',
                   accent: scheme.tertiary,
@@ -339,7 +250,7 @@ class IncidenciaFilterBar extends StatelessWidget {
                 ],
               ),
               _IncidenciaDropdownField<String>(
-                width: 220,
+                width: 230,
                 label: 'Ordena per',
                 value: selectedSort,
                 onChanged: (value) {
@@ -349,24 +260,28 @@ class IncidenciaFilterBar extends StatelessWidget {
                 },
                 items: const [
                   DropdownMenuItem<String?>(
-                    value: _IncidenciaSortValues.mesRecents,
+                    value: IncidenciaSortValues.mesRecents,
                     child: Text('Més recents'),
                   ),
                   DropdownMenuItem<String?>(
-                    value: _IncidenciaSortValues.mesAntigues,
+                    value: IncidenciaSortValues.mesAntigues,
                     child: Text('Més antigues'),
                   ),
                   DropdownMenuItem<String?>(
-                    value: _IncidenciaSortValues.criticitatDesc,
+                    value: IncidenciaSortValues.criticitatDesc,
                     child: Text('Criticitat descendent'),
                   ),
                   DropdownMenuItem<String?>(
-                    value: _IncidenciaSortValues.prioritatDesc,
+                    value: IncidenciaSortValues.prioritatDesc,
                     child: Text('Prioritat descendent'),
                   ),
                   DropdownMenuItem<String?>(
-                    value: _IncidenciaSortValues.obraAsc,
+                    value: IncidenciaSortValues.obraAsc,
                     child: Text('Obra A-Z'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: IncidenciaSortValues.estatAsc,
+                    child: Text('Estat'),
                   ),
                 ],
               ),
@@ -391,147 +306,200 @@ class IncidenciaFilterBar extends StatelessWidget {
 
 class IncidenciaListItemCard extends StatelessWidget {
   final IncidenciaListItem item;
+  final VoidCallback? onTap;
 
   const IncidenciaListItemCard({
     super.key,
     required this.item,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final incidencia = item.incidencia;
-    final accent = _criticitatColor(incidencia.criticitat);
+    final accent = colorForCriticitat(incidencia.criticitat);
 
-    final obraNom = incidencia.obraNom ?? 'No sambem el nom de l\'obra';
+    final obraNom = incidencia.obraNom ?? 'Obra sense nom';
     final estatLabel = _estatLabel(incidencia.estat);
     final categoriaLabel = _categoriaLabel(incidencia.categoria);
 
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => IncidenciaProfileScreen(incidenciaId: incidencia.id))),
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: scheme.outline.withOpacity(0.10)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.035),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+    final tags = <Widget>[
+      AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        icon: Icons.crisis_alert_outlined,
+        label: 'Criticitat ${incidencia.criticitat}',
+        accent: accent,
+      ),
+      AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        icon: Icons.priority_high_rounded,
+        label: 'Prioritat ${incidencia.prioritat}',
+        accent: scheme.secondary,
+      ),
+      if (categoriaLabel.trim().isNotEmpty)
+        AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          icon: Icons.category_outlined,
+          label: categoriaLabel,
+          accent: scheme.tertiary,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: accent.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    color: accent,
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        obraNom,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Incidència #${incidencia.id}',
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              _textOrFallback(_shortText(incidencia.descripcio, 180)),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: scheme.onSurface,
-                fontSize: 14,
-                height: 1.4,
-                fontWeight: FontWeight.w500,
+    ];
+
+    final infoPills = <Widget>[
+      if (incidencia.dataInici != null)
+        AppInfoPill(
+          label: 'Inici',
+          value: formatDate(incidencia.dataInici),
+        ),
+      if (incidencia.dataFi != null)
+        AppInfoPill(
+          label: 'Fi',
+          value: formatDate(incidencia.dataFi),
+        ),
+      if (incidencia.idTasca != null)
+        AppInfoPill(
+          label: 'Tasca',
+          value: incidencia.idTasca.toString(),
+        ),
+      AppInfoPill(
+        label: 'ID',
+        value: '#${incidencia.id}',
+      ),
+    ];
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: accent.withOpacity(0.34), width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.035),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
               ),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _IncidenciaTag(
-                  icon: Icons.flag_outlined,
-                  label: estatLabel,
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    width: 6,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(22),
+                        bottomLeft: Radius.circular(22),
+                      ),
+                    ),
+                  ),
                 ),
-                _IncidenciaTag(
-                  icon: Icons.crisis_alert_outlined,
-                  label: 'Criticitat ${incidencia.criticitat}',
-                  accent: accent,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 12, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: accent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        color: accent,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _textOrFallback(
+                                        _shortText(incidencia.descripcio, 90),
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 15.5,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      obraNom,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: scheme.onSurfaceVariant,
+                                        fontSize: 12.8,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AppStatusChip(showBorder: true, bgOpacity: 0.10,
+                                    label: estatLabel,
+                                    color: accent,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: scheme.onSurfaceVariant,
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          if (tags.isNotEmpty) ...[
+                            const SizedBox(height: 9),
+                            Wrap(
+                              spacing: 7,
+                              runSpacing: 7,
+                              children: tags,
+                            ),
+                          ],
+                          if (infoPills.isNotEmpty) ...[
+                            const SizedBox(height: 9),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: infoPills,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                _IncidenciaTag(
-                  icon: Icons.priority_high_rounded,
-                  label: 'Prioritat ${incidencia.prioritat}',
-                  accent: scheme.secondary,
-                ),
-                _IncidenciaTag(
-                  icon: Icons.category_outlined,
-                  label: categoriaLabel,
-                  accent: scheme.tertiary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _IncidenciaInfoPill(
-                  label: 'Obra',
-                  value: obraNom,
-                ),
-                _IncidenciaInfoPill(
-                  label: 'Inici',
-                  value: _formatDate(incidencia.dataInici),
-                ),
-                _IncidenciaInfoPill(
-                  label: 'Fi',
-                  value: _formatDate(incidencia.dataFi),
-                ),
-                _IncidenciaInfoPill(
-                  label: 'Tasca',
-                  value: incidencia.idTasca?.toString() ?? 'Sense tasca',
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -561,6 +529,13 @@ class IncidenciaListEmptyState extends StatelessWidget {
         color: scheme.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: scheme.outline.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.035),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -626,14 +601,29 @@ class IncidenciaListErrorState extends StatelessWidget {
             color: scheme.surface,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: scheme.error.withOpacity(0.18)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.035),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.error_outline_rounded,
-                color: scheme.error,
-                size: 34,
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: scheme.error.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  color: scheme.error,
+                  size: 34,
+                ),
               ),
               const SizedBox(height: 14),
               const Text(
@@ -673,23 +663,28 @@ class IncidenciaListErrorState extends StatelessWidget {
 
 class IncidenciaHeaderCard extends StatelessWidget {
   final Incidencia incidencia;
+  final String? estatOverride;
+  final VoidCallback? onChangeEstat;
 
   const IncidenciaHeaderCard({
     super.key,
     required this.incidencia,
+    this.estatOverride,
+    this.onChangeEstat,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final accent = _criticitatColor(incidencia.criticitat);
+    final accent = colorForCriticitat(incidencia.criticitat);
+    final displayEstat = estatOverride ?? incidencia.estat;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: scheme.outline.withOpacity(0.10)),
+        border: Border.all(color: accent.withOpacity(0.18)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -719,13 +714,35 @@ class IncidenciaHeaderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Incidència #${incidencia.id}',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Incidència #${incidencia.id}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                    if (onChangeEstat != null) ...[
+                      const SizedBox(width: 10),
+                      OutlinedButton.icon(
+                        onPressed: onChangeEstat,
+                        icon: const Icon(Icons.edit_rounded, size: 17),
+                        label: const Text('Estat'),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -742,15 +759,16 @@ class IncidenciaHeaderCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _IncidenciaTag(
+                    AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       icon: Icons.flag_outlined,
-                      label: _estatLabel(incidencia.estat),
+                      label: _estatLabel(displayEstat),
+                      accent: scheme.primary,
                     ),
-                    _IncidenciaTag(
+                    AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       icon: Icons.priority_high_rounded,
                       label: 'Prioritat ${incidencia.prioritat}',
                     ),
-                    _IncidenciaTag(
+                    AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       icon: Icons.crisis_alert_outlined,
                       label: 'Criticitat ${incidencia.criticitat}',
                       accent: accent,
@@ -768,59 +786,68 @@ class IncidenciaHeaderCard extends StatelessWidget {
 
 class IncidenciaCompactInfoPanel extends StatelessWidget {
   final Incidencia incidencia;
+  final String? estatOverride;
 
   const IncidenciaCompactInfoPanel({
     super.key,
     required this.incidencia,
+    this.estatOverride,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final displayEstat = estatOverride ?? incidencia.estat;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outline.withOpacity(0.08)),
+        border: Border.all(color: scheme.primary.withOpacity(0.10)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Informació general',
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: scheme.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Informació general',
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
-              _IncidenciaInfoPill(
+              AppInfoPill(
                 label: 'Estat',
-                value: _estatLabel(incidencia.estat),
+                value: _estatLabel(displayEstat),
               ),
-              _IncidenciaInfoPill(
+              AppInfoPill(
                 label: 'Inici',
-                value: _formatDate(incidencia.dataInici),
+                value: formatDate(incidencia.dataInici),
               ),
-              _IncidenciaInfoPill(
+              AppInfoPill(
                 label: 'Fi',
-                value: _formatDate(incidencia.dataFi),
+                value: formatDate(incidencia.dataFi),
               ),
-              _IncidenciaInfoPill(
+              AppInfoPill(
                 label: 'Prioritat',
                 value: incidencia.prioritat.toString(),
               ),
-              _IncidenciaInfoPill(
+              AppInfoPill(
                 label: 'Criticitat',
                 value: incidencia.criticitat.toString(),
               ),
-              _IncidenciaInfoPill(
+              AppInfoPill(
                 label: 'Categoria',
                 value: _categoriaLabel(incidencia.categoria),
               ),
@@ -832,12 +859,14 @@ class IncidenciaCompactInfoPanel extends StatelessWidget {
   }
 }
 
-class IncidenciaSectionBlock extends StatelessWidget {
+class IncidenciaSectionBlock extends StatefulWidget {
   final String title;
   final IconData icon;
   final int? count;
   final Widget child;
   final bool initiallyExpanded;
+  final VoidCallback? onAdd;
+  final String? addTooltip;
 
   const IncidenciaSectionBlock({
     super.key,
@@ -846,15 +875,30 @@ class IncidenciaSectionBlock extends StatelessWidget {
     required this.child,
     this.count,
     this.initiallyExpanded = false,
+    this.onAdd,
+    this.addTooltip,
   });
+
+  @override
+  State<IncidenciaSectionBlock> createState() => _IncidenciaSectionBlockState();
+}
+
+class _IncidenciaSectionBlockState extends State<IncidenciaSectionBlock> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.initiallyExpanded;
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    final subtitle = count == null
+    final subtitle = widget.count == null
         ? null
-        : (count == 1 ? '1 element' : '$count elements');
+        : (widget.count == 1 ? '1 element' : '${widget.count} elements');
 
     return Container(
       decoration: BoxDecoration(
@@ -865,12 +909,15 @@ class IncidenciaSectionBlock extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: ExpansionTile(
-          initiallyExpanded: initiallyExpanded,
+          initiallyExpanded: widget.initiallyExpanded,
+          onExpansionChanged: (value) {
+            setState(() => _expanded = value);
+          },
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          leading: Icon(icon, color: scheme.primary),
+          leading: Icon(widget.icon, color: scheme.primary),
           title: Text(
-            title,
+            widget.title,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -885,7 +932,30 @@ class IncidenciaSectionBlock extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-          children: [child],
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onAdd != null) ...[
+                IconButton(
+                  tooltip: widget.addTooltip ?? 'Afegir',
+                  onPressed: widget.onAdd,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.add_circle_outline_rounded,
+                    color: scheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Icon(
+                _expanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                color: scheme.primary,
+              ),
+            ],
+          ),
+          children: [widget.child],
         ),
       ),
     );
@@ -953,30 +1023,249 @@ class IncidenciaObraCard extends StatelessWidget {
 class IncidenciaTascaCard extends StatelessWidget {
   final Tasca tasca;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onUnlink;
+  final VoidCallback? onDelete;
 
   const IncidenciaTascaCard({
     super.key,
     required this.tasca,
     this.onTap,
+    this.onEdit,
+    this.onUnlink,
+    this.onDelete,
+  });
+
+  bool get _hasActions =>
+      onEdit != null || onUnlink != null || onDelete != null;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = tasca.visibilitatTasca ? Colors.green : Colors.grey;
+
+    final details = <Widget>[
+      AppInfoPill(
+        label: 'Prioritat',
+        value: tasca.prioritat?.toString() ?? '—',
+      ),
+      AppInfoPill(
+        label: 'Inici',
+        value: formatDate(tasca.dataInici),
+      ),
+      AppInfoPill(
+        label: 'Fi',
+        value: formatDate(tasca.dataFi),
+      ),
+      AppInfoPill(
+        label: 'Visible',
+        value: tasca.visibilitatTasca ? 'Sí' : 'No',
+      ),
+    ];
+
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: scheme.outline.withOpacity(0.08)),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 6,
+                constraints: const BoxConstraints(minHeight: 112),
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: accent.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.task_alt_outlined,
+                          color: accent,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tasca.etiqueta,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.5,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              tasca.descripcioCurta,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: details,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_hasActions) ...[
+                        const SizedBox(width: 8),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (onEdit != null)
+                              AppCardActionButton(
+                                tooltip: 'Editar tasca',
+                                icon: Icons.edit_outlined,
+                                onPressed: onEdit!,
+                              ),
+                            if (onUnlink != null) ...[
+                              const SizedBox(height: 6),
+                              AppCardActionButton(
+                                tooltip: 'Desassociar tasca',
+                                icon: Icons.link_off_rounded,
+                                onPressed: onUnlink!,
+                              ),
+                            ],
+                            if (onDelete != null) ...[
+                              const SizedBox(height: 6),
+                              AppCardActionButton(
+                                tooltip: 'Eliminar tasca',
+                                icon: Icons.delete_outline,
+                                isDanger: true,
+                                onPressed: onDelete!,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class IncidenciaNoTascaPanel extends StatelessWidget {
+  final VoidCallback? onAssignExisting;
+  final VoidCallback? onCreateNew;
+
+  const IncidenciaNoTascaPanel({
+    super.key,
+    this.onAssignExisting,
+    this.onCreateNew,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _IncidenciaRelationCard(
-      title: tasca.etiqueta,
-      subtitle: tasca.descripcioCurta,
-      icon: Icons.task_alt_outlined,
-      chips: [
-        _IncidenciaRelationChip(
-          icon: Icons.assignment_outlined,
-          label: tasca.descripcioCurta,
-        ),
-        _IncidenciaRelationChip(
-          icon: Icons.visibility_outlined,
-          label: tasca.visibilitatTasca ? 'Visible' : 'Oculta',
-        ),
-      ],
-      onTap: onTap,
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: scheme.surface,
+        border: Border.all(color: scheme.outline.withOpacity(0.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: scheme.primary.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              Icons.task_alt_outlined,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sense tasca associada',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Afegeix una tasca existent o crea una nova tasca quan connectem la persistència.',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (onAssignExisting != null)
+                      _IncidenciaActionButton(
+                        icon: Icons.playlist_add_check_rounded,
+                        label: 'Associar existent',
+                        onPressed: onAssignExisting!,
+                      ),
+                    if (onCreateNew != null)
+                      _IncidenciaActionButton(
+                        icon: Icons.add_task_rounded,
+                        label: 'Crear tasca',
+                        onPressed: onCreateNew!,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -984,81 +1273,163 @@ class IncidenciaTascaCard extends StatelessWidget {
 class IncidenciaSolucioCard extends StatelessWidget {
   final IncidenciaSolucioItem solucio;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const IncidenciaSolucioCard({
     super.key,
     required this.solucio,
     this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final accent = scheme.primary;
+    final isDraft = solucio.id < 0;
+    final hasActions = onEdit != null || onDelete != null;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
+    final metrics = <Widget>[
+      AppInfoPill(
+        label: 'Eficàcia',
+        value: solucio.eficacia?.toString() ?? '—',
+      ),
+      AppInfoPill(
+        label: 'Cost monetari',
+        value: solucio.costMonetari?.toString() ?? '—',
+      ),
+      AppInfoPill(
+        label: 'Cost temporal',
+        value: solucio.costTemporal?.toString() ?? '—',
+      ),
+      AppInfoPill(
+        label: 'Impacte',
+        value: solucio.impacte?.toString() ?? '—',
+      ),
+    ];
+
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
         decoration: BoxDecoration(
           color: scheme.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: scheme.outline.withOpacity(0.08)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.build_circle_outlined,
-                  color: scheme.primary,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Solució #${solucio.id}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 6,
+                constraints: const BoxConstraints(minHeight: 112),
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _textOrFallback(solucio.descripcio),
-              style: TextStyle(
-                color: scheme.onSurfaceVariant,
-                height: 1.35,
               ),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _IncidenciaInfoPill(
-                  label: 'Eficàcia',
-                  value: solucio.eficacia?.toString() ?? '—',
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: accent.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.build_circle_outlined,
+                          color: accent,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    isDraft
+                                        ? 'Solució nova'
+                                        : 'Solució #${solucio.id}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15.5,
+                                    ),
+                                  ),
+                                ),
+                                if (isDraft)
+                                  AppStatusChip(showBorder: true, bgOpacity: 0.10,
+                                    label: 'Pendent',
+                                    color: scheme.tertiary,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              _textOrFallback(solucio.descripcio),
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: metrics,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (hasActions) ...[
+                        const SizedBox(width: 8),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (onEdit != null)
+                              AppCardActionButton(
+                                tooltip: 'Editar solució',
+                                icon: Icons.edit_outlined,
+                                onPressed: onEdit!,
+                              ),
+                            if (onDelete != null) ...[
+                              const SizedBox(height: 6),
+                              AppCardActionButton(
+                                tooltip: 'Eliminar solució',
+                                icon: Icons.delete_outline,
+                                isDanger: true,
+                                onPressed: onDelete!,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                _IncidenciaInfoPill(
-                  label: 'Cost monetari',
-                  value: solucio.costMonetari?.toString() ?? '—',
-                ),
-                _IncidenciaInfoPill(
-                  label: 'Cost temporal',
-                  value: solucio.costTemporal?.toString() ?? '—',
-                ),
-                _IncidenciaInfoPill(
-                  label: 'Impacte',
-                  value: solucio.impacte?.toString() ?? '—',
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1067,28 +1438,50 @@ class IncidenciaSolucioCard extends StatelessWidget {
 
 class IncidenciaSolucionsSectionBody extends StatelessWidget {
   final List<IncidenciaSolucioItem> solucions;
+  final VoidCallback? onAdd;
   final void Function(IncidenciaSolucioItem item)? onTapItem;
+  final void Function(IncidenciaSolucioItem item)? onEdit;
+  final void Function(IncidenciaSolucioItem item)? onDelete;
 
   const IncidenciaSolucionsSectionBody({
     super.key,
     required this.solucions,
+    this.onAdd,
     this.onTapItem,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     if (solucions.isEmpty) {
-      return const IncidenciaEmptyState(
-        text: 'Aquesta incidència no té solucions registrades.',
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const IncidenciaEmptyState(
+            text: 'Aquesta incidència no té solucions registrades.',
+          ),
+         //if (onAdd != null) ...[
+         //  const SizedBox(height: 10),
+         //  _IncidenciaActionButton(
+         //    icon: Icons.add_rounded,
+         //    label: 'Afegir solució',
+         //    onPressed: onAdd!,
+         //  ),
+          ],
+        //],
       );
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (int i = 0; i < solucions.length; i++) ...[
           IncidenciaSolucioCard(
             solucio: solucions[i],
             onTap: onTapItem == null ? null : () => onTapItem!(solucions[i]),
+            onEdit: onEdit == null ? null : () => onEdit!(solucions[i]),
+            onDelete: onDelete == null ? null : () => onDelete!(solucions[i]),
           ),
           if (i != solucions.length - 1) const SizedBox(height: 10),
         ],
@@ -1097,7 +1490,595 @@ class IncidenciaSolucionsSectionBody extends StatelessWidget {
   }
 }
 
+class IncidenciaEstatBottomSheet extends StatefulWidget {
+  final String? initialEstat;
+
+  const IncidenciaEstatBottomSheet({
+    super.key,
+    this.initialEstat,
+  });
+
+  @override
+  State<IncidenciaEstatBottomSheet> createState() =>
+      _IncidenciaEstatBottomSheetState();
+}
+
+class _IncidenciaEstatBottomSheetState
+    extends State<IncidenciaEstatBottomSheet> {
+  late String _estat;
+
+  @override
+  void initState() {
+    super.initState();
+    _estat = _normalizeEstat(widget.initialEstat);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        20 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: scheme.outline.withOpacity(0.35),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(Icons.flag_outlined, color: scheme.primary),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Modificar estat',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          DropdownButtonFormField<String>(
+            value: _estat,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Estat de la incidència',
+              filled: true,
+              fillColor: scheme.surfaceContainerHighest.withOpacity(0.28),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'pendent', child: Text('Pendent')),
+              DropdownMenuItem(value: 'en_curs', child: Text('En curs')),
+              DropdownMenuItem(value: 'resolta', child: Text('Resolta')),
+              DropdownMenuItem(value: 'tancada', child: Text('Tancada')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _estat = value);
+            },
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel·lar'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(context, _estat),
+                  icon: const Icon(Icons.save_rounded),
+                  label: const Text('Aplicar'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _normalizeEstat(String? value) {
+    final text = value?.trim().toLowerCase();
+    switch (text) {
+      case 'pendent':
+      case 'en_curs':
+      case 'resolta':
+      case 'tancada':
+        return text!;
+      case 'en curs':
+        return 'en_curs';
+      default:
+        return 'pendent';
+    }
+  }
+}
+
+class IncidenciaSolucioFormResult {
+  final int? idTasca;
+  final String descripcio;
+  final int costMonetari;
+  final int eficacia;
+  final int costTemporal;
+  final int impacte;
+
+  const IncidenciaSolucioFormResult({
+    this.idTasca,
+    required this.descripcio,
+    required this.costMonetari,
+    required this.eficacia,
+    required this.costTemporal,
+    required this.impacte,
+  });
+}
+
+class IncidenciaSolucioEditorSheet extends StatefulWidget {
+  final IncidenciaSolucioItem? initial;
+  final List<TascaOption> tasques;
+
+  const IncidenciaSolucioEditorSheet({
+    super.key,
+    this.initial,
+    this.tasques = const <TascaOption>[],
+  });
+
+  @override
+  State<IncidenciaSolucioEditorSheet> createState() =>
+      _IncidenciaSolucioEditorSheetState();
+}
+
+class _IncidenciaSolucioEditorSheetState
+    extends State<IncidenciaSolucioEditorSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _descCtrl;
+  late final TextEditingController _eficaciaCtrl;
+  late final TextEditingController _costMonetariCtrl;
+  late final TextEditingController _costTemporalCtrl;
+  late final TextEditingController _impacteCtrl;
+  int? _selectedTascaId;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    _selectedTascaId = initial?.idTasca;
+    _descCtrl = TextEditingController(text: initial?.descripcio ?? '');
+    _eficaciaCtrl = TextEditingController(
+      text: (initial?.eficacia ?? 0).toString(),
+    );
+    _costMonetariCtrl = TextEditingController(
+      text: (initial?.costMonetari ?? 0).toString(),
+    );
+    _costTemporalCtrl = TextEditingController(
+      text: (initial?.costTemporal ?? 0).toString(),
+    );
+    _impacteCtrl = TextEditingController(
+      text: (initial?.impacte ?? 1).toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _descCtrl.dispose();
+    _eficaciaCtrl.dispose();
+    _costMonetariCtrl.dispose();
+    _costTemporalCtrl.dispose();
+    _impacteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final editing = widget.initial != null;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        20 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: scheme.outline.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.build_circle_outlined,
+                      color: scheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      editing ? 'Editar solució' : 'Afegir solució',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              TextFormField(
+                controller: _descCtrl,
+                minLines: 3,
+                maxLines: 5,
+                decoration: _sheetInputDecoration(
+                  context,
+                  'Descripció *',
+                  Icons.description_outlined,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'La descripció és obligatòria';
+                  }
+                  return null;
+                },
+              ),
+              if (widget.tasques.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int?>(
+                  value: _selectedTascaId,
+                  isExpanded: true,
+                  decoration: _sheetInputDecoration(
+                    context,
+                    'Tasca associada',
+                    Icons.link_outlined,
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('— Sense tasca —'),
+                    ),
+                    ...widget.tasques.map(
+                      (tasca) => DropdownMenuItem<int?>(
+                        value: tasca.id,
+                        child: Text(
+                          tasca.desc,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedTascaId = value);
+                  },
+                ),
+              ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _numberField(context, _eficaciaCtrl, 'Eficàcia'),
+                  _numberField(context, _costMonetariCtrl, 'Cost monetari'),
+                  _numberField(context, _costTemporalCtrl, 'Cost temporal'),
+                  _numberField(context, _impacteCtrl, 'Impacte'),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel·lar'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _save,
+                      icon: const Icon(Icons.save_rounded),
+                      label: Text(editing ? 'Guardar' : 'Afegir'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _numberField(
+    BuildContext context,
+    TextEditingController controller,
+    String label,
+  ) {
+    return SizedBox(
+      width: 150,
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: _sheetInputDecoration(context, label, Icons.numbers_rounded),
+      ),
+    );
+  }
+
+  InputDecoration _sheetInputDecoration(
+    BuildContext context,
+    String label,
+    IconData icon,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest.withOpacity(0.25),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    );
+  }
+
+  int _parseIntOrZero(TextEditingController controller) {
+    return int.tryParse(controller.text.trim()) ?? 0;
+  }
+
+  int _parseImpacte(TextEditingController controller) {
+    final value = int.tryParse(controller.text.trim());
+    if (value == null || value <= 0) return 1;
+    return value;
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+
+    Navigator.pop(
+      context,
+      IncidenciaSolucioFormResult(
+        idTasca: _selectedTascaId,
+        descripcio: _descCtrl.text.trim(),
+        eficacia: _parseIntOrZero(_eficaciaCtrl),
+        costMonetari: _parseIntOrZero(_costMonetariCtrl),
+        costTemporal: _parseIntOrZero(_costTemporalCtrl),
+        impacte: _parseImpacte(_impacteCtrl),
+      ),
+    );
+  }
+}
+
+class IncidenciaFormHeaderCard extends StatelessWidget {
+  final bool editing;
+  final String estat;
+  final int criticitat;
+  final int prioritat;
+  final String? obraLabel;
+
+  const IncidenciaFormHeaderCard({
+    super.key,
+    required this.editing,
+    required this.estat,
+    required this.criticitat,
+    required this.prioritat,
+    this.obraLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = colorForCriticitat(criticitat);
+    return AppFormHeaderCard(
+      title: editing ? 'Editar incidència' : 'Nova incidència',
+      subtitle: editing
+          ? 'Actualitza les dades disponibles i gestiona les solucions associades.'
+          : 'Registra una incidència i afegeix-hi les solucions necessàries.',
+      icon: editing ? Icons.edit_note_rounded : Icons.add_alert_outlined,
+      accent: accent,
+      accentBorder: true,
+      iconContainerSize: 64,
+      badges: [
+        AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.flag_outlined, label: _estatLabel(estat), accent: scheme.primary),
+        AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.crisis_alert_outlined, label: 'Criticitat $criticitat', accent: accent),
+        AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.priority_high_rounded, label: 'Prioritat $prioritat', accent: scheme.secondary),
+        if (obraLabel != null && obraLabel!.trim().isNotEmpty)
+          AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), icon: Icons.apartment_rounded, label: obraLabel!.trim(), accent: scheme.tertiary),
+      ],
+    );
+  }
+}
+
+class IncidenciaPreparedActionSheet extends StatelessWidget {
+  final String title;
+  final String message;
+  final IconData icon;
+  final String primaryLabel;
+
+  const IncidenciaPreparedActionSheet({
+    super.key,
+    required this.title,
+    required this.message,
+    required this.icon,
+    this.primaryLabel = 'Entesos',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        20 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: scheme.outline.withOpacity(0.35),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: scheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withOpacity(0.32),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.outline.withOpacity(0.08)),
+            ),
+            child: Text(
+              message,
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                height: 1.35,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.check_rounded),
+              label: Text(primaryLabel),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /* ───────────────────────── PRIVATS ───────────────────────── */
+
+class _IncidenciaActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final bool destructive;
+
+  const _IncidenciaActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = destructive ? scheme.error : scheme.primary;
+
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withOpacity(0.28)),
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+  }
+}
 
 class _IncidenciaDropdownField<T> extends StatelessWidget {
   final String label;
@@ -1273,112 +2254,8 @@ class _IncidenciaRelationChip extends StatelessWidget {
   }
 }
 
-class _IncidenciaTag extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? accent;
 
-  const _IncidenciaTag({
-    required this.icon,
-    required this.label,
-    this.accent,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = accent ?? scheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _IncidenciaInfoPill extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _IncidenciaInfoPill({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-abstract final class _IncidenciaSortValues {
-  static const String mesRecents = 'mes_recents';
-  static const String mesAntigues = 'mes_antigues';
-  static const String criticitatDesc = 'criticitat_desc';
-  static const String prioritatDesc = 'prioritat_desc';
-  static const String obraAsc = 'obra_asc';
-}
-
-Color _criticitatColor(int criticitat) {
-  if (criticitat >= 7) return Colors.red;
-  if (criticitat >= 4) return Colors.orange;
-  return Colors.green;
-}
-
-String _formatDate(DateTime? value) {
-  if (value == null) return '—';
-  final day = value.day.toString().padLeft(2, '0');
-  final month = value.month.toString().padLeft(2, '0');
-  final year = value.year.toString();
-  return '$day/$month/$year';
-}
 
 String _estatLabel(String? estat) {
   final text = estat?.trim().toLowerCase();
@@ -1413,7 +2290,6 @@ String _categoriaLabel(int? categoria) {
       return 'Sense categoria';
   }
 }
-
 
 String _shortText(String? text, int maxLength) {
   final value = text?.trim();

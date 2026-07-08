@@ -497,18 +497,10 @@ abstract class AppApiService {
     final uri = buildUri(path, queryParameters: queryParameters);
     final headers = authHeaders(token);
 
-    print('DELETE URI: $uri');
-    print('TOKEN PRESENT: ${token.trim().isNotEmpty}');
-    print('AUTH HEADER PRESENT: ${headers.containsKey('Authorization')}');
-    print('AUTH HEADER PREFIX: ${headers['Authorization']?.split(' ').first}');
-
     final response = await client.delete(
       uri,
       headers: headers,
     );
-
-    print('DELETE STATUS: ${response.statusCode}');
-    print('DELETE BODY: ${response.body}');
 
     if (response.statusCode != expectedStatus) {
       await _handleUnauthorizedIfNeeded(response.statusCode);

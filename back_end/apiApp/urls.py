@@ -1,8 +1,8 @@
 from django.urls import path
 from .views import (
-    ContracteTreballadorDetail, DocumentObraDownloadView, MeView, ObraDetail,
+    ContracteTreballadorDetail, DocumentObraDownloadView, EmpresaNotificacionsCountView, EmpresaNotificacionsLlegidaView, EmpresaNotificacionsView, MeView, ObraDetail,
     EmpresaDetail, ObresListEmpresa, RegistreHorariMeView, TasquesList,
-    TreballadorDetail, TreballadorEmpresaList, TreballadorMeObraDocumentsView, TreballadorMeObresParticipadesView, TreballadorMeRecursosView, TreballadorMeSolRecursDetail, TreballadorMeSolRecursView, TreballadorMeTascaFinalitzarView, TreballadorMeTasquesView, TreballadorObresParticipadesView, TreballadorProfileView, TreballadorTasquesAssignadesView,
+    TreballadorDetail, TreballadorEmpresaList, TreballadorMeNotificacioLlegidaView, TreballadorMeNotificacionsCountView, TreballadorMeNotificacionsView, TreballadorMeObraDocumentsView, TreballadorMeObresParticipadesView, TreballadorMeRecursosView, TreballadorMeSolRecursDetail, TreballadorMeSolRecursView, TreballadorMeTascaFinalitzarView, TreballadorMeTasquesView, TreballadorObresParticipadesView, TreballadorProfileView, TreballadorTasquesAssignadesView,
     UbicacioDetail,PermisUsuariList, PermisUsuariDetail,IncidenciaList, IncidenciaDetail,TasquesDetail,
     RecursList, RecursDetail,
     SolucioList, SolucioDetail, SolucioBulkDeleteView,
@@ -10,7 +10,7 @@ from .views import (
     TascaTreballadorList, TascaTreballadorDetail, TascaTreballadorBulkDelete,
     SolRecursList, SolRecursDetail,
     ResponsableObraList,TreballadorMePermisosView, LoginView,EmpresaRegisterView,TascaValidarView,
-    DocumentObraDownloadView
+    DocumentObraDownloadView,ObraList, UbicacioList
 )
 
 urlpatterns = [
@@ -20,7 +20,7 @@ urlpatterns = [
     path('empreses/<int:pk>/', EmpresaDetail.as_view(), name='empresa-detail'),
 
     # Obres
-    #path('obres/', ObraList.as_view(), name='obra-list'),#Totes les obres
+    path('obres/', ObraList.as_view(), name='obra-list'),#Totes les obres
     path ('obresEmpresa/<int:pk>/', ObresListEmpresa.as_view(), name='obres-empresa-list'),#Obres d'una empresa
     path('obres/<int:pk>/', ObraDetail.as_view(), name='obra-detail'),
 
@@ -51,7 +51,7 @@ urlpatterns = [
     #TascaTreballadorBulkDeleteView: id de tasca
     path('tasca_treballador/<int:id_tasca>/bulk_delete/', TascaTreballadorBulkDelete.as_view(), name='tascatreballador-bulk-delete'),
     path('ubicacio/<int:pk>/', UbicacioDetail.as_view(), name='ubicacio-detail'),
-
+    path('ubicacio/', UbicacioList.as_view(), name='ubicacio-list'),
     # Permisos
     path('permis_treballador/<int:pk>/', PermisUsuariDetail.as_view(), name='permisusuari-detail'),
 
@@ -84,5 +84,13 @@ urlpatterns = [
 
     # Responsable d’obra (N-a-N; només llista/filtre)
     path('responsable_obra/', ResponsableObraList.as_view(), name='responsableobra-list'),
+
+
+    path('treballadors/me/notificacions/',TreballadorMeNotificacionsView.as_view(), name='treballador-me-notificacions'),
+    path('treballadors/me/notificacions/count/', TreballadorMeNotificacionsCountView.as_view(),  name='treballador-me-notificacions-count'),
+    path('treballadors/me/notificacions/<int:pk>/llegida/', TreballadorMeNotificacioLlegidaView.as_view(), name='treballador-me-notificacio-llegida'),
+    path('empresa/me/notificacions/',EmpresaNotificacionsView.as_view(), name='empresa-me-notificacions'),
+    path('empresa/me/notificacions/count/', EmpresaNotificacionsCountView.as_view(),  name='empresa-me-notificacions-count'),
+    path('empresa/me/notificacions/<int:pk>/llegida/', EmpresaNotificacionsLlegidaView.as_view(), name='empresa-me-notificacions-llegida'),
 
 ]

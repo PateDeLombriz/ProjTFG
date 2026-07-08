@@ -26,11 +26,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'apiApp.apps.ApiappConfig', #'apiApp',
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
     'cryptography',
-    'apiApp',
     'fastapi',
     'uvicorn',
 ]

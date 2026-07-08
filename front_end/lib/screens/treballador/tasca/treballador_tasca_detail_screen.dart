@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 
 import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/screens/empresa/obra_screens/obra_profile_screen.dart';
-import 'package:front_end/screens/treballador/finalitzar_tasca_screen.dart';
-import 'package:front_end/screens/treballador/incidencia_report_screen.dart';
+import 'package:front_end/screens/treballador/tasca/finalitzar_tasca_screen.dart';
+import 'package:front_end/screens/treballador/incidencia/incidencia_report_screen.dart';
 import 'package:front_end/services/tasques_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/shared/themes/app_colors.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/shared/themes/app_spacing.dart';
 import 'package:front_end/shared/widgets/app_primary_button.dart';
 import 'package:front_end/shared/widgets/app_secondary_button.dart';
@@ -39,12 +40,12 @@ class _TascaTreballadorDetailScreenState extends State<TascaTreballadorDetailScr
   void initState() {
     super.initState();
     _service = TascaService(baseUrl: ApiConstants.baseUrl);
-    _future = _service.fetchTascaTreballadorProfile(widget.tascaId);
+    _future = _service.fetchTascaProfile(widget.tascaId);
   }
 
   Future<void> _reload() async {
     setState(() {
-      _future = _service.fetchTascaTreballadorProfile(widget.tascaId);
+      _future = _service.fetchTascaProfile(widget.tascaId);
     });
     await _future;
   }
@@ -101,7 +102,7 @@ class _TascaTreballadorDetailScreenState extends State<TascaTreballadorDetailScr
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const AppLoadingIndicator();
           }
           if (snapshot.hasError) {
             return TascaErrorState(
@@ -150,13 +151,6 @@ class _TascaTreballadorDetailScreenState extends State<TascaTreballadorDetailScr
                   },
                 ),
                 const SizedBox(height: 16),
-
-                TascaSolucionsSection(
-                  solucions: data.solucions,
-                  onOpenSolucio: (id) {
-                    _showPendingNavigation('solució', id);
-                  },
-                ),
 
                 // CANVI 3: accions de treballador (només si capabilities ho permet)
                 if (_caps.canComplete || _caps.canReportIncidencia) ...[

@@ -65,20 +65,6 @@ class _TreballadorHomeScreenState extends State<TreballadorHomeScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        title: const Text('Inici'),
-        automaticallyImplyLeading: false,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'Actualitza',
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _reload,
-          ),
-        ],
-      ),
       body: FutureBuilder<_HomeData>(
         future: _future,
         builder: (context, snapshot) {

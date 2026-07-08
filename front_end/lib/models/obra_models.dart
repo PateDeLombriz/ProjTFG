@@ -327,6 +327,26 @@ class ObraCreateRequest {
     this.descripcio,
   });
 
+  ObraCreateRequest copyWith({
+    String? nom,
+    int? ubicacioId,
+    DateTime? dataInici,
+    DateTime? dataPrevFi,
+    int? pressupost,
+    String? descripcio,
+    String? estat,
+  }) {
+    return ObraCreateRequest(
+      nom: nom ?? this.nom,
+      ubicacioId: ubicacioId ?? this.ubicacioId,
+      dataInici: dataInici ?? this.dataInici,
+      dataPrevFi: dataPrevFi ?? this.dataPrevFi,
+      pressupost: pressupost ?? this.pressupost,
+      descripcio: descripcio ?? this.descripcio,
+      estat: estat ?? this.estat,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'nom': nom.trim(),
@@ -341,18 +361,21 @@ class ObraCreateRequest {
 }
 
 class ObraCreateResult {
+  final int? ubicacioId;
   final int? obraId;
   final int? relacioId;
 
   const ObraCreateResult({
+    this.ubicacioId,
     this.obraId,
     this.relacioId,
   });
 
   factory ObraCreateResult.fromJson(Map<String, dynamic> json) {
     return ObraCreateResult(
-      obraId: _asIntOrNull(json['id_obra'] ?? json['obra_id']),
-      relacioId: _asIntOrNull(json['id']),
+      ubicacioId: _asIntOrNull(json['ubicacio'] ?? json['ubicacio_id']),
+      obraId: _asIntOrNull(json['id_obra'] ?? json['obra_id'] ?? json['id']),
+      relacioId: _asIntOrNull(json['relacio_id']),
     );
   }
 }

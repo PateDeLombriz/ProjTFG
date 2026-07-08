@@ -2,15 +2,17 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/screens/empresa/obra_screens/obra_profile_screen.dart';
-import 'package:front_end/screens/treballador/finalitzar_tasca_screen.dart';
-import 'package:front_end/screens/treballador/incidencia_report_screen.dart';
+import 'package:front_end/screens/empresa/incidencia/incidenciaDetail_screen.dart';
+import 'package:front_end/screens/empresa/treballador_empresa/treballador_detail_screen.dart';
+import 'package:front_end/screens/treballador/tasca/finalitzar_tasca_screen.dart';
+import 'package:front_end/screens/treballador/incidencia/incidencia_report_screen.dart';
 import 'package:front_end/services/tasques_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
-import 'package:front_end/shared/themes/app_colors.dart';
-import 'package:front_end/shared/themes/app_spacing.dart';
 import 'package:front_end/shared/widgets/app_primary_button.dart';
 import 'package:front_end/shared/widgets/app_secondary_button.dart';
+import 'package:front_end/shared/widgets/app_expandable_section.dart';
 import 'package:front_end/widgets/tasca_widgets.dart';
 
 class TascaDetailScreen extends StatefulWidget {
@@ -68,7 +70,29 @@ class _TascaDetailScreenState extends State<TascaDetailScreen> {
   void _openTascaPare(int id) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TascaDetailScreen(tascaId: id),
+        builder: (_) => TascaDetailScreen(
+          tascaId: id,
+          capabilities: widget.capabilities,
+        ),
+      ),
+    );
+  }
+
+  void _openTreballador(int id) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TreballadorDetailScreen(treballadorId: id),
+      ),
+    );
+  }
+
+  void _openIncidencia(int id) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IncidenciaProfileScreen(
+          incidenciaId: id,
+          workerView: _caps.canComplete || _caps.canReportIncidencia,
+        ),
       ),
     );
   }
@@ -86,7 +110,7 @@ class _TascaDetailScreenState extends State<TascaDetailScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: scheme.primaryContainer.withOpacity(0.06),
       appBar: AppBar(
         title: const Text('Perfil de tasca'),
         actions: [
@@ -101,7 +125,7 @@ class _TascaDetailScreenState extends State<TascaDetailScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const AppLoadingIndicator();
           }
           if (snapshot.hasError) {
             return TascaErrorState(
@@ -129,38 +153,21 @@ class _TascaDetailScreenState extends State<TascaDetailScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                TascaPareSection(
-                  tascaPare: data.tascaPare,
-                  onOpenTascaPare: _openTascaPare,
-                ),
-                const SizedBox(height: 16),
-
                 TascaAssignacioSection(
                   assignacio: data.treballadorAssignat,
-                  onOpenTreballador: (id) {
-                    _showPendingNavigation('treballador', id);
-                  },
+                  onOpenTreballador: _openTreballador,
                 ),
                 const SizedBox(height: 16),
 
                 TascaIncidenciesSection(
                   incidencies: data.incidencies,
-                  onOpenIncidencia: (id) {
-                    _showPendingNavigation('incidència', id);
-                  },
+                  onOpenIncidencia: _openIncidencia,
                 ),
                 const SizedBox(height: 16),
 
-                TascaSolucionsSection(
-                  solucions: data.solucions,
-                  onOpenSolucio: (id) {
-                    _showPendingNavigation('solució', id);
-                  },
-                ),
-
                 // CANVI 3: accions de treballador (només si capabilities ho permet)
                 if (_caps.canComplete || _caps.canReportIncidencia) ...[
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _WorkerActionsSection(
                     tascaId: data.tasca.id,
                     tascaDescripcio: data.tasca.descripcio,
@@ -168,6 +175,12 @@ class _TascaDetailScreenState extends State<TascaDetailScreen> {
                     onActionDone: _reload,
                   ),
                 ],
+
+                const SizedBox(height: 16),
+                TascaPareSection(
+                  tascaPare: data.tascaPare,
+                  onOpenTascaPare: _openTascaPare,
+                ),
               ],
             ),
           );
@@ -194,37 +207,15 @@ class _WorkerActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-          width: 0.5,
-        ),
-      ),
+    final scheme = Theme.of(context).colorScheme;
+
+    return AppExpandableSection(accentBorder: true,
+      title: 'Accions del treballador',
+      icon: Icons.engineering_outlined,
+      //accent: scheme.tertiary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.engineering_outlined,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Accions del treballador',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
           if (caps.canComplete)
             AppPrimaryButton(
               label: 'Finalitzar tasca',
@@ -232,7 +223,7 @@ class _WorkerActionsSection extends StatelessWidget {
               onPressed: () => _navigateFinalitzar(context),
             ),
           if (caps.canComplete && caps.canReportIncidencia)
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: 10),
           if (caps.canReportIncidencia)
             AppSecondaryButton(
               label: 'Reportar incidència',
@@ -272,4 +263,3 @@ class _WorkerActionsSection extends StatelessWidget {
     });
   }
 }
-

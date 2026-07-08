@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/screens/empresa/tasca_screens/tasca_detail_screen.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/services/tasques_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/widgets/tasca_widgets.dart';
@@ -152,7 +153,7 @@ class _TasquesScreenState extends State<TasquesScreen> {
 
   Widget _buildList() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingIndicator();
     }
 
     final items = _query.isEmpty

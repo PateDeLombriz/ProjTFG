@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/services/obra_service.dart';
 import 'package:front_end/shared/Constants/api_constants.dart';
 import 'package:front_end/shared/screen/map_selector_screen.dart';
+import 'package:front_end/shared/widgets/app_expandable_section.dart';
 import 'package:front_end/widgets/obra_widgets.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,7 +50,7 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
 
   final List<String> _estatOptions = [
     'Planificació',
-    'En execució',
+    'En curs',
     'Aturada',
     'Finalitzada',
   ];
@@ -407,7 +409,7 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
         children: [
           SafeArea(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const AppLoadingIndicator()
                 : _loadError != null
                     ? _ObraEditErrorView(
                         message: _loadError!,
@@ -426,8 +428,9 @@ class _ObraEditScreenState extends State<ObraEditScreen> {
                                   'Aquesta pantalla només permet canviar la informació important de l’obra. Les incidències, tasques, documents, responsables i recursos s’han d’editar des dels seus fluxos propis.',
                             ),
                             const SizedBox(height: 16),
-                            ObraFormSection(
+                            AppExpandableSection(
                               title: 'Informació principal',
+                              icon:Icons.book,
                               subtitle:
                                   'Nom, estat, calendari, pressupost, descripció i ubicació associada.',
                               child: Column(

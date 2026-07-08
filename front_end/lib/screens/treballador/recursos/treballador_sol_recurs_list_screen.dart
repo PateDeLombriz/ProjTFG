@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
+import 'package:front_end/shared/widgets/app_search_field.dart';
 
 class TreballadorSolRecursListScreen extends StatefulWidget {
   final String? baseUrl;
@@ -93,19 +95,6 @@ class _TreballadorSolRecursListScreenState
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Text('Les meves sol·licituds'),
-        actions: [
-          IconButton(
-            tooltip: 'Actualitza',
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _reload,
-          ),
-        ],
-      ),
       body: FutureBuilder<TreballadorSolRecursListData>(
         future: _future,
         builder: (context, snapshot) {
@@ -155,8 +144,9 @@ class _TreballadorSolRecursListScreenState
                   entregadesCount: data.entregadesCount,
                 ),
                 const SizedBox(height: 16),
-                _TreballadorSolRecursSearchField(
+                AppSearchField(
                   controller: _searchController,
+                  hintText: 'Cerca per recurs, obra, estat o comentari',
                   onChanged: (value) {
                     setState(() {
                       _query = value;
@@ -760,59 +750,6 @@ class _TreballadorSolRecursHeaderCard extends StatelessWidget {
   }
 }
 
-class _TreballadorSolRecursSearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  const _TreballadorSolRecursSearchField({
-    required this.controller,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final hasValue = controller.text.trim().isNotEmpty;
-
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Cerca per recurs, obra, estat o comentari',
-        prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: hasValue
-            ? IconButton(
-                tooltip: 'Neteja cerca',
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
-              )
-            : null,
-        filled: true,
-        fillColor: scheme.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.outline.withOpacity(0.12)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.outline.withOpacity(0.12)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: scheme.primary, width: 1.2),
-        ),
-      ),
-    );
-  }
-}
-
 class _TreballadorSolRecursItemCard extends StatelessWidget {
   final TreballadorSolRecurs sollicitud;
   final VoidCallback? onTap;
@@ -1155,9 +1092,7 @@ class _TreballadorSolRecursLoadingCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: _cardDecoration(context),
-      child: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: const AppLoadingIndicator(),
     );
   }
 }

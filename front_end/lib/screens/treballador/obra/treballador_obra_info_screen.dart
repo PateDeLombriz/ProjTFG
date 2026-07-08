@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/screens/documents_obra_screen.dart';
-
-import 'package:front_end/screens/treballador/treballador_obra_document.dart';
-import 'package:front_end/screens/treballador/treballador_sol_recurs.dart';
-import 'package:front_end/screens/treballador/treballador_sol_recurs_list_screen.dart';
+import 'package:front_end/screens/treballador/recursos/treballador_sol_recurs.dart';
+import 'package:front_end/screens/treballador/recursos/treballador_sol_recurs_list_screen.dart';
 import 'package:front_end/shared/models/app_capabilities.dart';
 import 'package:front_end/shared/themes/app_spacing.dart';
 import 'package:front_end/shared/themes/app_text_styles.dart';
@@ -636,17 +634,14 @@ String _normalizeEstat(String? value) {
       .replaceAll('-', ' ');
 
   switch (normalized) {
-    case 'res firmat':
-      return 'res_firmat';
+    case 'planificacio':
+      return 'planificacio';
     case 'en curs':
-    case 'en execucio':
-    case 'en execució':
       return 'en_curs';
     case 'finalitzada':
-    case 'finalitzat':
       return 'finalitzada';
-    case 'pendent':
-      return 'pendent';
+    case 'aturada':
+      return 'aturada';
     default:
       return normalized.replaceAll(' ', '_');
   }
@@ -656,8 +651,10 @@ String _estatLabel(String normalized, {String? fallback}) {
   switch (normalized) {
     case 'res_firmat':
       return 'Res firmat';
+    case 'en_execucio':
+      return 'En curs';
     case 'en_curs':
-      return 'En execució';
+      return 'En curs';
     case 'finalitzada':
       return 'Finalitzada';
     case 'pendent':
@@ -673,7 +670,7 @@ Color _estatColor(BuildContext context, String normalized) {
   final scheme = Theme.of(context).colorScheme;
 
   switch (normalized) {
-    case 'res_firmat':
+    case 'planificacio':
       return scheme.onPrimary.withOpacity(0.82);
     case 'en_curs':
       return scheme.onPrimary;

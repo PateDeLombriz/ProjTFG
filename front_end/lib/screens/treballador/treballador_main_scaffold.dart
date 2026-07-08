@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-
-import 'package:front_end/screens/treballador/treballador_sol_recurs.dart';
+import 'package:front_end/screens/treballador/recursos/treballador_sol_recurs.dart';
 import 'package:front_end/screens/treballador/treballador_profile_screen.dart';
 import 'package:front_end/screens/treballador/registre_horari_screen.dart';
 import 'package:front_end/screens/treballador/treballador_home_screen.dart';
-import 'package:front_end/screens/treballador/treballador_incidencies_screen.dart';
-import 'package:front_end/screens/treballador/treballador_obres_screen.dart';
-import 'package:front_end/screens/treballador/treballador_sol_recurs_list_screen.dart';
-import 'package:front_end/screens/treballador/treballador_tasques_screen.dart';
+import 'package:front_end/screens/treballador/incidencia/treballador_incidencies_screen.dart';
+import 'package:front_end/screens/treballador/obra/treballador_obres_screen.dart';
+import 'package:front_end/screens/treballador/recursos/treballador_sol_recurs_list_screen.dart';
+import 'package:front_end/screens/treballador/tasca/treballador_tasques_screen.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
 import 'package:front_end/shared/models/app_capabilities.dart';
+import 'package:front_end/shared/widgets/app_notification_bell.dart';
 
 class TreballadorMainScaffold extends StatefulWidget {
   const TreballadorMainScaffold({super.key});
@@ -37,9 +37,15 @@ class _TreballadorMainScaffoldState extends State<TreballadorMainScaffold> {
     _loadCapabilities();
   }
 
+void _goToTab(int index) {
+  if (_currentIndex == index) return;
+  setState(() => _currentIndex = index);
+}
+
   Future<void> _loadCapabilities() async {
     try {
       final service = TreballadorService(baseUrl: ApiConstants.baseUrl);
+      
       final permisos = await service.fetchMyPermisos();
 
       if (!mounted) return;
@@ -53,13 +59,6 @@ class _TreballadorMainScaffoldState extends State<TreballadorMainScaffold> {
     }
   }
 
-  void _goToTab(int index) {
-    if (_currentIndex == index) return;
-
-    setState(() {
-      _currentIndex = index;
-    });
-  }
 
   List<Widget> get _pages => [
         TreballadorHomeScreen(capabilities: _capabilities),
@@ -69,7 +68,7 @@ class _TreballadorMainScaffoldState extends State<TreballadorMainScaffold> {
         const TreballadorProfileScreen(),
       ];
 
-  final List<BottomNavigationBarItem> _navItems = const [
+  final List<BottomNavigationBarItem> _navItems =  [
     BottomNavigationBarItem(
       icon: Icon(Icons.home_outlined),
       activeIcon: Icon(Icons.home_rounded),
@@ -97,12 +96,36 @@ class _TreballadorMainScaffoldState extends State<TreballadorMainScaffold> {
     ),
   ];
 
+  String _titleForIndex(int index) {
+    switch (index) {
+      case _homeIndex:
+        return 'Inici';
+      case _tasquesIndex:
+        return 'Tasques';
+      case _obresIndex:
+        return 'Obres';
+      case _solRecursIndex:
+        return 'Sol·licituds';
+      case _perfilIndex:
+        return 'Perfil';
+      default:
+        return 'Treballador';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: scheme.surface,
+      appBar: AppBar(
+        title: Text(_titleForIndex(_currentIndex)),
+        actions: const [
+          AppNotificationBell(),
+          SizedBox(width: 8),
+        ],
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
@@ -192,10 +215,9 @@ class _TreballadorMainScaffoldState extends State<TreballadorMainScaffold> {
     }
   }
 }
-
+//Per resoldr el problema de _hom
 class _TreballadorFabMenu extends StatelessWidget {
   final ValueChanged<_TreballadorFabAction> onSelected;
-
   const _TreballadorFabMenu({
     required this.onSelected,
   });

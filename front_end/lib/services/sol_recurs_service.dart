@@ -86,17 +86,6 @@ class SolRecursService extends AppApiService {
     return data.sollicituds;
   }
 
-  /// Llegeix les sol·licituds de recursos de l’empresa activa de la sessió.
-  /// La comprovació d'empresa es resol amb el mètode heretat del servei compartit.
-  Future<SolRecursListData> fetchMyEmpresaSolRecursData({
-    int? obraId,
-    int? recursId,
-  }) {
-    return fetchEmpresaSolRecursData(
-      obraId: obraId,
-      recursId: recursId,
-    );
-  }
 
   Future<List<Map<String, dynamic>>> fetchSolRecursEmpresaRaw({
     int? obraId,
@@ -105,10 +94,10 @@ class SolRecursService extends AppApiService {
     return _runMapped(
       () => getJsonList(
         '/sol_recurs/',
-        queryParameters: {
-          if (obraId != null) 'id_obra': obraId.toString(),
-          if (recursId != null) 'id_recurs': recursId.toString(),
-        },
+        //queryParameters: {
+        //  if (obraId != null) 'id_obra': obraId.toString(),
+        //  if (recursId != null) 'id_recurs': recursId.toString(),
+        //},
         fallback: 'Error carregant les sol·licituds de recursos de l’empresa',
         invalidResponseMessage:
             'La resposta de les sol·licituds de recursos de l’empresa no és vàlida.',
@@ -206,6 +195,63 @@ class SolRecursService extends AppApiService {
   }
 
   // =========================
+  // OPCIONS I FORMULARIS
+  // =========================
+
+  Future<List<ObraOption>> fetchObraOptions() async {
+    final raw = await _runMapped(
+      () => getJsonList(
+        '/obres/',
+        fallback: 'Error carregant les obres',
+        invalidResponseMessage: 'La resposta de les obres no és vàlida.',
+      ),
+    );
+
+    return raw.map(ObraOption.fromMap).toList()
+      ..sort((a, b) => a.nom.toLowerCase().compareTo(b.nom.toLowerCase()));
+  }
+
+  Future<void> deleteRecurs(int recursId) {
+    return _runMapped(
+      () => deleteExpectNoContent(
+        '/recursos/$recursId/',
+        fallback: 'Error eliminant el recurs',
+      ),
+    );
+  }
+
+  Future<List<RecursOption>> fetchRecursOptions() async {
+    final raw = await _runMapped(
+      () => getJsonList(
+        '/recursos/',
+        fallback: 'Error carregant els recursos',
+        invalidResponseMessage: 'La resposta dels recursos no és vàlida.',
+      ),
+    );
+
+    return raw.map(RecursOption.fromMap).toList()
+      ..sort((a, b) => a.nom.toLowerCase().compareTo(b.nom.toLowerCase()));
+  }
+
+  Future<SolRecurs> createSolRecursDraft({
+    required int obraId,
+    required SolRecursDraft draft,
+  }) {
+    return createSolRecurs(draft.toPayload(obraId: obraId));
+  }
+
+  Future<SolRecurs> updateSolRecursDraft(
+    int solRecursId, {
+    required int obraId,
+    required SolRecursDraft draft,
+  }) {
+    return updateSolRecurs(
+      solRecursId,
+      draft.toPayload(obraId: obraId),
+    );
+  }
+
+  // =========================
   // CREACIÓ / EDICIÓ / ELIMINACIÓ
   // =========================
 
@@ -214,6 +260,8 @@ class SolRecursService extends AppApiService {
   Future<SolRecurs> createSolRecurs(Map<String, dynamic> payload) async {
     final normalizedPayload = Map<String, dynamic>.from(payload);
     normalizedPayload['id_empresa'] ??= await requireEmpresaId();
+    normalizedPayload['data_creacio'] ??= DateTime.now().toIso8601String();
+    normalizedPayload['estat'] ??= 'pendent';
 
     final raw = await _runMapped(
       () => postJsonMap(
@@ -240,6 +288,8 @@ class SolRecursService extends AppApiService {
   ) async {
     final normalizedPayload = Map<String, dynamic>.from(payload);
     normalizedPayload['id_empresa'] ??= await requireEmpresaId();
+    normalizedPayload['data_creacio'] ??= DateTime.now().toIso8601String();
+    normalizedPayload['estat'] ??= 'pendent';
 
     final raw = await _runMapped(
       () => putJsonMap(

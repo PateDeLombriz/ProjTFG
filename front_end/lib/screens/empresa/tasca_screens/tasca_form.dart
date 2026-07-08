@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/tasca_models.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/services/tasques_service.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_expandable_section.dart';
 import 'package:front_end/widgets/tasca_widgets.dart';
 
 class TascaFormScreen extends StatefulWidget {
@@ -151,6 +153,7 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
       'data_fi': _dataFi != null ? _fmtDate(_dataFi!) : null,
       'prioritat': _prioritat,
       'visibilitat_tasca': _visibilitat,
+      //'estat':'pendent_revisio'
     };
   }
 
@@ -320,215 +323,298 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
+        backgroundColor: scheme.primaryContainer.withOpacity(0.06),
         appBar: AppBar(
-          title: Text(widget.initial == null ? 'Nova Tasca' : 'Editar Tasca'),
+          title: Text(widget.initial == null ? 'Nova tasca' : 'Editar tasca'),
+          centerTitle: false,
         ),
         body: Stack(
           children: [
             if (_loading)
-              const Center(child: CircularProgressIndicator())
+              const AppLoadingIndicator()
             else
               Form(
                 key: _formKey,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _sectionTitle('Dades generals'),
-                      _textField(
-                        controller: _descCtrl,
-                        label: 'Descripció *',
-                        icon: Icons.description_outlined,
-                        maxLines: 3,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Obligatori';
-                          }
-                          return null;
-                        },
-                      ),
-                      _gap(),
-                      if (widget.obraId == null)
-                        DropdownButtonFormField<int>(
-                          value: _obraSeleccionada,
-                          decoration: _inputDecoration(
-                            'Obra *',
-                            icon: Icons.business_outlined,
-                          ),
-                          items: _obres
-                              .map(
-                                (obra) => DropdownMenuItem<int>(
-                                  value: obra.id,
-                                  child: Text(obra.nom),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) async {
-                            _markDirty();
-
-                            setState(() {
-                              _obraSeleccionada = value;
-                              _tascaPare = null;
-                              _tasquesMateixaObra = [];
-                            });
-
-                            if (value != null) {
-                              await _reloadTasquesPerObra(value);
-                            }
-                          },
-                          validator: (value) {
-                            return value == null ? 'Selecciona una obra' : null;
-                          },
-                        )
-                      else
-                        _readOnlyTile('Obra', _obraLabel()),
-                      _gap(),
-                      DropdownButtonFormField<TascaOption>(
-                        value: _tascaPare,
-                        decoration: _inputDecoration(
-                          'Tasca pare',
-                          icon: Icons.account_tree_outlined,
-                        ),
-                        items: [
-                          const DropdownMenuItem<TascaOption>(
-                            value: null,
-                            child: Text('— Sense tasca pare —'),
-                          ),
-                          ..._tasquesMateixaObra
-                              .where(
-                                (tasca) =>
-                                    widget.initial == null ||
-                                    tasca.id != widget.initial!.id,
-                              )
-                              .map(
-                                (tasca) => DropdownMenuItem<TascaOption>(
-                                  value: tasca,
-                                  child: Text(
-                                    tasca.desc,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                        ],
-                        onChanged: (value) {
-                          _markDirty();
-                          setState(() => _tascaPare = value);
-                        },
-                      ),
-                      const Divider(height: 32),
-                      _sectionTitle('Planificació'),
-                      _dateTile(
-                        title: 'Data inici *',
-                        date: _dataInici,
-                        onTap: () async {
-                          final date = await _pickDate(_dataInici);
-                          if (date == null) return;
-
-                          _markDirty();
-                          setState(() => _dataInici = date);
-                        },
-                      ),
-                      _dateTile(
-                        title: 'Data fi',
-                        date: _dataFi,
-                        onTap: () async {
-                          final date = await _pickDate(_dataFi);
-                          if (date == null) return;
-
-                          _markDirty();
-                          setState(() => _dataFi = date);
-                        },
-                      ),
-                      _gap(),
-                      Row(
-                        children: [
-                          const Text('Prioritat'),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Slider(
-                              value: _prioritat.toDouble(),
-                              min: 1,
-                              max: 5,
-                              divisions: 4,
-                              label: '$_prioritat',
-                              onChanged: (value) {
-                                _markDirty();
-                                setState(() {
-                                  _prioritat = value.toInt();
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Visible als usuaris'),
-                        value: _visibilitat,
-                        onChanged: (value) {
-                          _markDirty();
-                          setState(() => _visibilitat = value);
-                        },
-                      ),
-                      const Divider(height: 32),
-                      _sectionTitle('Assignació de treballadors'),
-                      if (_seleccionats.isEmpty)
-                        Text(
-                          'No hi ha treballadors assignats',
-                          style: TextStyle(color: Colors.grey[600]),
-                        )
-                      else
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: _seleccionats
-                              .map(
-                                (usuari) => Chip(
-                                  label: Text(usuari.nomComplet),
-                                  onDeleted: () {
-                                    _markDirty();
-                                    setState(() {
-                                      _seleccionats.removeWhere(
-                                        (item) => item.id == usuari.id,
-                                      );
-                                    });
-                                  },
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: _openSelectTreballadors,
-                          icon: const Icon(Icons.group_add_outlined),
-                          label: const Text('Afegir / Editar'),
-                        ),
-                      ),
-                      SizedBox(
-                        height: MediaQuery.of(context).padding.bottom + 90,
-                      ),
-                    ],
-                  ),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
+                  children: [
+                    TascaFormHeaderCard(
+                      editing: widget.initial != null,
+                      description: _descCtrl.text,
+                      obraLabel: _obraLabel(),
+                      prioritat: _prioritat,
+                      visible: _visibilitat,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDadesGeneralsSection(context),
+                    const SizedBox(height: 14),
+                    _buildPlanificacioSection(context),
+                    const SizedBox(height: 14),
+                    _buildConfiguracioSection(context),
+                    const SizedBox(height: 14),
+                    _buildAssignacioSection(context),
+                  ],
                 ),
               ),
             if (_saving)
               Container(
                 color: Colors.black45,
-                child: const Center(child: CircularProgressIndicator()),
+                child: const AppLoadingIndicator(),
               ),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _saving || _loading ? null : _submit,
-          icon: const Icon(Icons.save),
-          label: const Text('Desa'),
+          icon: const Icon(Icons.save_rounded),
+          label: Text(widget.initial == null ? 'Crear tasca' : 'Desa'),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDadesGeneralsSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return AppExpandableSection(
+      title: 'Dades generals',
+      icon: Icons.description_outlined,
+      accent: scheme.primary,
+      initiallyExpanded: true,
+      child: Column(
+        children: [
+          _textField(
+            controller: _descCtrl,
+            label: 'Descripció *',
+            icon: Icons.description_outlined,
+            maxLines: 3,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Obligatori';
+              }
+              return null;
+            },
+          ),
+          _gap(),
+          if (widget.obraId == null)
+            DropdownButtonFormField<int>(
+              value: _obraSeleccionada,
+              decoration: _inputDecoration(
+                'Obra *',
+                icon: Icons.business_outlined,
+              ),
+              items: _obres
+                  .map(
+                    (obra) => DropdownMenuItem<int>(
+                      value: obra.id,
+                      child: Text(obra.nom),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) async {
+                _markDirty();
+
+                setState(() {
+                  _obraSeleccionada = value;
+                  _tascaPare = null;
+                  _tasquesMateixaObra = [];
+                });
+
+                if (value != null) {
+                  await _reloadTasquesPerObra(value);
+                }
+              },
+              validator: (value) {
+                return value == null ? 'Selecciona una obra' : null;
+              },
+            )
+          else
+            TascaFormReadOnlyTile(
+              label: 'Obra',
+              value: _obraLabel(),
+              icon: Icons.apartment_rounded,
+            ),
+          _gap(),
+          DropdownButtonFormField<TascaOption>(
+            value: _tascaPare,
+            decoration: _inputDecoration(
+              'Tasca pare',
+              icon: Icons.account_tree_outlined,
+            ),
+            items: [
+              const DropdownMenuItem<TascaOption>(
+                value: null,
+                child: Text('— Sense tasca pare —'),
+              ),
+              ..._tasquesMateixaObra
+                  .where(
+                    (tasca) =>
+                        widget.initial == null || tasca.id != widget.initial!.id,
+                  )
+                  .map(
+                    (tasca) => DropdownMenuItem<TascaOption>(
+                      value: tasca,
+                      child: Text(
+                        tasca.desc,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+            ],
+            onChanged: (value) {
+              _markDirty();
+              setState(() => _tascaPare = value);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanificacioSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return AppExpandableSection(
+      title: 'Planificació',
+      icon: Icons.event_note_outlined,
+      accent: scheme.secondary,
+      initiallyExpanded: true,
+      child: Column(
+        children: [
+          TascaFormDateTile(
+            title: 'Data inici *',
+            date: _dataInici,
+            isRequired: true,
+            onTap: () async {
+              final date = await _pickDate(_dataInici);
+              if (date == null) return;
+
+              _markDirty();
+              setState(() => _dataInici = date);
+            },
+          ),
+          _gap(),
+          TascaFormDateTile(
+            title: 'Data fi',
+            date: _dataFi,
+            onTap: () async {
+              final date = await _pickDate(_dataFi);
+              if (date == null) return;
+
+              _markDirty();
+              setState(() => _dataFi = date);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfiguracioSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return AppExpandableSection(
+      title: 'Configuració',
+      icon: Icons.tune_rounded,
+      accent: scheme.tertiary,
+      initiallyExpanded: true,
+      child: Column(
+        children: [
+          TascaFormMetricSlider(
+            label: 'Prioritat',
+            value: _prioritat,
+            onChanged: (value) {
+              _markDirty();
+              setState(() => _prioritat = value);
+            },
+          ),
+          _gap(),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: scheme.outline.withOpacity(0.10)),
+            ),
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+              title: const Text('Visible als usuaris'),
+              subtitle: Text(
+                _visibilitat
+                    ? 'La tasca serà visible per als usuaris assignats.'
+                    : 'La tasca quedarà oculta als usuaris.',
+              ),
+              secondary: Icon(
+                _visibilitat
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: _visibilitat ? Colors.green : scheme.outline,
+              ),
+              value: _visibilitat,
+              onChanged: (value) {
+                _markDirty();
+                setState(() => _visibilitat = value);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssignacioSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return AppExpandableSection(
+      title: 'Assignació de treballadors',
+      icon: Icons.groups_rounded,
+      accent: scheme.primary,
+      count: _seleccionats.length,
+      initiallyExpanded: true,
+      onAdd: _openSelectTreballadors,
+      addTooltip: 'Afegir treballadors',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_seleccionats.isEmpty)
+            const TascaFormEmptyState(
+              text: 'No hi ha treballadors assignats.',
+              icon: Icons.person_off_outlined,
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _seleccionats
+                  .map(
+                    (usuari) => TascaAssignedWorkerCard(
+                      usuari: usuari,
+                      onRemove: () {
+                        _markDirty();
+                        setState(() {
+                          _seleccionats.removeWhere(
+                            (item) => item.id == usuari.id,
+                          );
+                        });
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: _openSelectTreballadors,
+              icon: const Icon(Icons.group_add_outlined),
+              label: const Text('Afegir / editar'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -549,13 +635,29 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
   Widget _gap([double height = 12]) => SizedBox(height: height);
 
   InputDecoration _inputDecoration(String label, {IconData? icon}) {
+    final scheme = Theme.of(context).colorScheme;
+
     return InputDecoration(
       labelText: label,
       prefixIcon: icon != null ? Icon(icon) : null,
       filled: true,
-      fillColor: Theme.of(context).colorScheme.surface,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+      fillColor: scheme.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: scheme.outline.withOpacity(0.12)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: scheme.primary.withOpacity(0.55), width: 1.4),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: scheme.error.withOpacity(0.70)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: scheme.error, width: 1.4),
       ),
     );
   }

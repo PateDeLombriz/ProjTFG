@@ -76,6 +76,8 @@ class SolRecurs {
       'data_entrega': _dateToApiString(dataEntrega),
       'data_creacio': dataCreacio?.toIso8601String(),
       'proveidor': proveidor,
+      'estat': estat,
+      if (id_treballador != null) 'id_treballador': id_treballador,
       if (obra != null) 'obra': obra!.toMap(),
       if (recurs != null) 'recurs': recurs!.toMap(),
     };
@@ -368,4 +370,151 @@ String? _dateToApiString(DateTime? value) {
   final month = value.month.toString().padLeft(2, '0');
   final day = value.day.toString().padLeft(2, '0');
   return '${value.year}-$month-$day';
+}
+
+class ObraOption {
+  final int id;
+  final String nom;
+
+  const ObraOption({
+    required this.id,
+    required this.nom,
+  });
+
+  factory ObraOption.fromMap(Map<String, dynamic> map) {
+    final obraInfo = map['obra_info'];
+    if (obraInfo is Map) {
+      final nested = Map<String, dynamic>.from(obraInfo);
+      return ObraOption(
+        id: _asInt(nested['id'] ?? nested['id_obra']),
+        nom: _asString(nested['nom'] ?? nested['nom_obra']) ?? 'Obra',
+      );
+    }
+
+    return ObraOption(
+      id: _asInt(map['id'] ?? map['id_obra']),
+      nom: _asString(map['nom'] ?? map['nom_obra'] ?? map['display_name']) ?? 'Obra',
+    );
+  }
+}
+
+class RecursOption {
+  final int id;
+  final String nom;
+  final String unitat;
+  final double? stock;
+  final String? tipus;
+
+  const RecursOption({
+    required this.id,
+    required this.nom,
+    required this.unitat,
+    this.stock,
+    this.tipus,
+  });
+
+  factory RecursOption.fromMap(Map<String, dynamic> map) {
+    final stockRaw = map['quantitat_stock'] ?? map['stock'];
+    return RecursOption(
+      id: _asInt(map['id'] ?? map['id_recurs']),
+      nom: _asString(map['nom'] ?? map['nom_recurs'] ?? map['display_name']) ?? 'Recurs',
+      unitat: _asString(map['unitats_mesura'] ?? map['unitat_mesura']) ?? '',
+      stock: stockRaw is num ? stockRaw.toDouble() : double.tryParse(stockRaw?.toString() ?? ''),
+      tipus: _asString(map['tipus_recurs'] ?? map['tipus']),
+    );
+  }
+}
+
+class SolRecursDTO {
+  final int id;
+  final int idObra;
+  final int idRecurs;
+  final int quantitat;
+  final DateTime dataNecessitat;
+  final DateTime? dataEntrega;
+  final String? comentari;
+  final String? proveidor;
+  final String? recursNom;
+  final String? unitat;
+  final String estat;
+  final int? idTreballador;
+
+  const SolRecursDTO({
+    required this.id,
+    required this.idObra,
+    required this.idRecurs,
+    required this.quantitat,
+    required this.dataNecessitat,
+    this.dataEntrega,
+    this.comentari,
+    this.proveidor,
+    this.recursNom,
+    this.unitat,
+    this.estat = 'pendent',
+    this.idTreballador,
+  });
+
+  factory SolRecursDTO.fromMap(Map<String, dynamic> map) {
+    final item = SolRecurs.fromMap(map);
+    return SolRecursDTO.fromSolRecurs(item);
+  }
+
+  factory SolRecursDTO.fromSolRecurs(SolRecurs item) {
+    return SolRecursDTO(
+      id: item.id,
+      idObra: item.idObra,
+      idRecurs: item.idRecurs,
+      quantitat: item.quantitat,
+      dataNecessitat: item.dataNecessitat ?? DateTime.now(),
+      dataEntrega: item.dataEntrega,
+      comentari: item.comentari,
+      proveidor: item.proveidor,
+      recursNom: item.recurs?.nom,
+      unitat: item.recurs?.unitatsMesura,
+      estat: item.estat,
+      idTreballador: item.id_treballador,
+    );
+  }
+}
+class SolRecursDraft {
+  final RecursOption recurs;
+  final int quantitat;
+  final DateTime dataNecessitat;
+  final DateTime? dataEntrega;/// Data prevista o real d'entrega.
+  final String? comentari;
+  final String? proveidor;
+  /// Opcional:
+  /// - empresa crea sol·licitud -> null
+  /// - treballador crea sol·licitud -> pot venir informat
+  final int? idTreballador;
+  final String estat;/// Estat backend: pendent | aprovada | rebutjada
+
+  const SolRecursDraft({
+    required this.recurs,
+    required this.quantitat,
+    required this.dataNecessitat,
+    this.dataEntrega,
+    this.comentari,
+    this.proveidor,
+    this.idTreballador,
+    this.estat = 'pendent',
+  });
+
+  Map<String, dynamic> toPayload({
+    required int obraId,
+    DateTime? dataCreacio,
+  }) {
+    return {
+      'id_obra': obraId,
+      'id_recurs': recurs.id,
+      'quantitat': quantitat,
+      'data_necessitat': _dateToApiString(dataNecessitat),
+      'comentari': comentari,
+      'proveidor': proveidor,
+      'data_entrega': _dateToApiString(dataEntrega),
+      'data_creacio': (dataCreacio ?? DateTime.now()).toIso8601String(),
+      'id_treballador': idTreballador,
+      'estat': estat,
+    };
+  }
 }

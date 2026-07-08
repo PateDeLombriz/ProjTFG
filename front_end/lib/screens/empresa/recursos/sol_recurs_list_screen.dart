@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:front_end/models/sol_recurs_models.dart';
 import 'package:front_end/services/sol_recurs_service.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_empty_state.dart';
+import 'package:front_end/shared/widgets/app_search_field.dart';
 import 'package:front_end/widgets/sol_recurs_widgets.dart';
 
 class SolRecursListScreen extends StatefulWidget {
@@ -22,6 +24,10 @@ class _SolRecursListScreenState extends State<SolRecursListScreen> {
 
   Future<SolRecursListData>? _future;
   String _query = '';
+  String? _selectedAprovacio;
+  String? _selectedEntrega;
+  String? _selectedObra;
+  String _selectedSort = SolRecursSortValues.dataNecessitatAsc;
 
   @override
   void initState() {
@@ -38,7 +44,7 @@ class _SolRecursListScreenState extends State<SolRecursListScreen> {
 
   Future<SolRecursListData> _buildFuture() async {
     await _service.requireEmpresaId();
-    return _service.fetchMyEmpresaSolRecursData();
+    return _service.fetchEmpresaSolRecursData();
   }
 
   Future<void> _reload() async {
@@ -52,39 +58,195 @@ class _SolRecursListScreenState extends State<SolRecursListScreen> {
     await nextFuture;
   }
 
-  List<SolRecurs> _applyFilter(List<SolRecurs> items) {
-    final query = _query.trim().toLowerCase();
-    if (query.isEmpty) return items;
-
-    return items.where((item) {
-      final recurs = item.recursLabel.toLowerCase();
-      final obra = item.obraLabel.toLowerCase();
-      final proveidor = item.proveidorLabel.toLowerCase();
-      final estat = item.estatLabel.toLowerCase();
-      final comentari = (item.comentari ?? '').toLowerCase();
-      final tipus = (item.recurs?.tipusRecurs ?? '').toLowerCase();
-      final quantitat = item.quantitatLabel.toLowerCase();
-
-      return recurs.contains(query) ||
-          obra.contains(query) ||
-          proveidor.contains(query) ||
-          estat.contains(query) ||
-          comentari.contains(query) ||
-          tipus.contains(query) ||
-          quantitat.contains(query);
-    }).toList();
+  bool get _hasActiveFilters {
+    return _query.trim().isNotEmpty ||
+        (_selectedAprovacio?.trim().isNotEmpty == true) ||
+        (_selectedEntrega?.trim().isNotEmpty == true) ||
+        (_selectedObra?.trim().isNotEmpty == true) ||
+        _selectedSort != SolRecursSortValues.dataNecessitatAsc;
   }
 
-  void _handleItemTap(SolRecurs sollicitud) {
-    // TODO:
-    // Quan tenguis creada la pantalla de detall, obre-la aquí.
-    // Exemple:
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (_) => SolRecursDetailScreen(solRecursId: sollicitud.id),
-    //   ),
-    // );
+  void _clearFilters() {
+    setState(() {
+      _query = '';
+      _selectedAprovacio = null;
+      _selectedEntrega = null;
+      _selectedObra = null;
+      _selectedSort = SolRecursSortValues.dataNecessitatAsc;
+      _searchController.clear();
+    });
+  }
+
+  List<SolRecurs> _applyFilters(List<SolRecurs> items) {
+    final filtered = items.where((item) {
+      if (!_matchesQuery(item)) return false;
+      if (!_matchesAprovacio(item)) return false;
+      if (!_matchesEntrega(item)) return false;
+      if (!_matchesObra(item)) return false;
+      return true;
+    }).toList();
+
+    _sortItems(filtered);
+    return filtered;
+  }
+
+  bool _matchesQuery(SolRecurs item) {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return true;
+
+    final values = <String>[
+      item.recursLabel,
+      item.obraLabel,
+      item.proveidorLabel,
+      item.estatLabel,
+      item.estatAprovacioLabel,
+      item.quantitatLabel,
+      item.comentari ?? '',
+      item.recurs?.tipusRecurs ?? '',
+      item.recurs?.unitatsMesura ?? '',
+    ];
+
+    return values.any((value) => value.toLowerCase().contains(query));
+  }
+
+  bool _matchesAprovacio(SolRecurs item) {
+    final selected = _selectedAprovacio?.trim().toLowerCase();
+    if (selected == null || selected.isEmpty) return true;
+
+    return item.estat.trim().toLowerCase() == selected;
+  }
+
+  bool _matchesEntrega(SolRecurs item) {
+    final selected = _selectedEntrega?.trim().toLowerCase();
+    if (selected == null || selected.isEmpty) return true;
+
+    switch (selected) {
+      case SolRecursEntregaFilter.entregat:
+        return item.hasEntrega;
+      case SolRecursEntregaFilter.pendent:
+        return !item.hasEntrega;
+      default:
+        return true;
+    }
+  }
+
+  bool _matchesObra(SolRecurs item) {
+    final selected = _selectedObra?.trim().toLowerCase();
+    if (selected == null || selected.isEmpty) return true;
+
+    return item.obraLabel.trim().toLowerCase() == selected;
+  }
+
+  void _sortItems(List<SolRecurs> items) {
+    switch (_selectedSort) {
+      case SolRecursSortValues.dataNecessitatDesc:
+        items.sort((a, b) => _dateForNeed(b).compareTo(_dateForNeed(a)));
+        return;
+
+      case SolRecursSortValues.dataCreacioDesc:
+        items.sort((a, b) => _dateForCreation(b).compareTo(_dateForCreation(a)));
+        return;
+
+      case SolRecursSortValues.recursAsc:
+        items.sort((a, b) {
+          final byRecurs = a.recursLabel
+              .toLowerCase()
+              .compareTo(b.recursLabel.toLowerCase());
+          if (byRecurs != 0) return byRecurs;
+          return a.obraLabel.toLowerCase().compareTo(b.obraLabel.toLowerCase());
+        });
+        return;
+
+      case SolRecursSortValues.obraAsc:
+        items.sort((a, b) {
+          final byObra = a.obraLabel
+              .toLowerCase()
+              .compareTo(b.obraLabel.toLowerCase());
+          if (byObra != 0) return byObra;
+          return a.recursLabel
+              .toLowerCase()
+              .compareTo(b.recursLabel.toLowerCase());
+        });
+        return;
+
+      case SolRecursSortValues.aprovacioAsc:
+        items.sort((a, b) {
+          final byAprovacio = _aprovacioRank(a).compareTo(_aprovacioRank(b));
+          if (byAprovacio != 0) return byAprovacio;
+          return _dateForNeed(a).compareTo(_dateForNeed(b));
+        });
+        return;
+
+      case SolRecursSortValues.dataNecessitatAsc:
+      default:
+        items.sort((a, b) => _dateForNeed(a).compareTo(_dateForNeed(b)));
+        return;
+    }
+  }
+
+  DateTime _dateForNeed(SolRecurs item) {
+    return item.dataNecessitat ?? item.dataCreacio ?? DateTime(1970);
+  }
+
+  DateTime _dateForCreation(SolRecurs item) {
+    return item.dataCreacio ?? item.dataNecessitat ?? DateTime(1970);
+  }
+
+  int _aprovacioRank(SolRecurs item) {
+    switch (item.estat) {
+      case 'pendent':
+        return 0;
+      case 'aprovada':
+        return 1;
+      case 'rebutjada':
+        return 2;
+      default:
+        return 3;
+    }
+  }
+
+  List<String> _obraOptions(List<SolRecurs> items) {
+    final values = items
+        .map((item) => item.obraLabel.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return values;
+  }
+
+  Future<void> _handleItemTap(SolRecurs sollicitud) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SolRecursDetailBottomSheet(
+          sollicitud: sollicitud,
+          onSaveEstat: (estat) => _updateSolRecursEstat(sollicitud, estat),
+        );
+      },
+    );
+
+    if (updated == true) {
+      await _reload();
+    }
+  }
+
+  Future<void> _updateSolRecursEstat(
+    SolRecurs sollicitud,
+    String estat,
+  ) async {
+    await _service.aprovarSolRecurs(sollicitud.id, estat);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Estat de la sol·licitud actualitzat correctament.'),
+      ),
+    );
   }
 
   @override
@@ -92,12 +254,21 @@ class _SolRecursListScreenState extends State<SolRecursListScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: scheme.primaryContainer.withOpacity(0.06),
       appBar: AppBar(
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
         title: const Text('Sol·licituds de recursos'),
+        actions: [
+          IconButton(
+            tooltip: 'Recarrega',
+            onPressed: _reload,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          IconButton(
+            tooltip: 'Neteja filtres',
+            onPressed: _hasActiveFilters ? _clearFilters : null,
+            icon: const Icon(Icons.filter_alt_off_outlined),
+          ),
+        ],
       ),
       body: FutureBuilder<SolRecursListData>(
         future: _future,
@@ -131,7 +302,7 @@ class _SolRecursListScreenState extends State<SolRecursListScreen> {
             );
           }
 
-          final filtered = _applyFilter(data.sollicituds);
+          final filtered = _applyFilters(data.sollicituds);
 
           return RefreshIndicator(
             onRefresh: _reload,
@@ -144,41 +315,86 @@ class _SolRecursListScreenState extends State<SolRecursListScreen> {
                   subtitle:
                       'Llistat resumit de peticions de material i recursos associades a les obres de l’empresa.',
                   count: data.total,
+                  activeCount: filtered.length,
                   pendentsCount: data.pendentsCount,
                   entregatsCount: data.entregatsCount,
                 ),
                 const SizedBox(height: 16),
-                SolRecursSearchField(
+                AppSearchField(
                   controller: _searchController,
+                  hintText: 'Cerca per recurs, obra, estat o proveïdor',
                   onChanged: (value) {
                     setState(() {
                       _query = value;
                     });
                   },
+                  onClear: () {
+                    setState(() {
+                      _query = '';
+                      _searchController.clear();
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
+                SolRecursListFilterBar(
+                  obraOptions: _obraOptions(data.sollicituds),
+                  selectedAprovacio: _selectedAprovacio,
+                  selectedEntrega: _selectedEntrega,
+                  selectedObra: _selectedObra,
+                  selectedSort: _selectedSort,
+                  onAprovacioChanged: (value) {
+                    setState(() {
+                      _selectedAprovacio = value;
+                    });
+                  },
+                  onEntregaChanged: (value) {
+                    setState(() {
+                      _selectedEntrega = value;
+                    });
+                  },
+                  onObraChanged: (value) {
+                    setState(() {
+                      _selectedObra = value;
+                    });
+                  },
+                  onSortChanged: (value) {
+                    setState(() {
+                      _selectedSort = value;
+                    });
+                  },
+                  onClearFilters: _clearFilters,
+                ),
+                const SizedBox(height: 18),
                 if (data.sollicituds.isEmpty)
-                  const SolRecursListEmptyState(
+                  const AppEmptyState(
+                    icon: Icons.inventory_2_outlined,
                     title: 'Encara no hi ha sol·licituds',
                     message:
-                        'Quan l’empresa o les obres registrin sol·licituds de recurs, apareixeran aquí.',
+                        'Quan l\’empresa o les obres registrin sol·licituds de recurs, apareixeran aquí.',
                   )
                 else if (filtered.isEmpty)
-                  const SolRecursListEmptyState(
-                    title: 'Cap resultat per aquesta cerca',
+                  AppEmptyState(
+                    icon: Icons.inventory_2_outlined,
+                    title: 'Cap sol·licitud coincideix amb els filtres',
                     message:
-                        'No s’ha trobat cap sol·licitud que coincideixi amb el text introduït.',
+                        _hasActiveFilters
+                            ? 'Prova amb una altra cerca, un altre estat, una altra obra o un altre criteri d\’ordenació.'
+                            : 'No s\’ha trobat cap sol·licitud disponible.',
                   )
                 else
-                  ...[
-                    for (int i = 0; i < filtered.length; i++) ...[
-                      SolRecursListItemCard(
-                        sollicitud: filtered[i],
-                        onTap: () => _handleItemTap(filtered[i]),
+                  ...List.generate(filtered.length, (index) {
+                    final sollicitud = filtered[index];
+
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == filtered.length - 1 ? 0 : 12,
                       ),
-                      if (i != filtered.length - 1) const SizedBox(height: 12),
-                    ],
-                  ],
+                      child: SolRecursListItemCard(
+                        sollicitud: sollicitud,
+                        onTap: () => _handleItemTap(sollicitud),
+                      ),
+                    );
+                  }),
               ],
             ),
           );

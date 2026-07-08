@@ -3,7 +3,7 @@ import 'package:front_end/screens/base/mainScaffold.dart';
 import 'package:front_end/screens/base/log_in.dart'; // Ruta correcta si tens obra_list.dart a lib/screens
 import 'screens/base/register_empresa_screen.dart'; // Ruta correcta si tens register.dart a lib/screens
 import 'screens/base/root_screen.dart'; 
-import 'screens/empresa/treballador Empresa/treballador_form.dart';
+import 'screens/empresa/treballador_empresa/treballador_form.dart';
 void main() {
   runApp(const MyApp());
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:front_end/models/document_models.dart';
 import 'package:front_end/services/document_services.dart';
 import 'package:front_end/shared/constants/api_constants.dart';
+import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/widgets/documents_widgets.dart';
 
 class DocumentsObraScreen extends StatefulWidget {
@@ -483,9 +484,7 @@ class _DocumentsObraScreenState extends State<DocumentsObraScreen> {
           if (_busy)
             Container(
               color: Colors.black26,
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const AppLoadingIndicator(),
             ),
         ],
       ),

@@ -11,7 +11,7 @@ import secrets
 from pathlib import Path
 from rest_framework import serializers
 from django.contrib.auth.hashers import check_password,make_password
-from .models import (Usuari, Empresa, Contrasenya, Verificacio, Obra, ObraEmpresa, Treballador, Empresa, Contrasenya,
+from .models import (Notificacio, Usuari, Empresa, Contrasenya, Verificacio, Obra, ObraEmpresa, Treballador, Empresa, Contrasenya,
     Permis, PermisTreballador, LogDeSessio, Configuracio, Ubicacio, Usuari, Verificacio,
     DocumentObra, Tasca, TascaTreballador, Incidencia, Solucio, Recurs, SolRecurs, ResponsableObra, ResponsableObra,ContracteTreballador,RegistreHorari
 )
@@ -228,15 +228,28 @@ class SolRecursSerializer(serializers.ModelSerializer):
     class Meta:
         model = SolRecurs
         fields = [
-            'id', 'id_obra', 'id_recurs', 'quantitat', 'data_necessitat',
-            'comentari', 'data_entrega', 'data_creacio', 'obra', 'recurs',
-            'estat'
+            'id',
+            'id_obra',
+            'obra',
+            'id_empresa',
+            'id_recurs',
+            'recurs',
+            'quantitat',
+            'data_necessitat',
+            'comentari',
+            'data_entrega',
+            'data_creacio',
+            'proveidor',
+            'id_treballador',
+            'estat',
         ]
-        read_only_fields = ['id', 'data_creacio', 'data_entrega', 'obra', 'recurs', 'estat']
-        extra_kwargs = {
-            'comentari': {'required': False, 'allow_null': True, 'allow_blank': True},
-        }
-
+        read_only_fields = [
+            'id',
+            'id_empresa',
+            'obra',
+            'recurs',
+        ]
+        
 class ResponsableObraSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResponsableObra
@@ -441,3 +454,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "tipus": user.tipus,
             "subject_id": subject_id,
         }
+    
+class NotificacioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Notificacio
+        fields = [
+            'id', 'tipus', 'titol', 'missatge',
+            'llegida', 'data_creacio',
+            'entitat_id', 'entitat_tipus',
+        ]
+        read_only_fields = ['id', 'tipus', 'titol', 'missatge', 'data_creacio',
+                            'entitat_id', 'entitat_tipus']

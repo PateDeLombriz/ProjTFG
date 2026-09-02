@@ -19,6 +19,9 @@ abstract final class IncidenciaSortValues {
   static const String obraAsc = 'obra_asc';
   static const String estatAsc = 'estat_asc';
 }
+const List<String> listEstats = ['oberta', 'gestionada', 'tancada', 'cancel·lada'];
+const List<String> cleanListEstats = ['Oberta', 'Gestionada', 'Tancada', 'Cancel·lada'];
+  
 
 /* ─────────────────────── LLISTAT / FILTRES ─────────────────────── */
 
@@ -29,7 +32,7 @@ class IncidenciaListHeaderCard extends StatelessWidget {
   final int? activeCount;
   final int? criticalCount;
   final int? pendingCount;
-
+  
   const IncidenciaListHeaderCard({
     super.key,
     required this.title,
@@ -39,6 +42,8 @@ class IncidenciaListHeaderCard extends StatelessWidget {
     this.criticalCount,
     this.pendingCount,
   });
+  
+  
 
   @override
   Widget build(BuildContext context) {
@@ -170,26 +175,26 @@ class IncidenciaFilterBar extends StatelessWidget {
                 label: 'Estat',
                 value: selectedEstat,
                 onChanged: onEstatChanged,
-                items: const [
-                  DropdownMenuItem<String?>(
+                items: [
+                  const DropdownMenuItem<String?>(
                     value: null,
                     child: Text('Tots'),
                   ),
                   DropdownMenuItem<String?>(
-                    value: 'pendent',
-                    child: Text('Pendent'),
+                    value: listEstats[0],
+                    child: Text(cleanListEstats[0]),
                   ),
-                  DropdownMenuItem<String?>(
-                    value: 'en_curs',
-                    child: Text('En curs'),
+                   DropdownMenuItem<String?>(
+                    value: listEstats[1],
+                    child: Text(cleanListEstats[1]),
                   ),
-                  DropdownMenuItem<String?>(
-                    value: 'resolta',
-                    child: Text('Resolta'),
+                   DropdownMenuItem<String?>(
+                    value: listEstats[3],
+                    child: Text(cleanListEstats[3]),
                   ),
-                  DropdownMenuItem<String?>(
-                    value: 'tancada',
-                    child: Text('Tancada'),
+                   DropdownMenuItem<String?>(
+                    value: listEstats[2],
+                    child: Text(cleanListEstats[2]),
                   ),
                 ],
               ),
@@ -319,7 +324,7 @@ class IncidenciaListItemCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final incidencia = item.incidencia;
     final accent = colorForCriticitat(incidencia.criticitat);
-
+    final colorEstat = colorByEstat(incidencia.estat);
     final obraNom = incidencia.obraNom ?? 'Obra sense nom';
     final estatLabel = _estatLabel(incidencia.estat);
     final categoriaLabel = _categoriaLabel(incidencia.categoria);
@@ -333,7 +338,7 @@ class IncidenciaListItemCard extends StatelessWidget {
       AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         icon: Icons.priority_high_rounded,
         label: 'Prioritat ${incidencia.prioritat}',
-        accent: scheme.secondary,
+        accent: colorForPriority(incidencia.prioritat),
       ),
       if (categoriaLabel.trim().isNotEmpty)
         AppTag(borderRadius: 999, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -391,7 +396,7 @@ class IncidenciaListItemCard extends StatelessWidget {
                   child: Container(
                     width: 6,
                     decoration: BoxDecoration(
-                      color: accent,
+                      color: colorEstat.withOpacity(0.92),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(22),
                         bottomLeft: Radius.circular(22),
@@ -464,7 +469,7 @@ class IncidenciaListItemCard extends StatelessWidget {
                                 children: [
                                   AppStatusChip(showBorder: true, bgOpacity: 0.10,
                                     label: estatLabel,
-                                    color: accent,
+                                    color: colorEstat,
                                   ),
                                   const SizedBox(width: 4),
                                   Icon(
@@ -865,7 +870,7 @@ class IncidenciaSectionBlock extends StatefulWidget {
   final int? count;
   final Widget child;
   final bool initiallyExpanded;
-  final VoidCallback? onAdd;
+  final VoidCallback? onAdd;//Esto sirve para añadir un botón de acción en la sección, por ejemplo, para agregar una nueva incidencia o elemento relacionado.
   final String? addTooltip;
 
   const IncidenciaSectionBlock({
@@ -1113,15 +1118,6 @@ class IncidenciaTascaCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              tasca.etiqueta,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15.5,
-                              ),
-                            ),
                             const SizedBox(height: 5),
                             Text(
                               tasca.descripcioCurta,
@@ -1578,11 +1574,11 @@ class _IncidenciaEstatBottomSheetState
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            items: const [
-              DropdownMenuItem(value: 'pendent', child: Text('Pendent')),
-              DropdownMenuItem(value: 'en_curs', child: Text('En curs')),
-              DropdownMenuItem(value: 'resolta', child: Text('Resolta')),
-              DropdownMenuItem(value: 'tancada', child: Text('Tancada')),
+            items:  [
+              DropdownMenuItem(value: listEstats[0], child: Text(cleanListEstats[0])),
+              DropdownMenuItem(value: listEstats[1], child: Text(cleanListEstats[1])),
+              DropdownMenuItem(value: listEstats[2], child: Text(cleanListEstats[2])),
+              DropdownMenuItem(value: listEstats[3], child: Text(cleanListEstats[3])),
             ],
             onChanged: (value) {
               if (value == null) return;
@@ -1616,15 +1612,13 @@ class _IncidenciaEstatBottomSheetState
   String _normalizeEstat(String? value) {
     final text = value?.trim().toLowerCase();
     switch (text) {
-      case 'pendent':
-      case 'en_curs':
-      case 'resolta':
+      case 'oberta':
+      case 'gestionada':
       case 'tancada':
+      case 'cancel·lada':
         return text!;
-      case 'en curs':
-        return 'en_curs';
       default:
-        return 'pendent';
+        return 'oberta';
     }
   }
 }
@@ -2262,15 +2256,14 @@ String _estatLabel(String? estat) {
   if (text == null || text.isEmpty) return 'Sense estat';
 
   switch (text) {
-    case 'pendent':
-      return 'Pendent';
-    case 'en_curs':
-    case 'en curs':
-      return 'En curs';
-    case 'resolta':
-      return 'Resolta';
+    case 'oberta':
+      return 'Oberta';
+    case 'gestionada':
+      return 'Gestionada';
     case 'tancada':
       return 'Tancada';
+    case 'cancel·lada':
+      return 'Cancel·lada';
     default:
       return estat!.trim();
   }

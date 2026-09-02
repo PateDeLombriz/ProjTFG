@@ -1,9 +1,9 @@
+import 'package:front_end/models/treballador_models.dart';
 import 'package:front_end/services/treballador_service.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/shared/services/app_api_service.dart';
-
 
 class TascaServiceException implements Exception {
   final String message;
@@ -64,9 +64,9 @@ class TascaService extends AppApiService {
         invalidResponseMessage: 'La resposta de la tasca no és vàlida.',
       ),
     );
-   
   }
-   Future<TascaProfileData> fetchTascaTreballadorProfile(int tascaId) async {
+
+  Future<TascaProfileData> fetchTascaTreballadorProfile(int tascaId) async {
     final raw = await fetchTascaTreballadorsRaw(tascaId);
     return TascaProfileData.fromMap(raw);
   }
@@ -107,55 +107,84 @@ class TascaService extends AppApiService {
 
   Future<List<ObraOption>> fetchObres() async {
     int idEmpresa = await requireEmpresaId();
-  if (idEmpresa == null) {
-    throw const TascaServiceException(
-      'No s’ha pogut carregar les obres: falta id_empresa.',
-    );
+    if (idEmpresa == null) {
+      throw const TascaServiceException(
+        'No s’ha pogut carregar les obres: falta id_empresa.',
+      );
+    }
+
+    return _runMapped(() async {
+      final list = await getJsonList(
+        '/obresEmpresa/$idEmpresa/',
+        fallback: 'Error carregant les obres',
+        invalidResponseMessage: 'La resposta de les obres no és vàlida.',
+      );
+
+      return list
+          .map((e) {
+            final obraInfo = e['obra_info'] as Map<String, dynamic>?;
+
+            return ObraOption(
+              id: _asInt(obraInfo?['id']) ?? 0,
+              nom: (obraInfo?['nom'] ?? '—').toString(),
+            );
+          })
+          .where((obra) => obra.id != 0)
+          .toList();
+    });
   }
 
-  return _runMapped(() async {
-    final list = await getJsonList(
-      '/obresEmpresa/$idEmpresa/',
-      fallback: 'Error carregant les obres',
-      invalidResponseMessage: 'La resposta de les obres no és vàlida.',
-    );
-
-    return list
-        .map((e) {
-          final obraInfo = e['obra_info'] as Map<String, dynamic>?;
-
-          return ObraOption(
-            id: _asInt(obraInfo?['id']) ?? 0,
-            nom: (obraInfo?['nom'] ?? '—').toString(),
-          );
-        })
-        .where((obra) => obra.id != 0)
-        .toList();
-  });
-}
-
   Future<List<UsuariOption>> fetchTreballadors() {
-  return _runMapped(() async {
-    final idEmpresa = await requireEmpresaId();
+    return _runMapped(() async {
+      final idEmpresa = await requireEmpresaId();
 
-    final treballadorService = TreballadorService(
-      baseUrl: baseUrl,
-      client: client,
-    );
+      final treballadorService = TreballadorService(
+        baseUrl: baseUrl,
+        client: client,
+      );
 
-    final treballadors = await treballadorService.fetchTreballadorsEmpresa(idEmpresa);
+      final treballadors =
+          await treballadorService.fetchTreballadorsEmpresa(idEmpresa);
 
-    return treballadors
-        .map(
-          (t) => UsuariOption(
-            id: t.id,
-            nom: t.nom,
-            cognoms: t.cognoms ?? '',
-          ),
-        )
-        .where((u) => u.id != 0)
-        .toList();
-  });
+      return treballadors
+          .map(
+            (t) => UsuariOption(
+              id: t.id,
+              nom: t.nom,
+              cognoms: t.cognoms ?? '',
+            ),
+          )
+          .where((u) => u.id != 0)
+          .toList();
+    });
+  }
+
+  Future<List<TreballadorListItem>> fetchTreballadorsDetallatsDeTasca(
+  int tascaId,
+) async {
+  final assignacions = await fetchAssignacionsTasca(tascaId);
+  final idsAssignats = assignacions
+      .map((e) => _asInt(e['id_treballador']))
+      .whereType<int>()
+      .toSet();
+
+  if (idsAssignats.isEmpty) {
+    return [];
+  }
+
+  final idEmpresa = await requireEmpresaId();
+
+  final treballadorService = TreballadorService(
+    baseUrl: baseUrl,
+    client: client,
+  );
+
+  final treballadorsEmpresa =
+      await treballadorService.fetchTreballadorsEmpresa(idEmpresa);
+
+  return treballadorsEmpresa
+      .where((t) => idsAssignats.contains(t.id))
+      .toList();
 }
 
   Future<List<UsuariOption>> fetchTreballadorsDeTasca(int tascaId) async {
@@ -214,6 +243,42 @@ class TascaService extends AppApiService {
     );
   }
 
+  Future<void> patchTasca(int tascaId, Map<String, dynamic> payload) {
+    return _runMapped(
+      () => patchJsonMap(
+        '/tasca/$tascaId/',
+        body: payload,
+        expectedStatus: 200,
+        fallback: 'Error actualitzant parcialment la tasca',
+        invalidResponseMessage:
+            'La resposta d’actualització parcial de la tasca no és vàlida.',
+      ).then((_) => null),
+    );
+  }
+
+  /// Actualitza només la relació amb la tasca pare.
+  /// Si tascaPareId és null, la tasca queda sense tasca pare.
+  Future<void> updateTascaPare(int tascaId, int? tascaPareId) {
+    return patchTasca(
+      tascaId,
+      {
+        'id_tasca_pare': tascaPareId,
+      },
+    );
+  }
+
+  /// Desassigna un treballador concret mantenint la resta d’assignacions.
+  /// Internament reutilitza el flux actual: carrega assignats, elimina un usuari
+  /// de la llista i sincronitza la nova selecció.
+  Future<void> removeTreballadorFromTasca({
+    required int tascaId,
+    required int treballadorId,
+  }) async {
+    final actuals = await fetchTreballadorsDeTasca(tascaId);
+    final next = actuals.where((u) => u.id != treballadorId).toList();
+    await syncTreballadors(tascaId, next);
+  }
+
   // ──────────────────── ASSIGNACIONS ────────────────────
 
   Future<List<Map<String, dynamic>>> fetchAssignacionsTasca(int tascaId) {
@@ -240,18 +305,18 @@ class TascaService extends AppApiService {
   }
 
   Future<void> createAssignacionsTasca(
-  int tascaId,
-  List<UsuariOption> treballadors,
-) async {
-  for (final usuari in treballadors) {
-    if (usuari.id == 0) continue;
+    int tascaId,
+    List<UsuariOption> treballadors,
+  ) async {
+    for (final usuari in treballadors) {
+      if (usuari.id == 0) continue;
 
-    await assignarTreballador(
-      tascaId: tascaId,
-      treballadorId: usuari.id,
-    );
+      await assignarTreballador(
+        tascaId: tascaId,
+        treballadorId: usuari.id,
+      );
+    }
   }
-}
 
   Future<void> assignarTreballador({
     required int tascaId,
@@ -274,13 +339,13 @@ class TascaService extends AppApiService {
     );
   }
 
- Future<void> syncTreballadors(
-  int tascaId,
-  List<UsuariOption> treballadors,
-) async {
-  await deleteAssignacionsTasca(tascaId);
-  await createAssignacionsTasca(tascaId, treballadors);
-}
+  Future<void> syncTreballadors(
+    int tascaId,
+    List<UsuariOption> treballadors,
+  ) async {
+    await deleteAssignacionsTasca(tascaId);
+    await createAssignacionsTasca(tascaId, treballadors);
+  }
 }
 
 int? _asInt(dynamic value) {

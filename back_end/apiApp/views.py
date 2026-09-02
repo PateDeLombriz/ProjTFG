@@ -580,6 +580,12 @@ class IncidenciaDetail(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, pk):
+        incidencia = get_object_or_404(Incidencia, pk=pk)
+        _assert_empresa_can_access_incidencia(request, incidencia)
+
+        incidencia.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class TasquesDetail(APIView):
     authentication_classes = [JWTAuthentication]
@@ -588,46 +594,59 @@ class TasquesDetail(APIView):
     def get(self, request, pk):
         tasca = get_object_or_404(Tasca, pk=pk)
         _assert_subject_can_access_tasca(request, tasca)
-
+    
         tasca_data = TascaSerializer(tasca).data
-
+    
         if tasca.id_obra:
             obra_data = ObraSerializer(tasca.id_obra).data
             tasca_data['obra'] = obra_data
-
+    
         if tasca.id_tasca_pare:
             tasca_pare_data = TascaSerializer(tasca.id_tasca_pare).data
             tasca_data['tasca_pare'] = tasca_pare_data
-
+    
         incidencies = Incidencia.objects.filter(id_tasca=tasca)
-        tasca_data['incidencies'] = IncidenciaSerializer(incidencies, many=True).data
-
+        tasca_data['incidencies'] = IncidenciaSerializer(
+            incidencies,
+            many=True,
+        ).data
+    
         solucions = Solucio.objects.filter(id_tasca=tasca)
-        tasca_data['solucions'] = SolucioSerializer(solucions, many=True).data
-
-        
-        try:
-            tasca_treballador = TascaTreballador.objects.get(id_tasca=tasca)
-
+        tasca_data['solucions'] = SolucioSerializer(
+            solucions,
+            many=True,
+        ).data
+    
+        assignacions = TascaTreballador.objects.filter(
+            id_tasca=tasca
+        ).select_related('id_treballador')
+    
+        treballadors_assignats = []
+    
+        for assignacio in assignacions:
             contracte = ContracteTreballador.objects.filter(
-                id_treballador=tasca_treballador.id_treballador,
+                id_treballador=assignacio.id_treballador,
                 id_empresa_id=_get_attr(request, "auth")["subject_id"]
             ).first()
-
+    
             if contracte is None:
-                tasca_data['treballador_assignat'] = None
-            else:
-                treballador = contracte.id_treballador
-                treballador_data = TreballadorSerializer(treballador).data
-
-                tasca_data['treballador_assignat'] = {
-                    'usuari': treballador_data,
-                    'comentari': tasca_treballador.comentari
-                }
-
-        except TascaTreballador.DoesNotExist:
+                continue
+            
+            treballador = contracte.id_treballador
+            treballador_data = TreballadorSerializer(treballador).data
+    
+            treballadors_assignats.append({
+                'usuari': treballador_data,
+                'comentari': assignacio.comentari,
+            })
+    
+        tasca_data['treballadors_assignats'] = treballadors_assignats
+    
+        if treballadors_assignats:
+            tasca_data['treballador_assignat'] = treballadors_assignats[0]
+        else:
             tasca_data['treballador_assignat'] = None
-
+    
         return Response(tasca_data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
@@ -640,13 +659,14 @@ class TasquesDetail(APIView):
             return Response(serializer.data,status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def delete(self, request, pk, format=None):
+    
+    def delete(self, request, pk):
         tasca = get_object_or_404(Tasca, pk=pk)
         _assert_empresa_can_access_tasca(request, tasca)
 
-        deleted, _ = TascaTreballador.objects.filter(id_tasca_id=pk).delete()
-        return Response({'deleted': deleted}, status=status.HTTP_200_OK)
+        tasca.delete()
 
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # -------------------- SOL_RECurs DETAIL --------------------
 class SolRecursDetail(APIView):
@@ -922,7 +942,13 @@ class TascaTreballadorDetail(APIView):
     #        serializer.save()
     #        return Response(serializer.data, status=status.HTTP_200_OK)
     #    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    def delete(self, request, pk, format=None):
+            tasca = get_object_or_404(Tasca, pk=pk)
+            _assert_empresa_can_access_tasca(request, tasca)
+    
+            deleted, _ = TascaTreballador.objects.filter(id_tasca_id=pk).delete()
+            return Response({'deleted': deleted}, status=status.HTTP_200_OK)
+    
     
 class MeView(APIView):
     """
@@ -1633,8 +1659,8 @@ class TascaTreballadorBulkDelete(APIView):
         tasca = get_object_or_404(Tasca, pk=id_tasca)
         _assert_empresa_can_access_tasca(request, tasca)
 
-        deleted, _ = TascaTreballador.objects.filter(id_tasca_id=id_tasca).delete()
-        return Response({'deleted': deleted}, status=status.HTTP_200_OK)
+        TascaTreballador.objects.filter(id_tasca_id=id_tasca).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
 class SolucioBulkDeleteView(APIView):
     """

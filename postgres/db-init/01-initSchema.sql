@@ -150,7 +150,7 @@ CREATE TABLE contracte_treballador (
 
     CONSTRAINT fk_ct_treballador FOREIGN KEY (id_treballador)
         REFERENCES treballador(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
 
     CONSTRAINT fk_ct_empresa FOREIGN KEY (id_empresa)
         REFERENCES empresa(id_empresa)

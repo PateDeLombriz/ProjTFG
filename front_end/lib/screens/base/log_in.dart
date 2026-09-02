@@ -52,7 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final rawBody = utf8.decode(response.bodyBytes);
-      
 
       Map<String, dynamic>? data;
       try {
@@ -89,29 +88,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
-        if (tipus == 'treballador') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => TreballadorMainScaffold(),
-            ),
-          );
+        if (tipus != 'empresa' && tipus != 'treballador') {
+          setState(() {
+            _error = 'Tipus d\'usuari desconegut: $tipus';
+          });
           return;
         }
 
-        if (tipus == 'empresa') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const MainScaffold(),
-            ),
-          );
-          return;
-        }
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/root',
+          (route) => false,
+        );
 
-        setState(() {
-          _error = 'Tipus d\'usuari desconegut: $tipus';
-        });
         return;
       }
 

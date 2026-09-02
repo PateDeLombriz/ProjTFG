@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:front_end/models/document_models.dart';
+import 'package:front_end/services/document_services.dart';
+import 'package:front_end/services/incidencia_service.dart';
+import 'package:front_end/services/sol_recurs_service.dart';
+import 'package:front_end/services/tasques_service.dart';
 import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/models/incidencia_models.dart';
 import 'package:front_end/models/obra_models.dart';
@@ -32,10 +36,14 @@ class ObraProfileScreen extends StatefulWidget {
 
 class _ObraProfileScreenState extends State<ObraProfileScreen> {
   late final ObraService _obraService;
-
+  late final IncidenciaService _incidenciaService;
+  late final TascaService _tascaService;
+  late final DocumentService _documentService;
+  late final SolRecursService _solRecursService;
   ObraProfileData? _profileData;
   Map<String, dynamic> _obraRaw = {};
   bool _loading = true;
+  bool _deletingItem = false;
   String? _errorMessage;
 
   int get _obraId {
@@ -55,6 +63,10 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
   void initState() {
     super.initState();
     _obraService = ObraService(baseUrl: widget.baseUrl);
+    _incidenciaService = IncidenciaService(baseUrl: widget.baseUrl);
+    _tascaService = TascaService(baseUrl: widget.baseUrl);
+    _documentService = DocumentService(baseUrl: widget.baseUrl);
+    _solRecursService = SolRecursService(baseUrl: widget.baseUrl);
     _fetchDetails();
   }
 
@@ -211,9 +223,7 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TascaDetailScreen(
-          tascaId: item.id
-        ),
+        builder: (_) => TascaDetailScreen(tascaId: item.id),
       ),
     );
     await _fetchDetails();
@@ -236,65 +246,128 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
       'Acció d’editar responsable preparada. Falta connectar el flux específic del treballador ${item.idTreballador}.',
     );
   }
+Future<bool> _confirmDeleteItem({
+  required String subjectLabel,
+  required String itemLabel,
+  String? message,
+}) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      final scheme = Theme.of(ctx).colorScheme;
 
-  Future<void> _confirmDeleteItem({
-    required String subjectLabel,
-    required String itemLabel,
-  }) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: Text('Eliminar $subjectLabel'),
-          content: Text(
-            'Vols eliminar "$itemLabel"? Aquesta acció quedarà connectada quan el backend estigui disponible.',
+      return AlertDialog(
+        title: Text('Eliminar $subjectLabel'),
+        content: Text(
+          message ??
+              'Vols eliminar "$itemLabel"? Aquesta acció és irreversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel·la'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel·la'),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Confirma'),
-            ),
-          ],
-        );
-      },
-    );
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      );
+    },
+  );
 
-    if (confirm != true || !mounted) return;
+  return confirm == true;
+}
+
+Future<void> _executeDelete({
+  required String subjectLabel,
+  required String itemLabel,
+  required String successMessage,
+  required Future<void> Function() deleteAction,
+}) async {
+  if (_deletingItem) return;
+
+  final confirmed = await _confirmDeleteItem(
+    subjectLabel: subjectLabel,
+    itemLabel: itemLabel,
+  );
+
+  if (!confirmed || !mounted) return;
+
+  setState(() => _deletingItem = true);
+
+  try {
+    await deleteAction();
+
+    if (!mounted) return;
+
+    _showSnack(successMessage, success: true);
+
+    // Torna a consultar el perfil perquè l'element
+    // desaparegui immediatament de la pantalla.
+    await _fetchDetails();
+  } catch (e) {
+    if (!mounted) return;
 
     _showSnack(
-      'Delete de $subjectLabel preparat a la UI. El backend es connectarà més endavant.',
+      'No s’ha pogut eliminar $subjectLabel: $e',
     );
+  } finally {
+    if (mounted) {
+      setState(() => _deletingItem = false);
+    }
   }
+}
 
   Future<void> _deleteIncidencia(Incidencia item) {
-    return _confirmDeleteItem(
-      subjectLabel: 'incidència',
-      itemLabel: item.descripcio,
+    final label = item.descripcio.trim().isEmpty
+        ? 'Incidència #${item.id}'
+        : item.descripcio.trim();
+
+    return _executeDelete(
+      subjectLabel: 'la incidència',
+      itemLabel: label,
+      successMessage: 'Incidència eliminada correctament.',
+      deleteAction: () => _incidenciaService.deleteIncidencia(item.id),
     );
   }
 
   Future<void> _deleteTasca(Tasca item) {
-    return _confirmDeleteItem(
-      subjectLabel: 'tasca',
-      itemLabel: item.descripcio,
+    final label = item.descripcio.trim().isEmpty
+        ? 'Tasca #${item.id}'
+        : item.descripcio.trim();
+
+    return _executeDelete(
+      subjectLabel: 'la tasca',
+      itemLabel: label,
+      successMessage: 'Tasca eliminada correctament.',
+      deleteAction: () => _tascaService.deleteTasca(item.id),
     );
   }
 
   Future<void> _deleteDocument(DocumentObraItem item) {
-    return _confirmDeleteItem(
-      subjectLabel: 'document',
-      itemLabel: item.pathDoc,
+    final label = item.fileName.trim().isEmpty
+        ? 'Document #${item.id}'
+        : item.fileName.trim();
+
+    return _executeDelete(
+      subjectLabel: 'el document',
+      itemLabel: label,
+      successMessage: 'Document eliminat correctament.',
+      deleteAction: () => _documentService.deleteDocument(item.id),
     );
   }
 
   Future<void> _deleteRecurs(SolRecurs item) {
-    return _confirmDeleteItem(
-      subjectLabel: 'recurs',
-      itemLabel: 'Recurs ${item.idRecurs}',
+    return _executeDelete(
+      subjectLabel: 'la sol·licitud de recurs',
+      itemLabel: 'Sol·licitud #${item.id}',
+      successMessage: 'Sol·licitud de recurs eliminada correctament.',
+      deleteAction: () => _solRecursService.deleteSolRecurs(item.id),
     );
   }
 
@@ -379,12 +452,10 @@ class _ObraProfileScreenState extends State<ObraProfileScreen> {
     }
 
     final obra = data.obra;
-    final incidencies = [...data.incidencies]
-      ..sort((a, b) =>
-          _priorityRank(b.prioritat).compareTo(_priorityRank(a.prioritat)));
-    final tasques = [...data.tasques]
-      ..sort((a, b) =>
-          _priorityRank(b.prioritat).compareTo(_priorityRank(a.prioritat)));
+    final incidencies = [...data.incidencies]..sort((a, b) =>
+        _priorityRank(b.prioritat).compareTo(_priorityRank(a.prioritat)));
+    final tasques = [...data.tasques]..sort((a, b) =>
+        _priorityRank(b.prioritat).compareTo(_priorityRank(a.prioritat)));
 
     return RefreshIndicator(
       onRefresh: _fetchDetails,

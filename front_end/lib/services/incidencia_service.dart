@@ -16,12 +16,14 @@ class IncidenciaServiceException implements Exception {
 
 class IncidenciaService extends AppApiService {
   IncidenciaService({
+    String? baseUrl,
     http.Client? client,
   }) : super(
-        client: client,
-        exceptionFactory: (message, {statusCode, body}) =>
-            IncidenciaServiceException(message, statusCode: statusCode),
-      );
+          baseUrl: baseUrl,
+          client: client,
+          exceptionFactory: (message, {statusCode, body}) =>
+              IncidenciaServiceException(message, statusCode: statusCode),
+        );
 
   Future<IncidenciaProfileData> fetchIncidenciaProfile(int incidenciaId) async {
     final raw = await fetchIncidenciaRaw(incidenciaId);
@@ -36,8 +38,7 @@ class IncidenciaService extends AppApiService {
     );
   }
 
-
-   /// Crea una nova incidencia.
+  /// Crea una nova incidencia.
   /// Per a treballadors: cal passar id_tasca (obligatori al backend).
   /// Per a empreses: id_obra es opcional.
   Future<Map<String, dynamic>> createIncidencia(Map<String, dynamic> payload) {
@@ -49,7 +50,7 @@ class IncidenciaService extends AppApiService {
       invalidResponseMessage: 'La resposta del servidor no es valida.',
     );
   }
-  
+
   Future<Map<String, dynamic>> updateIncidencia(
     int incidenciaId,
     Map<String, dynamic> payload,
@@ -58,7 +59,21 @@ class IncidenciaService extends AppApiService {
       '/incidencia/$incidenciaId/',
       body: payload,
       fallback: 'Error actualitzant la incidència',
-      invalidResponseMessage: 'La resposta d’actualització de la incidència no és vàlida.',
+      invalidResponseMessage:
+          'La resposta d’actualització de la incidència no és vàlida.',
+    );
+  }
+
+  Future<Map<String, dynamic>> patchIncidencia(
+    int incidenciaId,
+    Map<String, dynamic> payload,
+  ) async {
+    return patchJsonMap(
+      '/incidencia/$incidenciaId/',
+      body: payload,
+      fallback: 'Error actualitzant parcialment la incidència',
+      invalidResponseMessage:
+          'La resposta d’actualització parcial de la incidència no és vàlida.',
     );
   }
 
@@ -69,22 +84,20 @@ class IncidenciaService extends AppApiService {
     );
   }
 
-   Future<IncidenciaListData> fetchIncidenciesListData({
+  Future<IncidenciaListData> fetchIncidenciesListData({
     int? obraId,
   }) async {
     final rawItems = await fetchIncidenciesRawList(obraId: obraId);
 
-    final incidencies = rawItems
-        .map((item) => IncidenciaListItem.fromMap(item))
-        .toList();
+    final incidencies =
+        rawItems.map((item) => IncidenciaListItem.fromMap(item)).toList();
 
     final obresMap = <int, String>{};
 
     for (final item in incidencies) {
       final nom = item.obraNom?.trim();
-      obresMap[item.idObra] = (nom == null || nom.isEmpty)
-          ? 'Obra #${item.idObra}'
-          : nom;
+      obresMap[item.idObra] =
+          (nom == null || nom.isEmpty) ? 'Obra #${item.idObra}' : nom;
     }
 
     final obresDisponibles = obresMap.entries
@@ -116,11 +129,6 @@ class IncidenciaService extends AppApiService {
     );
   }
 
-    
-
-
-
-
   // ──────────────────── FORMULARI INCIDÈNCIA / SOLUCIONS ────────────────────
 
   Future<List<ObraOption>> fetchObresOptions() async {
@@ -150,6 +158,16 @@ class IncidenciaService extends AppApiService {
 
     options.sort((a, b) => a.nom.toLowerCase().compareTo(b.nom.toLowerCase()));
     return options;
+  }
+
+  Future<Map<String, dynamic>> updateTascaAssociada({
+    required int incidenciaId,
+    required int? tascaId,
+  }) async {
+    return patchIncidencia(
+      incidenciaId,
+      {'id_tasca': tascaId,},
+    );
   }
 
   Future<List<TascaOption>> fetchTasquesOptions({int? obraId}) async {
@@ -195,7 +213,8 @@ class IncidenciaService extends AppApiService {
       body: payload,
       expectedStatus: 201,
       fallback: 'Error creant la solució',
-      invalidResponseMessage: 'La resposta de creació de la solució no és vàlida.',
+      invalidResponseMessage:
+          'La resposta de creació de la solució no és vàlida.',
     );
 
     return IncidenciaSolucioItem.fromMap(raw);
@@ -229,10 +248,7 @@ class IncidenciaService extends AppApiService {
       fallback: 'Error eliminant les solucions de la incidència',
     );
   }
-
-
 }
-
 
 int? _asInt(dynamic value) {
   if (value == null) return null;

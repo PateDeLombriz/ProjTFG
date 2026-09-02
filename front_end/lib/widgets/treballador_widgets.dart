@@ -122,7 +122,9 @@ class TreballadorListHeaderCard extends StatelessWidget {
       icon: Icons.groups_rounded,
       iconContainerSize: 72,
       badges: [
-        AppTag(icon: Icons.badge_outlined, label: count == 1 ? '1 treballador' : '$count treballadors'),
+        AppTag(
+            icon: Icons.badge_outlined,
+            label: count == 1 ? '1 treballador' : '$count treballadors'),
         if (activeCount != null)
           AppTag(
             icon: Icons.filter_alt_outlined,
@@ -391,15 +393,27 @@ class TreballadorSummaryCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'Estat',
                 value: profile.estatLabel,
               ),
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'Tasques',
                 value: profile.tasquesCount.toString(),
               ),
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'Obres',
                 value: profile.obresCount.toString(),
               ),
@@ -410,7 +424,6 @@ class TreballadorSummaryCard extends StatelessWidget {
     );
   }
 }
-
 
 class TreballadorOverviewAdminCard extends StatelessWidget {
   final TreballadorProfileData profile;
@@ -495,23 +508,43 @@ class TreballadorOverviewAdminCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'Estat',
                 value: profile.estatLabel,
               ),
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'Tasques',
                 value: profile.tasquesCount.toString(),
               ),
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'Obres',
                 value: profile.obresCount.toString(),
               ),
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'DNI / NIE',
                 value: _textOrFallback(detail['dni_nie_passaport']),
               ),
-              AppInfoPill(constraints: const BoxConstraints(minWidth: 104), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11), borderRadius: 16,
+              AppInfoPill(
+                constraints: const BoxConstraints(minWidth: 104),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                borderRadius: 16,
                 label: 'Naixement',
                 value: formatDateDynamic(detail['data_naixement']),
               ),
@@ -562,6 +595,14 @@ class TreballadorListItemCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final bool nameOnly;
 
+  final String viewTooltip;
+  final String editTooltip;
+  final String deleteTooltip;
+
+  final IconData viewIcon;
+  final IconData editIcon;
+  final IconData deleteIcon;
+
   const TreballadorListItemCard({
     super.key,
     required this.treballador,
@@ -570,6 +611,12 @@ class TreballadorListItemCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.nameOnly = false,
+    this.viewTooltip = 'Veure detall',
+    this.editTooltip = 'Editar treballador',
+    this.deleteTooltip = 'Eliminar treballador',
+    this.viewIcon = Icons.visibility_outlined,
+    this.editIcon = Icons.edit_outlined,
+    this.deleteIcon = Icons.delete_outline,
   });
 
   @override
@@ -677,19 +724,28 @@ class TreballadorListItemCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (onView != null)
-                          AppCardActionButton(borderRadius: 10, size: 34, padding: const EdgeInsets.only(left: 4),
+                          AppCardActionButton(
+                            borderRadius: 10,
+                            size: 34,
+                            padding: const EdgeInsets.only(left: 4),
                             tooltip: 'Veure detall',
                             icon: Icons.visibility_outlined,
                             onPressed: onView!,
                           ),
                         if (onEdit != null)
-                          AppCardActionButton(borderRadius: 10, size: 34, padding: const EdgeInsets.only(left: 4),
+                          AppCardActionButton(
+                            borderRadius: 10,
+                            size: 34,
+                            padding: const EdgeInsets.only(left: 4),
                             tooltip: 'Editar treballador',
                             icon: Icons.edit_outlined,
                             onPressed: onEdit!,
                           ),
                         if (onDelete != null)
-                          AppCardActionButton(borderRadius: 10, size: 34, padding: const EdgeInsets.only(left: 4),
+                          AppCardActionButton(
+                            borderRadius: 10,
+                            size: 34,
+                            padding: const EdgeInsets.only(left: 4),
                             tooltip: 'Eliminar treballador',
                             icon: Icons.delete_outline,
                             onPressed: onDelete!,
@@ -714,7 +770,6 @@ class TreballadorListItemCard extends StatelessWidget {
     );
   }
 }
-
 
 class TreballadorLoadingCard extends StatelessWidget {
   const TreballadorLoadingCard({super.key});
@@ -1003,7 +1058,6 @@ class _TreballadorMetaChip extends StatelessWidget {
   }
 }
 
-
 class _TreballadorContactRow extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1064,7 +1118,6 @@ class _TreballadorContactRow extends StatelessWidget {
   }
 }
 
-
 class _TreballadorEmptyInline extends StatelessWidget {
   final String text;
 
@@ -1114,6 +1167,7 @@ String _initialsFromName(String value) {
   final second = parts[1].isEmpty ? '' : parts[1].substring(0, 1);
   return '$first$second'.toUpperCase();
 }
+
 class TreballadorFormHeaderCard extends StatelessWidget {
   final bool editing;
   final String fullName;
@@ -1215,7 +1269,9 @@ class TreballadorFormHeaderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      contactLabel.trim().isEmpty ? 'Sense contacte indicat' : contactLabel.trim(),
+                      contactLabel.trim().isEmpty
+                          ? 'Sense contacte indicat'
+                          : contactLabel.trim(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -1235,12 +1291,16 @@ class TreballadorFormHeaderCard extends StatelessWidget {
             children: [
               _TreballadorFormBadge(
                 icon: Icons.credit_card_rounded,
-                label: documentLabel.trim().isEmpty ? 'Document pendent' : documentLabel.trim(),
+                label: documentLabel.trim().isEmpty
+                    ? 'Document pendent'
+                    : documentLabel.trim(),
                 color: scheme.primary,
               ),
               _TreballadorFormBadge(
                 icon: Icons.work_outline_rounded,
-                label: carrecLabel.trim().isEmpty ? 'Sense càrrec' : carrecLabel.trim(),
+                label: carrecLabel.trim().isEmpty
+                    ? 'Sense càrrec'
+                    : carrecLabel.trim(),
                 color: scheme.tertiary,
               ),
               _TreballadorFormBadge(
@@ -1476,7 +1536,9 @@ class TreballadorFormPermissionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  selected ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+                  selected
+                      ? Icons.lock_open_rounded
+                      : Icons.lock_outline_rounded,
                   color: effectiveAccent,
                   size: 21,
                 ),
@@ -1492,7 +1554,8 @@ class TreballadorFormPermissionCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (description != null && description!.trim().isNotEmpty) ...[
+                    if (description != null &&
+                        description!.trim().isNotEmpty) ...[
                       const SizedBox(height: 3),
                       Text(
                         description!.trim(),

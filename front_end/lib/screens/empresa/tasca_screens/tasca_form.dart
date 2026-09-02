@@ -10,8 +10,7 @@ import 'package:front_end/widgets/tasca_widgets.dart';
 
 class TascaFormScreen extends StatefulWidget {
   final int? obraId;
-  final TascaDTO?
-      initial; //Dades utilitzades per el formulari de la tasca, pot venir de la tasca mateixa o d'una tasca pare (en cas de crear una subtasca)
+  final TascaDTO? initial; //Dades utilitzades per el formulari de la tasca, pot venir de la tasca mateixa o d'una tasca pare (en cas de crear una subtasca)
   final int? empresaId;
   const TascaFormScreen({
     super.key,
@@ -112,9 +111,7 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
         }
 
         final assignats = await _service.fetchTreballadorsDeTasca(initial.id);
-        _seleccionats
-          ..clear()
-          ..addAll(assignats);
+        _seleccionats..clear()..addAll(assignats);
       }
     } catch (e) {
       if (mounted) {
@@ -157,63 +154,77 @@ class _TascaFormScreenState extends State<TascaFormScreen> {
     };
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  
+Future<void> _submit() async {
+  // 1. Valida tots els camps del formulari que tenguin validator. Si algun camp no és vàlid, s'atura el procés.
+  if (!_formKey.currentState!.validate()) return;
 
-    if (_dataInici == null) {
-      _snack('⚠️ Falta la data d’inici');
-      return;
-    }
-
-    if (_obraSeleccionada == null) {
-      _snack('⚠️ Selecciona una obra');
-      return;
-    }
-
-    final confirm = await _confirmDesar();
-    if (confirm != true) return;
-
-    setState(() => _saving = true);
-
-    try {
-      final payload = _buildPayload();
-
-      late final int tascaId;
-
-      final isCreating = widget.initial == null;
-
-      if (isCreating) {
-        tascaId = await _service.createTascaAndReturnId(payload);
-
-        if (tascaId == 0) {
-          throw const TascaServiceException(
-            'La tasca s’ha creat però el backend no ha retornat un id vàlid.',
-          );
-        }
-
-        await _service.createAssignacionsTasca(tascaId, _seleccionats);
-      } else {
-        tascaId = widget.initial!.id;
-
-        await _service.updateTasca(tascaId, payload);
-        await _service.syncTreballadors(tascaId, _seleccionats);
-      }
-
-      if (!mounted) return;
-
-      _dirty = false;
-      _snack('✅ Tasca desada correctament!', success: true);
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) {
-        _snack('❌ Error: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
-    }
+  // 2. Validació manual de la data d'inici, perquè no depèn directament d'un TextFormField.
+  if (_dataInici == null) {
+    _snack('⚠️ Falta la data d’inici');
+    return;
   }
+
+  // 3. Validació manual de l'obra associada. Tota tasca ha de pertànyer a una obra.
+  if (_obraSeleccionada == null) {
+    _snack('⚠️ Selecciona una obra');
+    return;
+  }
+
+  // 4. Demana confirmació abans de guardar per evitar canvis accidentals.
+  final confirm = await _confirmDesar();
+  if (confirm != true) return;
+
+  // 5. Activa l'estat de guardat per mostrar loading i bloquejar accions mentre s'envia la informació.
+  setState(() => _saving = true);
+
+  try {
+    // 6. Construeix el payload que s'enviarà al backend.
+    final payload = _buildPayload();
+
+    // 7. Guardarà l'id final de la tasca, tant si s'ha creat com si s'ha editat.
+    late final int tascaId;
+
+    // 8. Si widget.initial és null, el formulari està en mode creació; si no, en mode edició.
+    final isCreating = widget.initial == null;
+
+    if (isCreating) {
+      // 9. Mode creació: crea la tasca i recupera l'id retornat pel backend.
+      tascaId = await _service.createTascaAndReturnId(payload);
+
+      // 10. Comprovació de seguretat: sense un id vàlid no es poden crear assignacions ni retornar la tasca.
+      if (tascaId == 0) {
+        throw const TascaServiceException('La tasca s’ha creat però el backend no ha retornat un id vàlid.');
+      }
+
+      // 11. Un cop creada la tasca, es creen les assignacions dels treballadors seleccionats.
+      await _service.createAssignacionsTasca(tascaId, _seleccionats);
+    } else {
+      // 12. Mode edició: s'utilitza l'id de la tasca existent.
+      tascaId = widget.initial!.id;
+
+      // 13. Actualitza les dades generals de la tasca i sincronitza els treballadors assignats.
+      await _service.updateTasca(tascaId, payload);
+      await _service.syncTreballadors(tascaId, _seleccionats);
+    }
+
+    // 14. Després d'un await, comprovam que la pantalla encara existeix abans de tocar UI o navegar.
+    if (!mounted) return;
+
+    // 15. Marca el formulari com a net, mostra feedback positiu i tanca retornant l'id de la tasca.
+    _dirty = false;
+    _snack('✅ Tasca desada correctament!', success: true);
+
+    // 16. Retorna tascaId perquè la pantalla anterior, per exemple una incidència, pugui associar aquesta tasca.
+    Navigator.pop(context, tascaId);
+  } catch (e) {
+    // 17. Si falla qualsevol crida al backend, es mostra l'error.
+    if (mounted) _snack('❌ Error: $e');
+  } finally {
+    // 18. Tant si ha anat bé com si ha fallat, es desactiva l'estat de guardat.
+    if (mounted) setState(() => _saving = false);
+  }
+}
 
   Future<void> _openSelectTreballadors() async {
     final result = await showDialog<List<UsuariOption>>(

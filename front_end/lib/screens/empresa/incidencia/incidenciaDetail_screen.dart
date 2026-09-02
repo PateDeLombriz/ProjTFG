@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:front_end/models/incidencia_models.dart';
+import 'package:front_end/screens/empresa/tasca_screens/tasca_form.dart';
 import 'package:front_end/shared/widgets/app_loading_indicator.dart';
 import 'package:front_end/models/obra_models.dart';
 import 'package:front_end/models/tasca_models.dart';
@@ -32,7 +33,6 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
 
   bool _loading = true;
   String? _error;
-  String? _localEstatOverride;
   bool _localTascaHidden = false;
   int _localSolucioDraftId = -1;
   List<IncidenciaSolucioItem>? _localSolucions;
@@ -65,7 +65,6 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
 
       setState(() {
         _profile = profile;
-        _localEstatOverride = null;
         _localTascaHidden = false;
         _localSolucions = List<IncidenciaSolucioItem>.from(profile.solucions);
         _localSolucioDraftId = -1;
@@ -88,7 +87,6 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
     return Scaffold(
       backgroundColor: scheme.primaryContainer.withOpacity(0.06),
       appBar: AppBar(
-        title: Text('Incidència #${widget.incidenciaId}'),
         centerTitle: false,
         actions: [
           IconButton(
@@ -131,7 +129,7 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
     final obra = profile.obra;
     final tasca = _localTascaHidden ? null : profile.tasca;
     final solucions = _localSolucions ?? profile.solucions;
-    final displayEstat = _localEstatOverride ?? incidencia.estat;
+    final displayEstat = incidencia.estat;
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -167,7 +165,7 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
           icon: Icons.task_alt_rounded,
           count: tasca == null ? 0 : 1,
           initiallyExpanded: true,
-          onAdd: _handleAssignTasca,
+          onAdd: _handleCreateTasca,
           addTooltip: 'Tasca on ha succeït la incidència',
           child: tasca == null
               ? IncidenciaNoTascaPanel(
@@ -239,68 +237,176 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
     );
   }
 
-  Future<void> _handleChangeEstat(Incidencia incidencia) async {
-    final selected = await showModalBottomSheet<String>(
+ Future<void> _handleChangeEstat(Incidencia incidencia) async {
+  final selected = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => IncidenciaEstatBottomSheet(
+      initialEstat: incidencia.estat,
+    ),
+  );
+
+  if (selected == null || selected.trim().isEmpty) return;
+
+  try {
+    await _service.patchIncidencia(
+      incidencia.id,
+      {
+        'estat': selected,
+      },
+    );
+
+    if (!mounted) return;
+
+    _showPendingSync(
+      'Estat canviat a ${_estatLabel(selected)} correctament.',
+    );
+
+    await _load();
+  } catch (e) {
+    if (!mounted) return;
+
+    _showPendingSync(
+      'No s’ha pogut modificar l’estat: $e',
+    );
+  }
+}
+
+  Future<void> _handleAssignTasca() async {
+  final profile = _profile;
+  if (profile == null) return;
+
+  try {
+    final tasques = await _service.fetchTasquesOptions(
+      obraId: profile.incidencia.idObra,
+    );
+
+    if (!mounted) return;
+
+    if (tasques.isEmpty) {
+      _showPendingSync(
+        'No hi ha tasques disponibles en aquesta obra.',
+      );
+      return;
+    }
+
+    final selected = await showDialog<TascaOption>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => IncidenciaEstatBottomSheet(
-        initialEstat: _localEstatOverride ?? incidencia.estat,
+      builder: (context) => SimpleDialog(
+        title: const Text('Associar tasca existent'),
+        children: [
+          for (final tasca in tasques)
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context, tasca);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                ),
+                child: Text(
+                  tasca.desc.trim().isEmpty
+                      ? 'Tasca #${tasca.id}'
+                      : tasca.desc,
+                ),
+              ),
+            ),
+        ],
       ),
     );
 
-    if (selected == null || selected.trim().isEmpty) return;
+    if (selected == null) return;
 
-    setState(() => _localEstatOverride = selected);
+    await _service.updateTascaAssociada(
+      incidenciaId: profile.incidencia.id,
+      tascaId: selected.id,
+    );
+
+    if (!mounted) return;
+
     _showPendingSync(
-      'Estat canviat a ${_estatLabel(selected)}. Pendent de sincronitzar amb backend.',
+      'Tasca associada correctament.',
     );
-  }
 
-  Future<void> _handleAssignTasca() async {
-    await _showActionSheet(
-      title: 'Associar tasca existent',
-      message:
-          'El flux visual queda preparat amb el mateix patró de la resta de pantalles. Quan connectem backend, aquí es carregarà un desplegable amb les tasques disponibles de l\'obra.',
-      icon: Icons.playlist_add_check_rounded,
-      primaryLabel: 'Preparat',
+    await _load();
+  } catch (e) {
+    if (!mounted) return;
+
+    _showPendingSync(
+      'No s’ha pogut associar la tasca: $e',
     );
   }
+}
 
   Future<void> _handleCreateTasca() async {
-    await _showActionSheet(
-      title: 'Crear tasca nova',
-      message:
-          'El botó de crear ja queda integrat amb la UI. En la següent fase s\'obrirà el formulari de tasca i s\'associarà el resultat a aquesta incidència.',
-      icon: Icons.add_task_rounded,
-      primaryLabel: 'Preparat',
+    final profile = _profile;
+    if (profile == null) return;
+
+    final tascaId = await Navigator.push<int?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TascaFormScreen(
+          obraId: profile.incidencia.idObra,
+        ),
+      ),
     );
+
+    if (tascaId == null || tascaId == 0) return;
+    try {
+      await _updateIncidenciaTasca(tascaId);
+      if (!mounted) return;
+      _showPendingSync('Tasca creada i associada correctament.');
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      _showPendingSync(
+        'La tasca s’ha creat, però no s’ha pogut associar a la incidència: $e',
+      );
+    }
   }
 
   Future<void> _handleEditTasca(Tasca tasca) async {
-    await _showActionSheet(
-      title: 'Editar tasca',
-      message:
-          'Acció visual preparada per editar la tasca #${tasca.id}. Mantinc el frontend consistent i ho connectarem amb el formulari/endpoints existents en la següent fase.',
-      icon: Icons.edit_rounded,
-      primaryLabel: 'Preparat',
+    final changedTascaId = await Navigator.push<int?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TascaFormScreen(
+          obraId: tasca.idObra,
+          initial: tasca.toDTO(),
+        ),
+      ),
     );
-  }
 
+    if (changedTascaId == null) return;
+
+    if (!mounted) return;
+    _showPendingSync('Tasca modificada correctament.');
+    await _load();
+  }
 
   Future<void> _handleDeleteTasca(Tasca tasca) async {
     final confirmed = await _confirm(
-      title: 'Eliminar tasca?',
+      title: 'Desvincular tasca?',
       message:
-          'La tasca #${tasca.id} s\'eliminarà visualment d\'aquesta incidència. La persistència es connectarà amb backend després.',
-      confirmLabel: 'Eliminar',
+          'La tasca #${tasca.id} deixarà d’estar associada a aquesta incidència. No s’eliminarà la tasca del sistema.',
+      confirmLabel: 'Desvincular',
       destructive: true,
     );
 
-    if (confirmed == true) {
-      setState(() => _localTascaHidden = true);
-      _showPendingSync('Tasca eliminada localment. Pendent de sincronitzar.');
+    if (confirmed != true) return;
+
+    try {
+      await _updateIncidenciaTasca(null);
+
+      if (!mounted) return;
+
+      _showPendingSync('Tasca desvinculada correctament.');
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+
+      _showPendingSync('Error desvinculant la tasca: $e');
     }
   }
 
@@ -390,6 +496,19 @@ class _IncidenciaProfileScreenState extends State<IncidenciaProfileScreen> {
       setState(() => _localSolucions = current);
       _showPendingSync('Solució eliminada localment. Pendent de sincronitzar.');
     }
+  }
+
+  Future<void> _updateIncidenciaTasca(int? tascaId) async {
+    final profile = _profile;
+
+    if (profile == null) {
+      throw Exception('No hi ha cap incidència carregada.');
+    }
+
+    await _service.updateTascaAssociada(
+      incidenciaId: profile.incidencia.id,
+      tascaId: tascaId,
+    );
   }
 
   Future<void> _showActionSheet({

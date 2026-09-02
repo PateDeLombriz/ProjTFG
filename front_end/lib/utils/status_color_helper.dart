@@ -30,6 +30,21 @@ Color colorForPriority(dynamic value) {
   return Colors.blueGrey;
 }
 
+Color colorByEstat(String? estat) {
+  switch (estat?.trim().toLowerCase()) {
+    case 'oberta':
+      return Colors.orange;
+      case 'gestionada':
+      return Colors.green;
+    case 'tancada':
+      return Colors.blue;
+    case 'cancel·lada':
+      return Colors.red;
+    default:
+      return Colors.grey;
+  }
+}
+
 int _priorityRank(dynamic value) {
   if (value is num) return value.toInt();
   final text = value?.toString().trim().toLowerCase() ?? '';

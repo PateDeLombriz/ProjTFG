@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:front_end/models/treballador_models.dart';
+import 'package:front_end/shared/widgets/app_card_action_button.dart';
 import 'package:front_end/models/tasca_models.dart';
 import 'package:front_end/utils/date_formatter.dart';
 import 'package:front_end/shared/widgets/app_badge.dart';
@@ -197,11 +198,15 @@ class TascaObraSection extends StatelessWidget {
 class TascaPareSection extends StatelessWidget {
   final Tasca? tascaPare;
   final ValueChanged<int>? onOpenTascaPare;
+  final VoidCallback? onSelectTascaPare;
+  final VoidCallback? onUnlinkTascaPare;
 
   const TascaPareSection({
     super.key,
     required this.tascaPare,
     this.onOpenTascaPare,
+    this.onSelectTascaPare,
+    this.onUnlinkTascaPare,
   });
 
   @override
@@ -209,11 +214,14 @@ class TascaPareSection extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final accent = scheme.secondary;
 
-    return AppExpandableSection(accentBorder: true,
+    return AppExpandableSection(
+      accentBorder: true,
       title: 'Tasca pare',
       icon: Icons.account_tree_outlined,
       count: tascaPare == null ? 0 : 1,
       accent: accent,
+      onAdd: onSelectTascaPare,
+      addTooltip: tascaPare == null ? 'Seleccionar tasca pare' : 'Canviar tasca pare',
       child: tascaPare == null
           ? TascaSectionPlaceholder(
               message: 'Aquesta tasca no depèn de cap tasca pare.',
@@ -221,7 +229,7 @@ class TascaPareSection extends StatelessWidget {
             )
           : TascaLinkedTile(
               title: tascaPare!.descripcioCurta,
-              subtitle: 'Obre la tasca pare vinculada',
+              subtitle: 'Tasca pare vinculada',
               icon: Icons.account_tree_rounded,
               accent: accent,
               metadata: [
@@ -229,22 +237,27 @@ class TascaPareSection extends StatelessWidget {
                 'Inici: ${formatDate(tascaPare!.dataInici)}',
                 'Fi: ${formatDate(tascaPare!.dataFi)}',
               ],
-              onTap: onOpenTascaPare == null
-                  ? null
-                  : () => onOpenTascaPare!(tascaPare!.id),
+              onTap: onOpenTascaPare == null ? null : () => onOpenTascaPare!(tascaPare!.id),
+              onEdit: onSelectTascaPare,
+              editTooltip: 'Canviar tasca pare',
+              onUnlink: onUnlinkTascaPare,
+              unlinkTooltip: 'Desvincular tasca pare',
             ),
     );
   }
 }
-
-class TascaAssignacioSection extends StatelessWidget {
-  final TascaAssignacio? assignacio;
+class TascaTreballadorsSection extends StatelessWidget {
+  final List<TreballadorListItem> treballadors;
+  final VoidCallback? onAddTreballadors;
   final ValueChanged<int>? onOpenTreballador;
+  final ValueChanged<TreballadorListItem>? onRemoveTreballador;
 
-  const TascaAssignacioSection({
+  const TascaTreballadorsSection({
     super.key,
-    required this.assignacio,
+    required this.treballadors,
+    this.onAddTreballadors,
     this.onOpenTreballador,
+    this.onRemoveTreballador,
   });
 
   @override
@@ -252,61 +265,61 @@ class TascaAssignacioSection extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final accent = scheme.tertiary;
 
-    return AppExpandableSection(accentBorder: true,
-      title: 'Treballador assignat',
-      icon: Icons.person_outline,
-      count: assignacio == null ? 0 : 1,
+    return AppExpandableSection(
+      accentBorder: true,
+      title: 'Treballadors assignats',
+      icon: Icons.groups_outlined,
+      count: treballadors.length,
       accent: accent,
-      child: assignacio == null
+      onAdd: onAddTreballadors,
+      addTooltip: 'Afegir treballadors',
+      child: treballadors.isEmpty
           ? TascaSectionPlaceholder(
-              message: 'No hi ha cap assignació principal retornada per l’API.',
+              message: 'Aquesta tasca encara no té treballadors assignats.',
               accent: accent,
             )
-          : TascaLinkedTile(
-              title: assignacio!.usuari.nomComplet,
-              subtitle: _buildAssignacioSubtitle(assignacio!),
-              icon: Icons.person_rounded,
-              accent: accent,
-              metadata: [
-                if ((assignacio!.usuari.nickname ?? '').trim().isNotEmpty)
-                  '@${assignacio!.usuari.nickname!.trim()}',
-                if ((assignacio!.usuari.email ?? '').trim().isNotEmpty)
-                  assignacio!.usuari.email!.trim(),
-                if ((assignacio!.usuari.telefon ?? '').trim().isNotEmpty)
-                  'Tel.: ${assignacio!.usuari.telefon!.trim()}',
+          : Column(
+              children: [
+                for (var i = 0; i < treballadors.length; i++) ...[
+                  TascaLinkedTile(
+                    title: treballadors[i].nomComplet,
+                    subtitle: treballadors[i].carrec?.trim().isNotEmpty == true
+                        ? treballadors[i].carrec!.trim()
+                        : '',
+                    icon: Icons.person_rounded,
+                    accent: accent,
+                    metadata: [
+                      'Malnom: #${treballadors[i].nickname ?? '—'}',
+                    ],
+                    onTap: onOpenTreballador == null
+                        ? null
+                        : () => onOpenTreballador!(treballadors[i].id),
+                    onDelete: onRemoveTreballador == null
+                        ? null
+                        : () => onRemoveTreballador!(treballadors[i]),
+                    deleteTooltip: 'Desassignar treballador',
+                  ),
+                  if (i != treballadors.length - 1) const SizedBox(height: 12),
+                ],
               ],
-              onTap: assignacio!.usuari.id == null || onOpenTreballador == null
-                  ? null
-                  : () => onOpenTreballador!(assignacio!.usuari.id!),
             ),
     );
   }
-
-  String _buildAssignacioSubtitle(TascaAssignacio assignacio) {
-    final comentari = (assignacio.comentari ?? '').trim();
-    if (comentari.isNotEmpty) {
-      return comentari.length <= 120
-          ? comentari
-          : '${comentari.substring(0, 117)}...';
-    }
-
-    final telefon = (assignacio.usuari.telefon ?? '').trim();
-    if (telefon.isNotEmpty) {
-      return 'Tel. $telefon';
-    }
-
-    return 'Obre el perfil del treballador';
-  }
 }
-
 class TascaIncidenciesSection extends StatelessWidget {
   final List<TascaIncidenciaItem> incidencies;
   final ValueChanged<int>? onOpenIncidencia;
+  final VoidCallback? onCreateIncidencia;
+  final ValueChanged<TascaIncidenciaItem>? onEditIncidencia;
+  final ValueChanged<TascaIncidenciaItem>? onDeleteIncidencia;
 
   const TascaIncidenciesSection({
     super.key,
     required this.incidencies,
     this.onOpenIncidencia,
+    this.onCreateIncidencia,
+    this.onEditIncidencia,
+    this.onDeleteIncidencia,
   });
 
   @override
@@ -314,11 +327,14 @@ class TascaIncidenciesSection extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final sectionAccent = _incidenciesAccent(scheme, incidencies);
 
-    return AppExpandableSection(accentBorder: true,
+    return AppExpandableSection(
+      accentBorder: true,
       title: 'Incidències causades per aquesta tasca',
       icon: Icons.report_problem_outlined,
       count: incidencies.length,
       accent: sectionAccent,
+      onAdd: onCreateIncidencia,
+      addTooltip: 'Crear incidència',
       child: incidencies.isEmpty
           ? TascaSectionPlaceholder(
               message: 'Aquesta tasca no té incidències associades.',
@@ -331,8 +347,7 @@ class TascaIncidenciesSection extends StatelessWidget {
                     title: incidencies[i].descripcioCurta,
                     subtitle: 'Incidència associada a aquesta tasca',
                     icon: Icons.warning_amber_rounded,
-                    accent:
-                        _criticitatAccent(scheme, incidencies[i].criticitat),
+                    accent: _criticitatAccent(scheme, incidencies[i].criticitat),
                     metadata: [
                       if ((incidencies[i].estat ?? '').trim().isNotEmpty)
                         'Estat: ${incidencies[i].estat!.trim()}',
@@ -343,6 +358,14 @@ class TascaIncidenciesSection extends StatelessWidget {
                     onTap: onOpenIncidencia == null
                         ? null
                         : () => onOpenIncidencia!(incidencies[i].id),
+                    onEdit: onEditIncidencia == null
+                        ? null
+                        : () => onEditIncidencia!(incidencies[i]),
+                    editTooltip: 'Editar incidència',
+                    onDelete: onDeleteIncidencia == null
+                        ? null
+                        : () => onDeleteIncidencia!(incidencies[i]),
+                    deleteTooltip: 'Eliminar incidència',
                   ),
                   if (i != incidencies.length - 1) const SizedBox(height: 12),
                 ],
@@ -351,7 +374,6 @@ class TascaIncidenciesSection extends StatelessWidget {
     );
   }
 }
-
 class TascaLinkedTile extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -359,6 +381,13 @@ class TascaLinkedTile extends StatelessWidget {
   final VoidCallback? onTap;
   final IconData? icon;
   final Color? accent;
+
+  final VoidCallback? onEdit;
+  final VoidCallback? onUnlink;
+  final VoidCallback? onDelete;
+  final String editTooltip;
+  final String unlinkTooltip;
+  final String deleteTooltip;
 
   const TascaLinkedTile({
     super.key,
@@ -368,15 +397,22 @@ class TascaLinkedTile extends StatelessWidget {
     this.onTap,
     this.icon,
     this.accent,
+    this.onEdit,
+    this.onUnlink,
+    this.onDelete,
+    this.editTooltip = 'Editar',
+    this.unlinkTooltip = 'Desvincular',
+    this.deleteTooltip = 'Eliminar',
   });
+
+  bool get _hasActions => onEdit != null || onUnlink != null || onDelete != null;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final effectiveAccent = accent ?? scheme.primary;
-    final visibleMetadata =
-        metadata.where((item) => item.trim().isNotEmpty).toList();
+    final visibleMetadata = metadata.where((item) => item.trim().isNotEmpty).toList();
 
     final content = Ink(
       width: double.infinity,
@@ -465,12 +501,40 @@ class TascaLinkedTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
-                  onTap == null
-                      ? Icons.circle_outlined
-                      : Icons.chevron_right_rounded,
-                  color: onTap == null ? scheme.outline : effectiveAccent,
-                ),
+                if (_hasActions)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (onEdit != null)
+                        AppCardActionButton(
+                          tooltip: editTooltip,
+                          icon: Icons.edit_outlined,
+                          onPressed: onEdit!,
+                        ),
+                      if (onUnlink != null) ...[
+                        const SizedBox(height: 6),
+                        AppCardActionButton(
+                          tooltip: unlinkTooltip,
+                          icon: Icons.link_off_rounded,
+                          onPressed: onUnlink!,
+                        ),
+                      ],
+                      if (onDelete != null) ...[
+                        const SizedBox(height: 6),
+                        AppCardActionButton(
+                          tooltip: deleteTooltip,
+                          icon: Icons.delete_outline,
+                          isDanger: true,
+                          onPressed: onDelete!,
+                        ),
+                      ],
+                    ],
+                  )
+                else
+                  Icon(
+                    onTap == null ? Icons.circle_outlined : Icons.chevron_right_rounded,
+                    color: onTap == null ? scheme.outline : effectiveAccent,
+                  ),
               ],
             ),
           ),
@@ -478,9 +542,7 @@ class TascaLinkedTile extends StatelessWidget {
       ),
     );
 
-    if (onTap == null) {
-      return content;
-    }
+    if (onTap == null) return content;
 
     return Material(
       color: Colors.transparent,
@@ -490,6 +552,68 @@ class TascaLinkedTile extends StatelessWidget {
         child: content,
       ),
     );
+  }
+}
+
+class TascaAssignacioSection extends StatelessWidget {
+  final TascaAssignacio? assignacio;
+  final ValueChanged<int>? onOpenTreballador;
+
+  const TascaAssignacioSection({
+    super.key,
+    required this.assignacio,
+    this.onOpenTreballador,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = scheme.tertiary;
+
+    return AppExpandableSection(accentBorder: true,
+      title: 'Treballador assignat',
+      icon: Icons.person_outline,
+      count: assignacio == null ? 0 : 1,
+      accent: accent,
+      child: assignacio == null
+          ? TascaSectionPlaceholder(
+              message: 'No hi ha cap assignació principal retornada per l’API.',
+              accent: accent,
+            )
+          : TascaLinkedTile(
+              title: assignacio!.usuari.nomComplet,
+              subtitle: _buildAssignacioSubtitle(assignacio!),
+              icon: Icons.person_rounded,
+              accent: accent,
+              metadata: [
+                if ((assignacio!.usuari.nickname ?? '').trim().isNotEmpty)
+                  '@${assignacio!.usuari.nickname!.trim()}',
+                if ((assignacio!.usuari.email ?? '').trim().isNotEmpty)
+                  assignacio!.usuari.email!.trim(),
+                if ((assignacio!.usuari.telefon ?? '').trim().isNotEmpty)
+                  'Tel.: ${assignacio!.usuari.telefon!.trim()}',
+              ],
+              onTap: assignacio!.usuari.id == null || onOpenTreballador == null
+                  ? null
+                  : () => onOpenTreballador!(assignacio!.usuari.id!),
+            ),
+    );
+  }
+
+  String _buildAssignacioSubtitle(TascaAssignacio assignacio) {
+    final comentari = (assignacio.comentari ?? '').trim();
+    if (comentari.isNotEmpty) {
+      return comentari.length <= 120
+          ? comentari
+          : '${comentari.substring(0, 117)}...';
+    }
+
+    final telefon = (assignacio.usuari.telefon ?? '').trim();
+    if (telefon.isNotEmpty) {
+      return 'Tel. $telefon';
+    }
+
+    return 'Obre el perfil del treballador';
   }
 }
 
